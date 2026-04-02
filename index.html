@@ -1570,18 +1570,18 @@ $('evCurrencySel').addEventListener('change', () => {
 
 function updateCurrencyCalc() {
   const cur = $('evCurrencySel').value;
-  const foreignAmt = parseFloat($('evCurrencyAmt').value);
+  const calcAmt = parseFloat($('evCurrencyAmt').value);
   const mainAmt = parseFloat($('evItemAmt').value);
   const people = getCalcPeople();
   const result = $('evCalcResult');
   const calc = $('evCurrencyCalc');
 
-  const hasForeign = cur && !isNaN(foreignAmt) && foreignAmt > 0;
+  const hasCalcAmt = !isNaN(calcAmt) && calcAmt > 0;
   const hasMain = !isNaN(mainAmt) && mainAmt > 0;
 
-  if (hasForeign) {
+  if (cur && hasCalcAmt) {
     const rate = getCalcRate();
-    const totalTWD = Math.round(foreignAmt * rate);
+    const totalTWD = Math.round(calcAmt * rate);
     const ppTWD = Math.round(totalTWD / people);
     $('evCalcTotal').textContent = fmt(totalTWD);
     $('evCalcPerPerson').textContent = fmt(ppTWD);
@@ -1592,7 +1592,18 @@ function updateCurrencyCalc() {
     $('evCalcUsePP').style.marginTop = '3px';
     result.classList.add('visible');
     calc.classList.add('has-result');
-  } else if (hasMain && people > 1) {
+  } else if (hasCalcAmt && !cur) {
+    const ppTWD = Math.round(calcAmt / people);
+    $('evCalcTotal').textContent = fmt(calcAmt);
+    $('evCalcPerPerson').textContent = fmt(ppTWD);
+    $('evCalcTotalRow').style.display = '';
+    $('evCalcPPRow').style.display = '';
+    $('evCalcUseTotal').style.display = '';
+    $('evCalcUsePP').style.display = '';
+    $('evCalcUsePP').style.marginTop = '3px';
+    result.classList.add('visible');
+    calc.classList.add('has-result');
+  } else if (hasMain) {
     const ppTWD = Math.round(mainAmt / people);
     $('evCalcPerPerson').textContent = fmt(ppTWD);
     $('evCalcTotalRow').style.display = 'none';
@@ -1615,23 +1626,24 @@ $('evCalcPeople').addEventListener('input', updateCurrencyCalc);
 
 $('evCalcUseTotal').onclick = () => {
   const cur = $('evCurrencySel').value;
-  const amt = parseFloat($('evCurrencyAmt').value);
-  if (!cur || isNaN(amt) || amt <= 0) return;
-  const totalTWD = Math.round(amt * getCalcRate());
+  const calcAmt = parseFloat($('evCurrencyAmt').value);
+  if (isNaN(calcAmt) || calcAmt <= 0) return;
+  const totalTWD = cur ? Math.round(calcAmt * getCalcRate()) : Math.round(calcAmt);
   $('evItemAmt').value = totalTWD;
   evCostType = 'total';
   $('evCostTotal').classList.add('active');
   $('evCostPerPerson').classList.remove('active');
+  updateCurrencyCalc();
 };
 
 $('evCalcUsePP').onclick = () => {
   const cur = $('evCurrencySel').value;
-  const foreignAmt = parseFloat($('evCurrencyAmt').value);
+  const calcAmt = parseFloat($('evCurrencyAmt').value);
   const mainAmt = parseFloat($('evItemAmt').value);
   const people = getCalcPeople();
 
-  if (cur && !isNaN(foreignAmt) && foreignAmt > 0) {
-    const totalTWD = Math.round(foreignAmt * getCalcRate());
+  if (!isNaN(calcAmt) && calcAmt > 0) {
+    const totalTWD = cur ? Math.round(calcAmt * getCalcRate()) : Math.round(calcAmt);
     $('evItemAmt').value = Math.round(totalTWD / people);
   } else if (!isNaN(mainAmt) && mainAmt > 0) {
     $('evItemAmt').value = Math.round(mainAmt / people);
@@ -1639,6 +1651,7 @@ $('evCalcUsePP').onclick = () => {
   evCostType = 'per-person';
   $('evCostPerPerson').classList.add('active');
   $('evCostTotal').classList.remove('active');
+  updateCurrencyCalc();
 };
 
 function resetAddForm() {
