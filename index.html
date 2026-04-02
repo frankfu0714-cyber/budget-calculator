@@ -484,10 +484,20 @@
 
     .ev-add-row { display: grid; grid-template-columns: 1fr 110px; gap: 8px; margin-bottom: 8px; }
 
-    /* ── Currency Converter ────────────────────────────────────── */
+    /* ── Currency Calculator ─────────────────────────────────── */
+    .ev-currency-calc {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 10px;
+      transition: border-color .15s;
+    }
+    .ev-currency-calc.has-result { border-color: rgba(99,102,241,.35); }
+    .ev-currency-calc-title {
+      font-size: .7rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .04em; margin-bottom: 7px;
+    }
     .ev-currency-row {
       display: flex; align-items: center; gap: 7px;
-      margin-bottom: 10px; flex-wrap: wrap;
+      margin-bottom: 6px; flex-wrap: wrap;
     }
     .ev-currency-sel {
       padding: 6px 9px;
@@ -499,18 +509,31 @@
     }
     .ev-currency-sel:focus { border-color: var(--accent); }
     .ev-currency-amt {
-      width: 120px; flex-shrink: 0;
+      width: 110px; flex-shrink: 0;
       padding: 6px 10px;
       border: 1px solid var(--border); border-radius: 8px;
-      background: var(--surface2); color: var(--text);
+      background: var(--surface); color: var(--text);
       font-family: inherit; font-size: .84rem;
       outline: none; transition: border-color .15s, box-shadow .15s;
     }
     .ev-currency-amt:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
-    .ev-currency-hint {
-      font-size: .78rem; color: var(--accent); font-weight: 600; flex: 1;
-      white-space: nowrap;
+    .ev-calc-result {
+      display: none; margin-top: 6px; padding: 7px 10px;
+      background: rgba(99,102,241,.06); border-radius: 8px;
+      font-size: .82rem; line-height: 1.5;
     }
+    .ev-calc-result.visible { display: block; }
+    .ev-calc-result-row { display: flex; justify-content: space-between; align-items: center; }
+    .ev-calc-result-val { font-weight: 700; color: var(--accent); font-size: .88rem; }
+    .ev-calc-result-pp { font-weight: 700; color: var(--expense); font-size: .88rem; }
+    .ev-calc-use-btn {
+      margin-top: 6px; width: 100%; padding: 5px 0;
+      border: 1px dashed var(--accent); border-radius: 7px;
+      background: transparent; color: var(--accent); cursor: pointer;
+      font-family: inherit; font-size: .76rem; font-weight: 700;
+      transition: background .12s, color .12s;
+    }
+    .ev-calc-use-btn:hover { background: var(--accent); color: #fff; }
     .ev-paid-label {
       display: flex; align-items: center; gap: 7px;
       font-size: .84rem; font-weight: 500; color: var(--muted);
@@ -959,16 +982,30 @@
               <input class="field-input" id="evItemName" type="text" placeholder="e.g. Venue Rent" autocomplete="off" style="margin:0" />
               <input class="field-input" id="evItemAmt"  type="number" placeholder="Amount (TWD)" min="0" step="1" style="margin:0" />
             </div>
-            <div class="ev-currency-row">
-              <select id="evCurrencySel" class="ev-currency-sel">
-                <option value="">TWD (direct)</option>
-                <option value="CNY">CNY ¥ (×4.4)</option>
-                <option value="USD">USD $ (×32)</option>
-                <option value="JPY">JPY ¥ (×0.21)</option>
-                <option value="EUR">EUR € (×34)</option>
-              </select>
-              <input id="evCurrencyAmt" type="number" class="ev-currency-amt" placeholder="Foreign amount" min="0" step="any" />
-              <span id="evCurrencyHint" class="ev-currency-hint"></span>
+            <div class="ev-currency-calc" id="evCurrencyCalc">
+              <div class="ev-currency-calc-title">💱 Currency Calculator</div>
+              <div class="ev-currency-row">
+                <select id="evCurrencySel" class="ev-currency-sel">
+                  <option value="">TWD (direct)</option>
+                  <option value="CNY">CNY ¥ (×4.4)</option>
+                  <option value="USD">USD $ (×32)</option>
+                  <option value="JPY">JPY ¥ (×0.21)</option>
+                  <option value="EUR">EUR € (×34)</option>
+                </select>
+                <input id="evCurrencyAmt" type="number" class="ev-currency-amt" placeholder="Foreign amount" min="0" step="any" />
+              </div>
+              <div class="ev-calc-result" id="evCalcResult">
+                <div class="ev-calc-result-row">
+                  <span>Total TWD</span>
+                  <span class="ev-calc-result-val" id="evCalcTotal">$0</span>
+                </div>
+                <div class="ev-calc-result-row">
+                  <span>÷ <span id="evCalcPeopleLabel">2</span> people</span>
+                  <span class="ev-calc-result-pp" id="evCalcPerPerson">$0</span>
+                </div>
+                <button type="button" class="ev-calc-use-btn" id="evCalcUseTotal">↑ Use total TWD amount</button>
+                <button type="button" class="ev-calc-use-btn" id="evCalcUsePP" style="margin-top:3px">↑ Use per-person amount</button>
+              </div>
             </div>
             <div style="margin-bottom:10px">
               <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Amount Type</div>
@@ -1434,25 +1471,104 @@ $('evEventName').addEventListener('input', () => {
 $('evPeople').addEventListener('input', () => {
   ES.people = Math.max(1, parseInt($('evPeople').value) || 1);
   renderReceipt(); persistES();
+  if (typeof updateCurrencyCalc === 'function') updateCurrencyCalc();
 });
 
 $('evAddBtn').onclick = () => {
   $('evAddForm').classList.toggle('open');
   if ($('evAddForm').classList.contains('open')) $('evItemName').focus();
 };
-$('evCancelItem').onclick = () => $('evAddForm').classList.remove('open');
+$('evCancelItem').onclick = () => {
+  $('evAddForm').classList.remove('open');
+  resetAddForm();
+};
 $('evSubmitItem').onclick  = addEvItem;
 ['evItemName','evItemAmt'].forEach(id =>
   $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addEvItem(); })
 );
 
+// ─── Per Person Toggle ─────────────────────────────────────
+let evCostType = 'total';
+$('evCostTotal').onclick = () => {
+  evCostType = 'total';
+  $('evCostTotal').classList.add('active');
+  $('evCostPerPerson').classList.remove('active');
+};
+$('evCostPerPerson').onclick = () => {
+  evCostType = 'per-person';
+  $('evCostPerPerson').classList.add('active');
+  $('evCostTotal').classList.remove('active');
+};
+
+// ─── Currency Calculator ────────────────────────────────────
+const FX_RATES = { CNY: 4.4, USD: 32, JPY: 0.21, EUR: 34 };
+
+function updateCurrencyCalc() {
+  const cur = $('evCurrencySel').value;
+  const amt = parseFloat($('evCurrencyAmt').value);
+  const result = $('evCalcResult');
+  const calc = $('evCurrencyCalc');
+  if (!cur || isNaN(amt) || amt <= 0) {
+    result.classList.remove('visible');
+    calc.classList.remove('has-result');
+    return;
+  }
+  const rate = FX_RATES[cur] || 1;
+  const totalTWD = Math.round(amt * rate);
+  const people = Math.max(1, ES.people);
+  const ppTWD = Math.round(totalTWD / people);
+  $('evCalcTotal').textContent = fmt(totalTWD);
+  $('evCalcPeopleLabel').textContent = people;
+  $('evCalcPerPerson').textContent = fmt(ppTWD);
+  result.classList.add('visible');
+  calc.classList.add('has-result');
+}
+
+$('evCurrencySel').addEventListener('change', updateCurrencyCalc);
+$('evCurrencyAmt').addEventListener('input', updateCurrencyCalc);
+
+$('evCalcUseTotal').onclick = () => {
+  const cur = $('evCurrencySel').value;
+  const amt = parseFloat($('evCurrencyAmt').value);
+  if (!cur || isNaN(amt) || amt <= 0) return;
+  const totalTWD = Math.round(amt * (FX_RATES[cur] || 1));
+  $('evItemAmt').value = totalTWD;
+  evCostType = 'total';
+  $('evCostTotal').classList.add('active');
+  $('evCostPerPerson').classList.remove('active');
+};
+
+$('evCalcUsePP').onclick = () => {
+  const cur = $('evCurrencySel').value;
+  const amt = parseFloat($('evCurrencyAmt').value);
+  if (!cur || isNaN(amt) || amt <= 0) return;
+  const totalTWD = Math.round(amt * (FX_RATES[cur] || 1));
+  const ppTWD = Math.round(totalTWD / Math.max(1, ES.people));
+  $('evItemAmt').value = ppTWD;
+  evCostType = 'per-person';
+  $('evCostPerPerson').classList.add('active');
+  $('evCostTotal').classList.remove('active');
+};
+
+function resetAddForm() {
+  $('evItemName').value = ''; $('evItemAmt').value = '';
+  $('evItemPaid').checked = false;
+  $('evCurrencySel').value = ''; $('evCurrencyAmt').value = '';
+  $('evCalcResult').classList.remove('visible');
+  $('evCurrencyCalc').classList.remove('has-result');
+  evCostType = 'total';
+  $('evCostTotal').classList.add('active');
+  $('evCostPerPerson').classList.remove('active');
+}
+
 function addEvItem() {
   const name = $('evItemName').value.trim();
-  const amt  = parseFloat($('evItemAmt').value);
+  let amt = parseFloat($('evItemAmt').value);
   const paid = $('evItemPaid').checked;
   if (!name || isNaN(amt) || amt <= 0) { showToast('Enter a name and valid amount.', 'warn'); return; }
+  if (evCostType === 'per-person') amt = amt * Math.max(1, ES.people);
   ES.items.push({ id: uid(), name, amount: amt, paidByMe: paid });
-  $('evItemName').value = ''; $('evItemAmt').value = ''; $('evItemPaid').checked = false;
+  resetAddForm();
   $('evAddForm').classList.remove('open');
   renderEvItems(); renderReceipt(); persistES();
   showToast(`"${name}" added!`);
@@ -1508,6 +1624,7 @@ $('evClearBtn').onclick = () => {
   ES = { name: '', people: 2, items: [] };
   $('evEventName').value = '';
   $('evPeople').value = '2';
+  resetAddForm();
   renderEvItems(); renderReceipt(); persistES();
   showToast('Cleared.', 'info');
 };
