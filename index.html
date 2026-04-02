@@ -989,7 +989,7 @@
               <input class="field-input" id="evItemAmt"  type="number" placeholder="Amount (TWD)" min="0" step="1" style="margin:0" />
             </div>
             <div class="ev-currency-calc" id="evCurrencyCalc">
-              <div class="ev-currency-calc-title">💱 Currency Calculator</div>
+              <div class="ev-currency-calc-title">🧮 Calculator</div>
               <div class="ev-currency-row">
                 <select id="evCurrencySel" class="ev-currency-sel">
                   <option value="">TWD (direct)</option>
@@ -998,25 +998,25 @@
                   <option value="JPY">JPY ¥</option>
                   <option value="EUR">EUR €</option>
                 </select>
-                <input id="evCurrencyAmt" type="number" class="ev-currency-amt" placeholder="Amount" min="0" step="any" />
+                <input id="evCurrencyAmt" type="number" class="ev-currency-amt" placeholder="Amount" min="0" step="any" id-style="display:none" />
+                <span class="ev-calc-label" id="evCalcRateLabel" style="display:none">× Rate</span>
+                <input id="evCalcRate" type="number" class="ev-currency-amt ev-rate-input" min="0" step="any" style="display:none" />
               </div>
-              <div class="ev-currency-row" id="evCalcRateRow" style="display:none">
-                <span class="ev-calc-label">Rate ×</span>
-                <input id="evCalcRate" type="number" class="ev-currency-amt ev-rate-input" min="0" step="any" />
+              <div class="ev-currency-row">
                 <span class="ev-calc-label">÷ People</span>
                 <input id="evCalcPeople" type="number" class="ev-currency-amt ev-people-input" min="1" step="1" />
               </div>
               <div class="ev-calc-result" id="evCalcResult">
-                <div class="ev-calc-result-row">
+                <div class="ev-calc-result-row" id="evCalcTotalRow" style="display:none">
                   <span>Total TWD</span>
                   <span class="ev-calc-result-val" id="evCalcTotal">$0</span>
                 </div>
-                <div class="ev-calc-result-row">
+                <div class="ev-calc-result-row" id="evCalcPPRow" style="display:none">
                   <span>Per person</span>
                   <span class="ev-calc-result-pp" id="evCalcPerPerson">$0</span>
                 </div>
-                <button type="button" class="ev-calc-use-btn" id="evCalcUseTotal">↑ Use total TWD amount</button>
-                <button type="button" class="ev-calc-use-btn" id="evCalcUsePP" style="margin-top:3px">↑ Use per-person amount</button>
+                <button type="button" class="ev-calc-use-btn" id="evCalcUseTotal" style="display:none">↑ Use total TWD amount</button>
+                <button type="button" class="ev-calc-use-btn" id="evCalcUsePP" style="display:none;margin-top:3px">↑ Use per-person amount</button>
               </div>
             </div>
             <div style="margin-bottom:10px">
@@ -1484,7 +1484,7 @@ $('evPeople').addEventListener('input', () => {
   ES.people = Math.max(1, parseInt($('evPeople').value) || 1);
   renderReceipt(); persistES();
   if (typeof updateCurrencyCalc === 'function') {
-    if ($('evCurrencySel').value) $('evCalcPeople').value = ES.people;
+    $('evCalcPeople').value = ES.people;
     updateCurrencyCalc();
   }
 });
@@ -1515,46 +1515,73 @@ $('evCostPerPerson').onclick = () => {
   $('evCostTotal').classList.remove('active');
 };
 
-// ─── Currency Calculator ────────────────────────────────────
+// ─── Calculator ─────────────────────────────────────────────
 const FX_RATES = { CNY: 4.4, USD: 32, JPY: 0.21, EUR: 34 };
 
-function getCalcRate() { return parseFloat($('evCalcRate').value) || 0; }
+function getCalcRate() { return parseFloat($('evCalcRate').value) || 1; }
 function getCalcPeople() { return Math.max(1, parseInt($('evCalcPeople').value) || 1); }
+
+// Init people default
+$('evCalcPeople').value = ES.people;
 
 $('evCurrencySel').addEventListener('change', () => {
   const cur = $('evCurrencySel').value;
-  const rateRow = $('evCalcRateRow');
   if (cur) {
     $('evCalcRate').value = FX_RATES[cur] || 1;
-    $('evCalcPeople').value = ES.people;
-    rateRow.style.display = '';
+    $('evCalcRate').style.display = '';
+    $('evCalcRateLabel').style.display = '';
+    $('evCurrencyAmt').placeholder = 'Foreign amt';
   } else {
-    rateRow.style.display = 'none';
+    $('evCalcRate').style.display = 'none';
+    $('evCalcRateLabel').style.display = 'none';
+    $('evCurrencyAmt').value = '';
+    $('evCurrencyAmt').placeholder = 'Amount';
   }
   updateCurrencyCalc();
 });
 
 function updateCurrencyCalc() {
   const cur = $('evCurrencySel').value;
-  const amt = parseFloat($('evCurrencyAmt').value);
+  const foreignAmt = parseFloat($('evCurrencyAmt').value);
+  const mainAmt = parseFloat($('evItemAmt').value);
+  const people = getCalcPeople();
   const result = $('evCalcResult');
   const calc = $('evCurrencyCalc');
-  if (!cur || isNaN(amt) || amt <= 0) {
+
+  const hasForeign = cur && !isNaN(foreignAmt) && foreignAmt > 0;
+  const hasMain = !isNaN(mainAmt) && mainAmt > 0;
+
+  if (hasForeign) {
+    const rate = getCalcRate();
+    const totalTWD = Math.round(foreignAmt * rate);
+    const ppTWD = Math.round(totalTWD / people);
+    $('evCalcTotal').textContent = fmt(totalTWD);
+    $('evCalcPerPerson').textContent = fmt(ppTWD);
+    $('evCalcTotalRow').style.display = '';
+    $('evCalcPPRow').style.display = '';
+    $('evCalcUseTotal').style.display = '';
+    $('evCalcUsePP').style.display = '';
+    $('evCalcUsePP').style.marginTop = '3px';
+    result.classList.add('visible');
+    calc.classList.add('has-result');
+  } else if (hasMain && people > 1) {
+    const ppTWD = Math.round(mainAmt / people);
+    $('evCalcPerPerson').textContent = fmt(ppTWD);
+    $('evCalcTotalRow').style.display = 'none';
+    $('evCalcPPRow').style.display = '';
+    $('evCalcUseTotal').style.display = 'none';
+    $('evCalcUsePP').style.display = '';
+    $('evCalcUsePP').style.marginTop = '6px';
+    result.classList.add('visible');
+    calc.classList.add('has-result');
+  } else {
     result.classList.remove('visible');
     calc.classList.remove('has-result');
-    return;
   }
-  const rate = getCalcRate();
-  const totalTWD = Math.round(amt * rate);
-  const people = getCalcPeople();
-  const ppTWD = Math.round(totalTWD / people);
-  $('evCalcTotal').textContent = fmt(totalTWD);
-  $('evCalcPerPerson').textContent = fmt(ppTWD);
-  result.classList.add('visible');
-  calc.classList.add('has-result');
 }
 
 $('evCurrencyAmt').addEventListener('input', updateCurrencyCalc);
+$('evItemAmt').addEventListener('input', updateCurrencyCalc);
 $('evCalcRate').addEventListener('input', updateCurrencyCalc);
 $('evCalcPeople').addEventListener('input', updateCurrencyCalc);
 
@@ -1571,11 +1598,16 @@ $('evCalcUseTotal').onclick = () => {
 
 $('evCalcUsePP').onclick = () => {
   const cur = $('evCurrencySel').value;
-  const amt = parseFloat($('evCurrencyAmt').value);
-  if (!cur || isNaN(amt) || amt <= 0) return;
-  const totalTWD = Math.round(amt * getCalcRate());
-  const ppTWD = Math.round(totalTWD / getCalcPeople());
-  $('evItemAmt').value = ppTWD;
+  const foreignAmt = parseFloat($('evCurrencyAmt').value);
+  const mainAmt = parseFloat($('evItemAmt').value);
+  const people = getCalcPeople();
+
+  if (cur && !isNaN(foreignAmt) && foreignAmt > 0) {
+    const totalTWD = Math.round(foreignAmt * getCalcRate());
+    $('evItemAmt').value = Math.round(totalTWD / people);
+  } else if (!isNaN(mainAmt) && mainAmt > 0) {
+    $('evItemAmt').value = Math.round(mainAmt / people);
+  }
   evCostType = 'per-person';
   $('evCostPerPerson').classList.add('active');
   $('evCostTotal').classList.remove('active');
@@ -1585,9 +1617,15 @@ function resetAddForm() {
   $('evItemName').value = ''; $('evItemAmt').value = '';
   $('evItemPaid').checked = false;
   $('evCurrencySel').value = ''; $('evCurrencyAmt').value = '';
-  $('evCalcRateRow').style.display = 'none';
+  $('evCalcRate').style.display = 'none';
+  $('evCalcRateLabel').style.display = 'none';
+  $('evCalcPeople').value = ES.people;
   $('evCalcResult').classList.remove('visible');
   $('evCurrencyCalc').classList.remove('has-result');
+  $('evCalcTotalRow').style.display = 'none';
+  $('evCalcPPRow').style.display = 'none';
+  $('evCalcUseTotal').style.display = 'none';
+  $('evCalcUsePP').style.display = 'none';
   evCostType = 'total';
   $('evCostTotal').classList.add('active');
   $('evCostPerPerson').classList.remove('active');
@@ -1598,7 +1636,7 @@ function addEvItem() {
   let amt = parseFloat($('evItemAmt').value);
   const paid = $('evItemPaid').checked;
   if (!name || isNaN(amt) || amt <= 0) { showToast('Enter a name and valid amount.', 'warn'); return; }
-  if (evCostType === 'per-person') amt = amt * Math.max(1, ES.people);
+  if (evCostType === 'per-person') amt = amt * getCalcPeople();
   ES.items.push({ id: uid(), name, amount: amt, paidByMe: paid });
   resetAddForm();
   $('evAddForm').classList.remove('open');
