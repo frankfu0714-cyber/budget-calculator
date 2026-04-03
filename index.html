@@ -720,6 +720,101 @@
     }
     .toast.show { transform: translateY(0); opacity: 1; }
     [data-theme="dark"] .toast { background: #334155; }
+
+    /* ── Mahjong Tab ────────────────────────────────────────── */
+    .mj-wrap {
+      max-width: 1180px; margin: 0 auto; padding: 24px 16px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start;
+    }
+    @media (max-width: 720px) { .mj-wrap { grid-template-columns: 1fr; padding: 14px 12px; gap: 14px; } }
+    .mj-left { display: flex; flex-direction: column; gap: 18px; }
+
+    .mj-players-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mj-player-input {
+      padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface2); color: var(--text); font-family: inherit; font-size: .88rem;
+      outline: none; width: 100%; transition: border-color .15s;
+    }
+    .mj-player-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+
+    .mj-settings-row {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    .mj-setting { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 100px; }
+    .mj-setting-label { font-size: .68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+    .mj-round-form { display: flex; flex-direction: column; gap: 10px; }
+    .mj-form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .mj-form-row label { font-size: .8rem; font-weight: 600; color: var(--muted); min-width: 70px; flex-shrink: 0; }
+    .mj-form-row select, .mj-form-row input[type="number"] {
+      padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface2); color: var(--text); font-family: inherit; font-size: .84rem;
+      outline: none; flex: 1; min-width: 0;
+    }
+    .mj-form-row select:focus, .mj-form-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+
+    .mj-win-type-toggle {
+      display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .mj-win-type-btn {
+      background: transparent; border: none; cursor: pointer;
+      font-family: inherit; font-size: .82rem; font-weight: 600;
+      padding: 7px 16px; color: var(--muted); transition: background .12s, color .12s;
+    }
+    .mj-win-type-btn.active { background: var(--accent); color: #fff; }
+
+    .mj-round-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; animation: slideIn .18s ease; font-size: .84rem;
+    }
+    .mj-round-item:hover { box-shadow: var(--sh-md); }
+    .mj-round-num { font-weight: 800; color: var(--muted); font-size: .72rem; min-width: 24px; }
+    .mj-round-desc { flex: 1; line-height: 1.4; }
+    .mj-round-winner { font-weight: 700; color: var(--income); }
+    .mj-round-loser { font-weight: 600; color: var(--expense); }
+    .mj-round-amt { font-weight: 700; color: var(--accent); white-space: nowrap; }
+
+    .mj-scoreboard { display: flex; flex-direction: column; gap: 10px; }
+    .mj-score-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; transition: box-shadow .15s;
+    }
+    .mj-score-row:hover { box-shadow: var(--sh-md); }
+    .mj-score-rank {
+      width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .8rem; flex-shrink: 0;
+    }
+    .mj-rank-1 { background: linear-gradient(135deg,#f59e0b,#fbbf24); color: #fff; }
+    .mj-rank-2 { background: linear-gradient(135deg,#94a3b8,#cbd5e1); color: #fff; }
+    .mj-rank-3 { background: linear-gradient(135deg,#b45309,#d97706); color: #fff; }
+    .mj-rank-4 { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+    .mj-score-name { flex: 1; font-weight: 600; font-size: .92rem; }
+    .mj-score-val { font-weight: 800; font-size: 1.15rem; }
+    .mj-score-pos { color: var(--income); }
+    .mj-score-neg { color: var(--expense); }
+    .mj-score-zero { color: var(--muted); }
+    .mj-score-detail { font-size: .72rem; color: var(--muted); }
+
+    .mj-settle-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 8px; }
+    .mj-settle-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2);
+      border-radius: 9px; margin-bottom: 6px; font-size: .86rem;
+    }
+    .mj-settle-from { font-weight: 600; color: var(--expense); }
+    .mj-settle-arrow { color: var(--muted); font-size: .75rem; }
+    .mj-settle-to { font-weight: 600; color: var(--income); }
+    .mj-settle-amt { margin-left: auto; font-weight: 800; color: var(--accent); }
+    .mj-empty { text-align: center; padding: 20px; color: var(--muted); font-size: .84rem; }
+
+    .mj-preview {
+      margin-top: 8px; padding: 10px 13px;
+      background: rgba(99,102,241,.06); border: 1px solid rgba(99,102,241,.15);
+      border-radius: 9px; font-size: .82rem; line-height: 1.6; color: var(--text);
+    }
+    .mj-preview-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -771,6 +866,10 @@
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
       Event Splitter
+    </button>
+    <button class="tab-btn" data-tab="mahjong">
+      🀄
+      Mahjong
     </button>
   </div>
 </nav>
@@ -1144,6 +1243,151 @@
 
   </div><!-- /ev-wrap -->
 </div><!-- /tab-event -->
+
+<!-- ── Mahjong Tab ─────────────────────────────────────────── -->
+<div id="tab-mahjong" class="tab-panel">
+  <div class="mj-wrap">
+
+    <!-- Left: settings + round entry + history -->
+    <div class="mj-left">
+
+      <!-- Settings -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--accent2)"></span>
+            Game Settings
+          </div>
+          <button class="btn btn-ghost btn-sm" id="mjResetBtn" title="Reset game">🗑 Reset</button>
+        </div>
+        <div class="card-body">
+          <div class="field-group">
+            <label class="field-label">Players (4)</label>
+            <div class="mj-players-grid">
+              <input class="mj-player-input" id="mjP0" type="text" placeholder="East" value="Player 1" autocomplete="off" />
+              <input class="mj-player-input" id="mjP1" type="text" placeholder="South" value="Player 2" autocomplete="off" />
+              <input class="mj-player-input" id="mjP2" type="text" placeholder="West" value="Player 3" autocomplete="off" />
+              <input class="mj-player-input" id="mjP3" type="text" placeholder="North" value="Player 4" autocomplete="off" />
+            </div>
+          </div>
+          <div class="mj-settings-row">
+            <div class="mj-setting">
+              <span class="mj-setting-label">Base 底 ($)</span>
+              <input class="mj-player-input" id="mjBase" type="number" value="100" min="0" step="1" />
+            </div>
+            <div class="mj-setting">
+              <span class="mj-setting-label">Per Tai 每台 ($)</span>
+              <input class="mj-player-input" id="mjPerTai" type="number" value="50" min="0" step="1" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Round -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--income)"></span>
+            Add Round
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="mj-round-form">
+            <div class="mj-form-row">
+              <label>Winner</label>
+              <select id="mjWinner" class="field-input" style="flex:1">
+                <option value="0">Player 1</option>
+                <option value="1">Player 2</option>
+                <option value="2">Player 3</option>
+                <option value="3">Player 4</option>
+              </select>
+            </div>
+            <div class="mj-form-row">
+              <label>Win Type</label>
+              <div class="mj-win-type-toggle">
+                <button type="button" class="mj-win-type-btn active" id="mjTypeSelf">🀄 自摸 Self-drawn</button>
+                <button type="button" class="mj-win-type-btn" id="mjTypeDiscard">🎯 放槍 Discard</button>
+              </div>
+            </div>
+            <div class="mj-form-row" id="mjLoserRow" style="display:none">
+              <label>Discarder</label>
+              <select id="mjLoser" class="field-input" style="flex:1">
+                <option value="0">Player 1</option>
+                <option value="1">Player 2</option>
+                <option value="2">Player 3</option>
+                <option value="3">Player 4</option>
+              </select>
+            </div>
+            <div class="mj-form-row">
+              <label>Tai 台數</label>
+              <input id="mjTai" type="number" value="1" min="0" max="50" step="1" style="width:80px;flex:0" />
+            </div>
+            <div class="mj-preview" id="mjPreview">
+              <div class="mj-preview-label">Payment Preview</div>
+              <div id="mjPreviewText">—</div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" id="mjAddRound">➕ Add Round</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Round History -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--expense)"></span>
+            Round History
+          </div>
+          <span style="font-size:.78rem;color:var(--muted)" id="mjRoundCount">0 rounds</span>
+        </div>
+        <div class="card-body">
+          <div class="items-list" id="mjRoundsList" style="max-height:340px">
+            <div class="mj-empty" id="mjRoundsEmpty">No rounds yet. Play and record!</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /mj-left -->
+
+    <!-- Right: scoreboard + settlement -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- Scoreboard -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--savings)"></span>
+            Scoreboard
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="mj-scoreboard" id="mjScoreboard">
+            <div class="mj-empty">Scores will appear here after rounds.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settlement -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--income)"></span>
+            Settlement 結算
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="mjSettlement">
+            <div class="mj-empty">Play some rounds to see who pays whom.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right -->
+
+  </div><!-- /mj-wrap -->
+</div><!-- /tab-mahjong -->
 
 <!-- ── Share Modal ──────────────────────────────────────────── -->
 <div class="overlay" id="shareOverlay">
@@ -2208,12 +2452,284 @@ function loadState() {
   } catch (_) {}
 }
 
+// ─── Mahjong Calculator ───────────────────────────────────────
+let MJ = {
+  players: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
+  base: 100,
+  perTai: 50,
+  rounds: []
+};
+let mjWinType = 'self';
+
+function mjPlayerName(i) { return MJ.players[i] || `P${i+1}`; }
+function mjPayment() { return MJ.base + (parseInt($('mjTai').value) || 0) * MJ.perTai; }
+
+// Player name inputs
+[0,1,2,3].forEach(i => {
+  $('mjP'+i).addEventListener('input', () => {
+    MJ.players[i] = $('mjP'+i).value.trim() || `Player ${i+1}`;
+    mjUpdateDropdowns();
+    mjRenderAll();
+    mjPersist();
+  });
+});
+
+$('mjBase').addEventListener('input', () => {
+  MJ.base = Math.max(0, parseInt($('mjBase').value) || 0);
+  mjUpdatePreview();
+  mjPersist();
+});
+$('mjPerTai').addEventListener('input', () => {
+  MJ.perTai = Math.max(0, parseInt($('mjPerTai').value) || 0);
+  mjUpdatePreview();
+  mjPersist();
+});
+
+function mjUpdateDropdowns() {
+  ['mjWinner','mjLoser'].forEach(id => {
+    const sel = $(id);
+    const cur = sel.value;
+    sel.innerHTML = MJ.players.map((n, i) =>
+      `<option value="${i}">${esc(n)}</option>`
+    ).join('');
+    sel.value = cur;
+  });
+}
+
+// Win type toggle
+$('mjTypeSelf').onclick = () => {
+  mjWinType = 'self';
+  $('mjTypeSelf').classList.add('active');
+  $('mjTypeDiscard').classList.remove('active');
+  $('mjLoserRow').style.display = 'none';
+  mjUpdatePreview();
+};
+$('mjTypeDiscard').onclick = () => {
+  mjWinType = 'discard';
+  $('mjTypeDiscard').classList.add('active');
+  $('mjTypeSelf').classList.remove('active');
+  $('mjLoserRow').style.display = '';
+  const w = parseInt($('mjWinner').value);
+  if (parseInt($('mjLoser').value) === w) {
+    $('mjLoser').value = (w + 1) % 4;
+  }
+  mjUpdatePreview();
+};
+
+$('mjWinner').addEventListener('change', () => {
+  if (mjWinType === 'discard') {
+    const w = parseInt($('mjWinner').value);
+    if (parseInt($('mjLoser').value) === w) $('mjLoser').value = (w + 1) % 4;
+  }
+  mjUpdatePreview();
+});
+$('mjLoser').addEventListener('change', mjUpdatePreview);
+$('mjTai').addEventListener('input', mjUpdatePreview);
+
+function mjUpdatePreview() {
+  const pay = mjPayment();
+  const tai = parseInt($('mjTai').value) || 0;
+  const w = parseInt($('mjWinner').value);
+  const wName = mjPlayerName(w);
+  let txt = '';
+  if (mjWinType === 'self') {
+    const losers = [0,1,2,3].filter(i => i !== w).map(i => mjPlayerName(i));
+    txt = `<strong>${esc(wName)}</strong> wins <strong>${fmt(pay * 3)}</strong> total<br>`;
+    txt += `Each of ${losers.map(n => '<span class="mj-round-loser">' + esc(n) + '</span>').join(', ')} pays <strong>${fmt(pay)}</strong>`;
+    txt += `<br><span style="font-size:.75rem;color:var(--muted)">底${MJ.base} + ${tai}台 × ${MJ.perTai} = ${pay}/person</span>`;
+  } else {
+    const l = parseInt($('mjLoser').value);
+    const lName = mjPlayerName(l);
+    txt = `<strong>${esc(wName)}</strong> wins <strong>${fmt(pay)}</strong> from <span class="mj-round-loser">${esc(lName)}</span>`;
+    txt += `<br><span style="font-size:.75rem;color:var(--muted)">底${MJ.base} + ${tai}台 × ${MJ.perTai} = ${pay}</span>`;
+  }
+  $('mjPreviewText').innerHTML = txt;
+}
+
+// Add round
+$('mjAddRound').onclick = () => {
+  const tai = parseInt($('mjTai').value) || 0;
+  const w = parseInt($('mjWinner').value);
+  const round = { winner: w, type: mjWinType, tai };
+  if (mjWinType === 'discard') {
+    const l = parseInt($('mjLoser').value);
+    if (l === w) { showToast('Winner and discarder cannot be the same!', 'warn'); return; }
+    round.loser = l;
+  }
+  MJ.rounds.push(round);
+  mjRenderAll();
+  mjPersist();
+  showToast(`Round ${MJ.rounds.length} recorded!`);
+};
+
+// Reset
+$('mjResetBtn').onclick = () => {
+  if (MJ.rounds.length === 0) return;
+  if (!confirm('Reset all rounds? Player names and settings will be kept.')) return;
+  MJ.rounds = [];
+  mjRenderAll();
+  mjPersist();
+  showToast('Game reset.', 'info');
+};
+
+function mjCalcScores() {
+  const scores = [0, 0, 0, 0];
+  const wins   = [0, 0, 0, 0];
+  MJ.rounds.forEach(r => {
+    const pay = MJ.base + r.tai * MJ.perTai;
+    if (r.type === 'self') {
+      [0,1,2,3].forEach(i => { if (i !== r.winner) { scores[i] -= pay; scores[r.winner] += pay; } });
+    } else {
+      scores[r.loser] -= pay;
+      scores[r.winner] += pay;
+    }
+    wins[r.winner]++;
+  });
+  return { scores, wins };
+}
+
+function mjRenderRounds() {
+  const list = $('mjRoundsList');
+  const empty = $('mjRoundsEmpty');
+  list.querySelectorAll('.mj-round-item').forEach(el => el.remove());
+  if (MJ.rounds.length === 0) { empty.style.display = ''; $('mjRoundCount').textContent = '0 rounds'; return; }
+  empty.style.display = 'none';
+  $('mjRoundCount').textContent = `${MJ.rounds.length} round${MJ.rounds.length > 1 ? 's' : ''}`;
+
+  MJ.rounds.slice().reverse().forEach((r, idx) => {
+    const num = MJ.rounds.length - idx;
+    const pay = MJ.base + r.tai * MJ.perTai;
+    const el = document.createElement('div');
+    el.className = 'mj-round-item';
+    let desc = '';
+    if (r.type === 'self') {
+      desc = `<span class="mj-round-winner">${esc(mjPlayerName(r.winner))}</span> 自摸 (${r.tai}台) — each pays ${fmt(pay)}`;
+    } else {
+      desc = `<span class="mj-round-winner">${esc(mjPlayerName(r.winner))}</span> wins from <span class="mj-round-loser">${esc(mjPlayerName(r.loser))}</span> (${r.tai}台)`;
+    }
+    const total = r.type === 'self' ? pay * 3 : pay;
+    el.innerHTML = `
+      <span class="mj-round-num">#${num}</span>
+      <span class="mj-round-desc">${desc}</span>
+      <span class="mj-round-amt">${fmt(total)}</span>
+      <button class="btn-icon mj-del-round" data-idx="${MJ.rounds.length - 1 - idx}" title="Undo">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+      </button>`;
+    list.appendChild(el);
+  });
+}
+
+document.addEventListener('click', e => {
+  const del = e.target.closest('.mj-del-round');
+  if (!del) return;
+  const idx = parseInt(del.dataset.idx);
+  MJ.rounds.splice(idx, 1);
+  mjRenderAll();
+  mjPersist();
+  showToast('Round removed.', 'info');
+});
+
+function mjRenderScoreboard() {
+  const board = $('mjScoreboard');
+  if (MJ.rounds.length === 0) {
+    board.innerHTML = '<div class="mj-empty">Scores will appear here after rounds.</div>';
+    return;
+  }
+  const { scores, wins } = mjCalcScores();
+  const sorted = [0,1,2,3].sort((a, b) => scores[b] - scores[a]);
+
+  board.innerHTML = sorted.map((pi, rank) => {
+    const s = scores[pi];
+    const cls = s > 0 ? 'mj-score-pos' : s < 0 ? 'mj-score-neg' : 'mj-score-zero';
+    const sign = s > 0 ? '+' : s < 0 ? '−' : '';
+    return `
+      <div class="mj-score-row">
+        <div class="mj-score-rank mj-rank-${rank+1}">${rank+1}</div>
+        <div style="flex:1;min-width:0">
+          <div class="mj-score-name">${esc(mjPlayerName(pi))}</div>
+          <div class="mj-score-detail">${wins[pi]} win${wins[pi]!==1?'s':''}</div>
+        </div>
+        <div class="mj-score-val ${cls}">${sign}${fmt(Math.abs(s))}</div>
+      </div>`;
+  }).join('');
+}
+
+function mjRenderSettlement() {
+  const el = $('mjSettlement');
+  if (MJ.rounds.length === 0) {
+    el.innerHTML = '<div class="mj-empty">Play some rounds to see who pays whom.</div>';
+    return;
+  }
+  const { scores } = mjCalcScores();
+
+  // Greedy settlement: minimize transfers
+  const balances = scores.map((s, i) => ({ idx: i, bal: s }));
+  const transfers = [];
+  const debtors  = balances.filter(b => b.bal < 0).sort((a, b) => a.bal - b.bal);
+  const creditors = balances.filter(b => b.bal > 0).sort((a, b) => b.bal - a.bal);
+
+  let di = 0, ci = 0;
+  while (di < debtors.length && ci < creditors.length) {
+    const d = debtors[di], c = creditors[ci];
+    const amt = Math.min(-d.bal, c.bal);
+    if (amt > 0) transfers.push({ from: d.idx, to: c.idx, amount: amt });
+    d.bal += amt;
+    c.bal -= amt;
+    if (d.bal >= 0) di++;
+    if (c.bal <= 0) ci++;
+  }
+
+  if (transfers.length === 0) {
+    el.innerHTML = '<div class="mj-empty" style="color:var(--income)">Everyone is even! 🎉</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="mj-settle-title">Transfers needed (${transfers.length})</div>
+    ${transfers.map(t => `
+      <div class="mj-settle-row">
+        <span class="mj-settle-from">${esc(mjPlayerName(t.from))}</span>
+        <span class="mj-settle-arrow">→ pays →</span>
+        <span class="mj-settle-to">${esc(mjPlayerName(t.to))}</span>
+        <span class="mj-settle-amt">${fmt(t.amount)}</span>
+      </div>`).join('')}`;
+}
+
+function mjRenderAll() {
+  mjRenderRounds();
+  mjRenderScoreboard();
+  mjRenderSettlement();
+  mjUpdatePreview();
+}
+
+function mjPersist() {
+  try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
+}
+
+function mjLoad() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('mahjong-calc') || '{}');
+    if (saved.players) MJ.players = saved.players;
+    if (saved.base !== undefined) MJ.base = saved.base;
+    if (saved.perTai !== undefined) MJ.perTai = saved.perTai;
+    if (saved.rounds) MJ.rounds = saved.rounds;
+  } catch(_) {}
+  [0,1,2,3].forEach(i => $('mjP'+i).value = MJ.players[i]);
+  $('mjBase').value = MJ.base;
+  $('mjPerTai').value = MJ.perTai;
+  mjUpdateDropdowns();
+  mjRenderAll();
+}
+
 // ─── Month chip ───────────────────────────────────────────────
 $('monthChip').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
 // ─── Boot ─────────────────────────────────────────────────────
 loadState();
 loadES();
+mjLoad();
 applyTheme();
 render();
 // Sync event splitter inputs with loaded state
