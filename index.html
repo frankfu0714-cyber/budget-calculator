@@ -83,6 +83,14 @@
     .logo-icon svg { width: 18px; height: 18px; color: white; }
     .header-right { display: flex; gap: 8px; align-items: center; }
 
+    .lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .lang-btn {
+      background: transparent; border: none; cursor: pointer; padding: 5px 11px;
+      font-family: inherit; font-size: .76rem; font-weight: 700; color: var(--muted);
+      transition: background .12s, color .12s;
+    }
+    .lang-btn.active { background: var(--accent); color: #fff; }
+
     /* ── Buttons ──────────────────────────────────────────── */
     .btn {
       border: none; cursor: pointer;
@@ -831,6 +839,10 @@
     BudgetCalc
   </div>
   <div class="header-right">
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    </div>
     <span class="month-chip" id="monthChip"></span>
     <button class="btn btn-ghost" id="themeBtn" title="Toggle theme" style="padding:7px 10px;">
       <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -846,7 +858,7 @@
         <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
         <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
       </svg>
-      Share
+      <span data-i18n="share">Share</span>
     </button>
   </div>
 </header>
@@ -858,18 +870,18 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
-      Budget
+      <span data-i18n="tab_budget">Budget</span>
     </button>
     <button class="tab-btn" data-tab="event">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
-      Event Splitter
+      <span data-i18n="tab_event">Event Splitter</span>
     </button>
     <button class="tab-btn" data-tab="mahjong">
       🀄
-      Mahjong
+      <span data-i18n="tab_mahjong">Mahjong</span>
     </button>
   </div>
 </nav>
@@ -881,22 +893,22 @@
   <!-- Hero summary -->
   <div class="hero">
     <div class="hero-item">
-      <div class="hero-label">Total Income</div>
+      <div class="hero-label" data-i18n="total_income">Total Income</div>
       <div class="hero-value" id="hIncome">$0</div>
       <div class="hero-sub" id="hIncomeCount">0 sources</div>
     </div>
     <div class="hero-item">
-      <div class="hero-label">Total Expenses</div>
+      <div class="hero-label" data-i18n="total_expenses">Total Expenses</div>
       <div class="hero-value" id="hExpenses">$0</div>
       <div class="hero-sub" id="hExpCount">0 categories</div>
     </div>
     <div class="hero-item">
-      <div class="hero-label">Net Savings</div>
+      <div class="hero-label" data-i18n="net_savings">Net Savings</div>
       <div class="hero-value" id="hNet">$0</div>
       <div class="hero-sub" id="hNetSub">—</div>
     </div>
     <div class="hero-item">
-      <div class="hero-label">Savings Rate</div>
+      <div class="hero-label" data-i18n="savings_rate">Savings Rate</div>
       <div class="hero-value" id="hRate">0%</div>
       <div class="savings-progress">
         <div class="savings-progress-bar" id="hProgress" style="width:0%"></div>
@@ -912,25 +924,25 @@
     <div class="card-head">
       <div class="card-title">
         <span class="dot" style="background:var(--income)"></span>
-        Income Sources
+        <span data-i18n="income_sources">Income Sources</span>
       </div>
-      <button class="btn btn-income btn-sm" id="addIncomeBtn">+ Add</button>
+      <button class="btn btn-income btn-sm" id="addIncomeBtn" data-i18n="add_btn">+ Add</button>
     </div>
     <div class="card-body">
       <div class="add-form" id="incomeForm">
         <div class="form-grid">
-          <input type="text"   id="iName"   placeholder="e.g. Monthly Salary" />
+          <input type="text"   id="iName"   placeholder="e.g. Monthly Salary" data-i18n-ph="ph_income_name" />
           <select id="iCat">
-            <option>Salary</option><option>Freelance</option>
-            <option>Investment</option><option>Business</option>
-            <option>Rental</option><option>Side Hustle</option>
-            <option>Other</option>
+            <option data-i18n="cat_salary">Salary</option><option data-i18n="cat_freelance">Freelance</option>
+            <option data-i18n="cat_investment">Investment</option><option data-i18n="cat_business">Business</option>
+            <option data-i18n="cat_rental">Rental</option><option data-i18n="cat_side_hustle">Side Hustle</option>
+            <option data-i18n="cat_other">Other</option>
           </select>
-          <input type="number" id="iAmt" placeholder="Amount" min="0" step="1" />
+          <input type="number" id="iAmt" placeholder="Amount" data-i18n-ph="ph_amount" min="0" step="1" />
         </div>
         <div class="form-actions">
-          <button class="btn btn-income" id="submitIncome">Add Income</button>
-          <button class="btn btn-ghost"  id="cancelIncome">Cancel</button>
+          <button class="btn btn-income" id="submitIncome" data-i18n="add_income">Add Income</button>
+          <button class="btn btn-ghost"  id="cancelIncome" data-i18n="cancel">Cancel</button>
         </div>
       </div>
       <div class="items-list" id="incomeList">
@@ -938,7 +950,7 @@
           <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
           </svg>
-          <p>No income sources yet.<br>Click <strong>+ Add</strong> to begin.</p>
+          <p><span data-i18n="no_income">No income sources yet.</span><br><span data-i18n="click_add">Click <strong>+ Add</strong> to begin.</span></p>
         </div>
       </div>
     </div>
@@ -949,27 +961,27 @@
     <div class="card-head">
       <div class="card-title">
         <span class="dot" style="background:var(--expense)"></span>
-        Expense Categories
+        <span data-i18n="expense_categories">Expense Categories</span>
       </div>
-      <button class="btn btn-expense btn-sm" id="addExpenseBtn">+ Add</button>
+      <button class="btn btn-expense btn-sm" id="addExpenseBtn" data-i18n="add_btn">+ Add</button>
     </div>
     <div class="card-body">
       <div class="add-form" id="expenseForm">
         <div class="form-grid">
-          <input type="text"   id="eName"  placeholder="e.g. Rent / Mortgage" />
+          <input type="text"   id="eName"  placeholder="e.g. Rent / Mortgage" data-i18n-ph="ph_expense_name" />
           <select id="eCat">
-            <option>Housing</option><option>Food</option>
-            <option>Transport</option><option>Healthcare</option>
-            <option>Education</option><option>Entertainment</option>
-            <option>Shopping</option><option>Utilities</option>
-            <option>Insurance</option><option>Subscriptions</option>
-            <option>Other</option>
+            <option data-i18n="cat_housing">Housing</option><option data-i18n="cat_food">Food</option>
+            <option data-i18n="cat_transport">Transport</option><option data-i18n="cat_healthcare">Healthcare</option>
+            <option data-i18n="cat_education">Education</option><option data-i18n="cat_entertainment">Entertainment</option>
+            <option data-i18n="cat_shopping">Shopping</option><option data-i18n="cat_utilities">Utilities</option>
+            <option data-i18n="cat_insurance">Insurance</option><option data-i18n="cat_subscriptions">Subscriptions</option>
+            <option data-i18n="cat_other">Other</option>
           </select>
-          <input type="number" id="eAmt"  placeholder="Amount" min="0" step="1" />
+          <input type="number" id="eAmt"  placeholder="Amount" data-i18n-ph="ph_amount" min="0" step="1" />
         </div>
         <div class="form-actions">
-          <button class="btn btn-expense" id="submitExpense">Add Expense</button>
-          <button class="btn btn-ghost"   id="cancelExpense">Cancel</button>
+          <button class="btn btn-expense" id="submitExpense" data-i18n="add_expense">Add Expense</button>
+          <button class="btn btn-ghost"   id="cancelExpense" data-i18n="cancel">Cancel</button>
         </div>
       </div>
       <div class="items-list" id="expenseList">
@@ -978,7 +990,7 @@
             <rect x="2" y="5" width="20" height="14" rx="2"/>
             <line x1="2" y1="10" x2="22" y2="10"/>
           </svg>
-          <p>No expenses yet.<br>Click <strong>+ Add</strong> to track spending.</p>
+          <p><span data-i18n="no_expenses">No expenses yet.</span><br><span data-i18n="click_add_expense">Click <strong>+ Add</strong> to track spending.</span></p>
         </div>
       </div>
     </div>
@@ -989,7 +1001,7 @@
     <div class="card-head">
       <div class="card-title">
         <span class="dot" style="background:var(--accent)"></span>
-        Spending Breakdown
+        <span data-i18n="spending_breakdown">Spending Breakdown</span>
       </div>
     </div>
     <div class="card-body" style="padding-bottom:0">
@@ -1000,7 +1012,7 @@
             <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
             <path d="M22 12A10 10 0 0 0 12 2v10z"/>
           </svg>
-          <p style="font-size:.83rem;color:var(--muted);text-align:center;margin-top:8px">Add expenses to see<br>your spending breakdown.</p>
+          <p style="font-size:.83rem;color:var(--muted);text-align:center;margin-top:8px" data-i18n="add_expenses_chart">Add expenses to see<br>your spending breakdown.</p>
         </div>
       </div>
     </div>
@@ -1012,7 +1024,7 @@
     <div class="card-head">
       <div class="card-title">
         <span class="dot" style="background:var(--savings)"></span>
-        Savings Overview
+        <span data-i18n="savings_overview">Savings Overview</span>
       </div>
     </div>
     <div class="card-body">
@@ -1029,11 +1041,11 @@
           </svg>
           <div class="ring-label">
             <span class="ring-pct" id="ringPct">0%</span>
-            <span class="ring-sub">saved</span>
+            <span class="ring-sub" data-i18n="saved">saved</span>
           </div>
         </div>
         <div class="ring-info">
-          <div class="ring-tip">
+          <div class="ring-tip" data-i18n="ring_tip">
             💡 Experts recommend saving at least <strong>20%</strong> of your monthly income.
           </div>
           <div class="ring-advice" id="ringAdvice">
@@ -1044,19 +1056,19 @@
 
       <div class="stats-grid">
         <div class="stat-box">
-          <div class="stat-label">Monthly Income</div>
+          <div class="stat-label" data-i18n="monthly_income">Monthly Income</div>
           <div class="stat-val col-income" id="sIncome">$0</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Monthly Expenses</div>
+          <div class="stat-label" data-i18n="monthly_expenses">Monthly Expenses</div>
           <div class="stat-val col-expense" id="sExpenses">$0</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Savings / Month</div>
+          <div class="stat-label" data-i18n="savings_month">Savings / Month</div>
           <div class="stat-val col-savings" id="sSavings">$0</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Projected Annual</div>
+          <div class="stat-label" data-i18n="projected_annual">Projected Annual</div>
           <div class="stat-val col-accent" id="sAnnual">$0</div>
         </div>
       </div>
@@ -1078,24 +1090,24 @@
         <div class="card-head">
           <div class="card-title">
             <span class="dot" style="background:var(--accent2)"></span>
-            Event Details
+            <span data-i18n="event_details">Event Details</span>
           </div>
         </div>
         <div class="card-body">
           <div class="field-group">
-            <label class="field-label">Project</label>
+            <label class="field-label" data-i18n="project">Project</label>
             <div style="display:flex;gap:6px;align-items:center">
               <select class="field-input" id="esProjectSel" style="flex:1;margin:0"></select>
-              <button class="btn btn-ghost btn-sm" id="esNewProjectBtn" style="white-space:nowrap;flex-shrink:0">+ New</button>
-              <button class="btn btn-ghost btn-sm" id="esDeleteProjectBtn" title="Delete project" style="white-space:nowrap;flex-shrink:0">🗑 Delete</button>
+              <button class="btn btn-ghost btn-sm" id="esNewProjectBtn" style="white-space:nowrap;flex-shrink:0" data-i18n="new_btn">+ New</button>
+              <button class="btn btn-ghost btn-sm" id="esDeleteProjectBtn" title="Delete project" style="white-space:nowrap;flex-shrink:0"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
             </div>
           </div>
           <div class="field-group">
-            <label class="field-label" for="evEventName">Event Name</label>
-            <input class="field-input" id="evEventName" type="text" placeholder="e.g. Gathering April 2026" autocomplete="off" />
+            <label class="field-label" for="evEventName" data-i18n="event_name">Event Name</label>
+            <input class="field-input" id="evEventName" type="text" placeholder="e.g. Gathering April 2026" data-i18n-ph="ph_event_name" autocomplete="off" />
           </div>
           <div class="field-group">
-            <label class="field-label" for="evPeople">Number of People</label>
+            <label class="field-label" for="evPeople" data-i18n="num_people">Number of People</label>
             <input class="field-input" id="evPeople" type="number" min="1" value="2" placeholder="e.g. 10" />
           </div>
         </div>
@@ -1106,18 +1118,18 @@
         <div class="card-head">
           <div class="card-title">
             <span class="dot" style="background:var(--expense)"></span>
-            Expense Items
+            <span data-i18n="expense_items">Expense Items</span>
           </div>
-          <button class="btn btn-expense btn-sm" id="evAddBtn">+ Add</button>
+          <button class="btn btn-expense btn-sm" id="evAddBtn" data-i18n="add_btn">+ Add</button>
         </div>
         <div class="card-body">
           <div class="add-form" id="evAddForm">
             <div class="ev-add-row">
-              <input class="field-input" id="evItemName" type="text" placeholder="e.g. Venue Rent" autocomplete="off" style="margin:0" />
-              <input class="field-input" id="evItemAmt"  type="number" placeholder="Amount (TWD)" min="0" step="1" style="margin:0" />
+              <input class="field-input" id="evItemName" type="text" placeholder="e.g. Venue Rent" data-i18n-ph="ph_item_name" autocomplete="off" style="margin:0" />
+              <input class="field-input" id="evItemAmt"  type="number" placeholder="Amount (TWD)" data-i18n-ph="ph_amount_twd" min="0" step="1" style="margin:0" />
             </div>
             <div class="ev-currency-calc" id="evCurrencyCalc">
-              <div class="ev-currency-calc-title">🧮 Calculator</div>
+              <div class="ev-currency-calc-title" data-i18n="calculator">🧮 Calculator</div>
               <div class="ev-currency-row">
                 <select id="evCurrencySel" class="ev-currency-sel">
                   <option value="">TWD (direct)</option>
@@ -1127,40 +1139,40 @@
                   <option value="EUR">EUR €</option>
                 </select>
                 <input id="evCurrencyAmt" type="number" class="ev-currency-amt" placeholder="Amount" min="0" step="any" id-style="display:none" />
-                <span class="ev-calc-label" id="evCalcRateLabel" style="display:none">× Rate</span>
+                <span class="ev-calc-label" id="evCalcRateLabel" style="display:none" data-i18n="calc_rate">× Rate</span>
                 <input id="evCalcRate" type="number" class="ev-currency-amt ev-rate-input" min="0" step="any" style="display:none" />
               </div>
               <div class="ev-currency-row">
-                <span class="ev-calc-label">÷ People</span>
+                <span class="ev-calc-label" data-i18n="calc_people">÷ People</span>
                 <input id="evCalcPeople" type="number" class="ev-currency-amt ev-people-input" min="1" step="1" />
               </div>
               <div class="ev-calc-result" id="evCalcResult">
                 <div class="ev-calc-result-row" id="evCalcTotalRow" style="display:none">
-                  <span>Total TWD</span>
+                  <span data-i18n="calc_total_twd">Total TWD</span>
                   <span class="ev-calc-result-val" id="evCalcTotal">$0</span>
                 </div>
                 <div class="ev-calc-result-row" id="evCalcPPRow" style="display:none">
-                  <span>Per person</span>
+                  <span data-i18n="calc_per_person">Per person</span>
                   <span class="ev-calc-result-pp" id="evCalcPerPerson">$0</span>
                 </div>
-                <button type="button" class="ev-calc-use-btn" id="evCalcUseTotal" style="display:none">↑ Use total TWD amount</button>
-                <button type="button" class="ev-calc-use-btn" id="evCalcUsePP" style="display:none;margin-top:3px">↑ Use per-person amount</button>
+                <button type="button" class="ev-calc-use-btn" id="evCalcUseTotal" style="display:none" data-i18n="calc_use_total">↑ Use total TWD amount</button>
+                <button type="button" class="ev-calc-use-btn" id="evCalcUsePP" style="display:none;margin-top:3px" data-i18n="calc_use_pp">↑ Use per-person amount</button>
               </div>
             </div>
             <div style="margin-bottom:10px">
-              <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Amount Type</div>
+              <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px" data-i18n="amount_type">Amount Type</div>
               <div class="cost-type-toggle">
-                <button type="button" class="cost-type-btn active" id="evCostTotal">Total</button>
-                <button type="button" class="cost-type-btn" id="evCostPerPerson">Per Person</button>
+                <button type="button" class="cost-type-btn active" id="evCostTotal" data-i18n="total">Total</button>
+                <button type="button" class="cost-type-btn" id="evCostPerPerson" data-i18n="per_person">Per Person</button>
               </div>
             </div>
             <label class="ev-paid-label">
               <input type="checkbox" id="evItemPaid" />
-              I paid this expense
+              <span data-i18n="i_paid">I paid this expense</span>
             </label>
             <div class="form-actions">
-              <button class="btn btn-expense" id="evSubmitItem">💾 Save</button>
-              <button class="btn btn-ghost"   id="evCancelItem">Cancel</button>
+              <button class="btn btn-expense" id="evSubmitItem" data-i18n="save_btn">💾 Save</button>
+              <button class="btn btn-ghost"   id="evCancelItem" data-i18n="cancel">Cancel</button>
             </div>
           </div>
 
@@ -1172,7 +1184,7 @@
                 <line x1="9" y1="12" x2="15" y2="12"/>
                 <line x1="9" y1="16" x2="13" y2="16"/>
               </svg>
-              <p>No expenses yet.<br>Click <strong>+ Add</strong> to begin.</p>
+              <p><span data-i18n="no_expenses">No expenses yet.</span><br><span data-i18n="click_add">Click <strong>+ Add</strong> to begin.</span></p>
             </div>
           </div>
         </div>
@@ -1189,23 +1201,23 @@
 
       <div class="receipt-body">
         <div class="receipt-total-row">
-          <span class="receipt-total-label">Total Cost</span>
+          <span class="receipt-total-label" data-i18n="total_cost">Total Cost</span>
           <span class="receipt-total-val" id="receiptTotal">$0</span>
         </div>
         <div class="receipt-cpp">
-          <span class="receipt-cpp-label">Cost per Person</span>
+          <span class="receipt-cpp-label" data-i18n="cost_per_person">Cost per Person</span>
           <span class="receipt-cpp-val" id="receiptCPP">$0</span>
         </div>
 
-        <div class="receipt-section-label">Breakdown per person</div>
+        <div class="receipt-section-label" data-i18n="breakdown_pp">Breakdown per person</div>
         <div id="receiptBreakdown">
-          <div style="text-align:center;color:var(--muted);font-size:.83rem;padding:10px 0">Add expenses to see breakdown</div>
+          <div style="text-align:center;color:var(--muted);font-size:.83rem;padding:10px 0" data-i18n="add_to_see_breakdown">Add expenses to see breakdown</div>
         </div>
 
         <div class="collect-box" id="collectBox" style="display:none">
-          <div class="collect-title">What to Collect from Others</div>
+          <div class="collect-title" data-i18n="what_to_collect">What to Collect from Others</div>
           <div class="collect-row">
-            <span>Collect per person</span>
+            <span data-i18n="collect_pp">Collect per person</span>
             <span class="collect-val" id="collectPerPerson">$0</span>
           </div>
           <div class="collect-row">
@@ -1214,11 +1226,11 @@
           </div>
           <hr class="receipt-divider" style="margin:8px 0">
           <div class="collect-row">
-            <span style="font-weight:600">Total to collect</span>
+            <span style="font-weight:600" data-i18n="total_to_collect">Total to collect</span>
             <span class="collect-val" id="collectTotal">$0</span>
           </div>
           <div class="collect-row">
-            <span style="color:var(--muted)">Your net cost</span>
+            <span style="color:var(--muted)" data-i18n="your_net_cost">Your net cost</span>
             <span style="font-weight:600;color:var(--text)" id="myNetCost">$0</span>
           </div>
         </div>
@@ -1230,7 +1242,7 @@
             <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
-          Copy Shareable Link
+          <span data-i18n="copy_share_link">Copy Shareable Link</span>
         </button>
         <button class="btn btn-ghost" id="evClearBtn" title="Clear all">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1256,27 +1268,27 @@
         <div class="card-head">
           <div class="card-title">
             <span class="dot" style="background:var(--accent2)"></span>
-            Game Settings
+            <span data-i18n="game_settings">Game Settings</span>
           </div>
-          <button class="btn btn-ghost btn-sm" id="mjResetBtn" title="Reset game">🗑 Reset</button>
+          <button class="btn btn-ghost btn-sm" id="mjResetBtn" title="Reset game"><span>🗑 </span><span data-i18n="reset">Reset</span></button>
         </div>
         <div class="card-body">
           <div class="field-group">
-            <label class="field-label">Players (4)</label>
+            <label class="field-label" data-i18n="players_label">Players (4)</label>
             <div class="mj-players-grid">
-              <input class="mj-player-input" id="mjP0" type="text" placeholder="East" value="Player 1" autocomplete="off" />
-              <input class="mj-player-input" id="mjP1" type="text" placeholder="South" value="Player 2" autocomplete="off" />
-              <input class="mj-player-input" id="mjP2" type="text" placeholder="West" value="Player 3" autocomplete="off" />
-              <input class="mj-player-input" id="mjP3" type="text" placeholder="North" value="Player 4" autocomplete="off" />
+              <input class="mj-player-input" id="mjP0" type="text" placeholder="East" data-i18n-ph="ph_east" value="Player 1" autocomplete="off" />
+              <input class="mj-player-input" id="mjP1" type="text" placeholder="South" data-i18n-ph="ph_south" value="Player 2" autocomplete="off" />
+              <input class="mj-player-input" id="mjP2" type="text" placeholder="West" data-i18n-ph="ph_west" value="Player 3" autocomplete="off" />
+              <input class="mj-player-input" id="mjP3" type="text" placeholder="North" data-i18n-ph="ph_north" value="Player 4" autocomplete="off" />
             </div>
           </div>
           <div class="mj-settings-row">
             <div class="mj-setting">
-              <span class="mj-setting-label">Base 底 ($)</span>
+              <span class="mj-setting-label" data-i18n="base_label">Base 底 ($)</span>
               <input class="mj-player-input" id="mjBase" type="number" value="100" min="0" step="1" />
             </div>
             <div class="mj-setting">
-              <span class="mj-setting-label">Per Tai 每台 ($)</span>
+              <span class="mj-setting-label" data-i18n="per_tai_label">Per Tai 每台 ($)</span>
               <input class="mj-player-input" id="mjPerTai" type="number" value="50" min="0" step="1" />
             </div>
           </div>
@@ -1340,13 +1352,13 @@
         <div class="card-head">
           <div class="card-title">
             <span class="dot" style="background:var(--income)"></span>
-            Add Round
+            <span data-i18n="add_round">Add Round</span>
           </div>
         </div>
         <div class="card-body">
           <div class="mj-round-form">
             <div class="mj-form-row">
-              <label>Winner</label>
+              <label data-i18n="winner">Winner</label>
               <select id="mjWinner" class="field-input" style="flex:1">
                 <option value="0">Player 1</option>
                 <option value="1">Player 2</option>
@@ -1355,14 +1367,14 @@
               </select>
             </div>
             <div class="mj-form-row">
-              <label>Win Type</label>
+              <label data-i18n="win_type">Win Type</label>
               <div class="mj-win-type-toggle">
-                <button type="button" class="mj-win-type-btn active" id="mjTypeSelf">🀄 自摸 Self-drawn</button>
-                <button type="button" class="mj-win-type-btn" id="mjTypeDiscard">🎯 放槍 Discard</button>
+                <button type="button" class="mj-win-type-btn active" id="mjTypeSelf" data-i18n="self_drawn_btn">🀄 自摸 Self-drawn</button>
+                <button type="button" class="mj-win-type-btn" id="mjTypeDiscard" data-i18n="discard_btn">🎯 放槍 Discard</button>
               </div>
             </div>
             <div class="mj-form-row" id="mjLoserRow" style="display:none">
-              <label>Discarder</label>
+              <label data-i18n="discarder">Discarder</label>
               <select id="mjLoser" class="field-input" style="flex:1">
                 <option value="0">Player 1</option>
                 <option value="1">Player 2</option>
@@ -1371,15 +1383,15 @@
               </select>
             </div>
             <div class="mj-form-row">
-              <label>Tai 台數</label>
+              <label data-i18n="tai_label">Tai 台數</label>
               <input id="mjTai" type="number" value="1" min="0" max="50" step="1" style="width:100px;flex:none;padding:10px 14px;font-size:1.1rem;font-weight:700;text-align:center" />
             </div>
             <div class="mj-preview" id="mjPreview">
-              <div class="mj-preview-label">Payment Preview</div>
+              <div class="mj-preview-label" data-i18n="payment_preview">Payment Preview</div>
               <div id="mjPreviewText">—</div>
             </div>
             <div class="form-actions">
-              <button class="btn btn-primary" id="mjAddRound">➕ Add Round</button>
+              <button class="btn btn-primary" id="mjAddRound" data-i18n="add_round_btn">➕ Add Round</button>
             </div>
           </div>
         </div>
@@ -1390,13 +1402,13 @@
         <div class="card-head">
           <div class="card-title">
             <span class="dot" style="background:var(--expense)"></span>
-            Round History
+            <span data-i18n="round_history">Round History</span>
           </div>
           <span style="font-size:.78rem;color:var(--muted)" id="mjRoundCount">0 rounds</span>
         </div>
         <div class="card-body">
           <div class="items-list" id="mjRoundsList" style="max-height:340px">
-            <div class="mj-empty" id="mjRoundsEmpty">No rounds yet. Play and record!</div>
+            <div class="mj-empty" id="mjRoundsEmpty" data-i18n="no_rounds">No rounds yet. Play and record!</div>
           </div>
         </div>
       </div>
@@ -1411,12 +1423,12 @@
         <div class="card-head">
           <div class="card-title">
             <span class="dot" style="background:var(--savings)"></span>
-            Scoreboard
+            <span data-i18n="scoreboard">Scoreboard</span>
           </div>
         </div>
         <div class="card-body">
           <div class="mj-scoreboard" id="mjScoreboard">
-            <div class="mj-empty">Scores will appear here after rounds.</div>
+            <div class="mj-empty" data-i18n="no_scores">Scores will appear here after rounds.</div>
           </div>
         </div>
       </div>
@@ -1426,12 +1438,12 @@
         <div class="card-head">
           <div class="card-title">
             <span class="dot" style="background:var(--income)"></span>
-            Settlement 結算
+            <span data-i18n="settlement">Settlement 結算</span>
           </div>
         </div>
         <div class="card-body">
           <div id="mjSettlement">
-            <div class="mj-empty">Play some rounds to see who pays whom.</div>
+            <div class="mj-empty" data-i18n="no_settlement">Play some rounds to see who pays whom.</div>
           </div>
         </div>
       </div>
@@ -1450,7 +1462,7 @@
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
           <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
         </svg>
-        Share Your Budget
+        <span data-i18n="share_budget">Share Your Budget</span>
       </div>
       <button class="btn-icon" id="closeModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -1458,15 +1470,15 @@
         </svg>
       </button>
     </div>
-    <div class="modal-desc">
+    <div class="modal-desc" data-i18n="share_desc">
       All your budget data is encoded directly into this URL — no account or server needed. Share it with family or friends so they can view your breakdown.
     </div>
     <div class="url-row">
       <input class="url-input" id="shareUrl" type="text" readonly />
-      <button class="btn btn-primary" id="copyBtn">Copy</button>
+      <button class="btn btn-primary" id="copyBtn" data-i18n="copy">Copy</button>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" id="closeModal2">Close</button>
+      <button class="btn btn-ghost" id="closeModal2" data-i18n="close">Close</button>
     </div>
   </div>
 </div>
@@ -1517,9 +1529,9 @@ function render() {
   $('hIncome').textContent    = fmt(inc);
   $('hExpenses').textContent  = fmt(exp);
   $('hNet').textContent       = fmtS(net);
-  $('hIncomeCount').textContent = `${S.income.length} source${S.income.length !== 1 ? 's' : ''}`;
-  $('hExpCount').textContent  = `${S.expenses.length} categor${S.expenses.length !== 1 ? 'ies' : 'y'}`;
-  $('hNetSub').textContent    = net >= 0 ? '✓ On track' : '⚠ Over budget';
+  $('hIncomeCount').textContent = `${S.income.length} ${S.income.length !== 1 ? t('sources') : t('source')}`;
+  $('hExpCount').textContent  = `${S.expenses.length} ${S.expenses.length !== 1 ? t('categories_count') : t('category_count')}`;
+  $('hNetSub').textContent    = net >= 0 ? t('on_track') : t('over_budget');
 
   const ratePct = Math.max(0, Math.min(100, rate));
   $('hRate').textContent = (rate > 0 ? rate : 0).toFixed(1) + '%';
@@ -1529,11 +1541,11 @@ function render() {
   if (inc === 0) {
     badge.textContent = '—'; badge.className = 'hero-badge badge-neu';
   } else if (rate >= 20) {
-    badge.textContent = '🎯 On track'; badge.className = 'hero-badge badge-good';
+    badge.textContent = t('badge_on_track'); badge.className = 'hero-badge badge-good';
   } else if (rate >= 10) {
-    badge.textContent = '⚠ Could improve'; badge.className = 'hero-badge badge-warn';
+    badge.textContent = t('badge_could_improve'); badge.className = 'hero-badge badge-warn';
   } else {
-    badge.textContent = '🔴 Below target'; badge.className = 'hero-badge badge-bad';
+    badge.textContent = t('badge_below_target'); badge.className = 'hero-badge badge-bad';
   }
 
   renderList('income');
@@ -1563,7 +1575,7 @@ function renderList(type) {
     el.innerHTML = `
       <span class="item-dot" style="background:${colors[item.category] || '#94a3b8'}"></span>
       <span class="item-name">${esc(item.name)}</span>
-      <span class="item-cat">${esc(item.category)}</span>
+      <span class="item-cat">${esc(tCat(item.category))}</span>
       <span class="item-amt ${isInc ? 'amt-income' : 'amt-expense'}">${fmt(item.amount)}</span>
       <button class="btn-icon del-btn" data-id="${item.id}" data-type="${type}" title="Remove">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
@@ -1607,7 +1619,7 @@ function renderChart() {
   legend.innerHTML = labels.map((lbl, i) => `
     <div class="leg-item">
       <span class="leg-swatch" style="background:${colors[i]}"></span>
-      <span class="leg-name">${lbl}</span>
+      <span class="leg-name">${tCat(lbl)}</span>
       <span class="leg-pct">${((data[i] / tot) * 100).toFixed(1)}%</span>
       <span class="leg-amt">${fmt(data[i])}</span>
     </div>`).join('');
@@ -1660,14 +1672,14 @@ function renderSavings(inc, exp, net, rate) {
 
   const advice = $('ringAdvice');
   if (inc === 0) {
-    advice.textContent = 'Add your income sources to unlock personalized savings insights.';
+    advice.textContent = t('advice_no_income');
   } else if (rate >= 20) {
-    advice.textContent = `You're saving ${rate.toFixed(1)}% of your income — great work! That's ${fmt(net * 12)} per year.`;
+    advice.textContent = t('advice_great', { rate: rate.toFixed(1), annual: fmt(net * 12) });
   } else if (rate >= 0) {
     const gap = inc * 0.20 - net;
-    advice.textContent = `You're ${rate.toFixed(1)}% of the way there. Reduce expenses by ${fmt(gap)}/mo to hit the 20% goal.`;
+    advice.textContent = t('advice_improve', { rate: rate.toFixed(1), gap: fmt(gap) });
   } else {
-    advice.textContent = `You're spending ${fmt(Math.abs(net))}/mo more than you earn. Consider cutting expenses or growing income.`;
+    advice.textContent = t('advice_over', { over: fmt(Math.abs(net)) });
   }
 }
 
@@ -1698,7 +1710,7 @@ function addItem(type) {
   const amt   = parseFloat($(isInc ? 'iAmt' : 'eAmt').value);
 
   if (!name || isNaN(amt) || amt <= 0) {
-    showToast('Please enter a name and a valid amount.', 'warn');
+    showToast(t('toast_name_amount'), 'warn');
     return;
   }
 
@@ -1707,7 +1719,7 @@ function addItem(type) {
   $(isInc ? 'iName' : 'eName').value = '';
   $(isInc ? 'iAmt'  : 'eAmt').value  = '';
   render();
-  showToast(`"${name}" added!`);
+  showToast(t('toast_added', { name }));
 }
 
 // ─── Delete ───────────────────────────────────────────────────
@@ -1717,7 +1729,7 @@ document.addEventListener('click', e => {
   const { id, type } = btn.dataset;
   S[type] = S[type].filter(x => x.id !== id);
   render();
-  showToast('Item removed.', 'info');
+  showToast(t('toast_removed'), 'info');
 });
 
 // ─── Theme ────────────────────────────────────────────────────
@@ -1754,11 +1766,11 @@ $('shareOverlay').onclick = e => { if (e.target === $('shareOverlay')) closeShar
 $('copyBtn').onclick = () => {
   const url = $('shareUrl').value;
   navigator.clipboard.writeText(url)
-    .then(() => showToast('Link copied to clipboard!'))
+    .then(() => showToast(t('toast_link_copied')))
     .catch(() => {
       $('shareUrl').select();
       document.execCommand('copy');
-      showToast('Link copied!');
+      showToast(t('toast_link_copied_short'));
     });
 };
 
@@ -1855,12 +1867,12 @@ $('evCurrencySel').addEventListener('change', () => {
     $('evCalcRate').value = FX_RATES[cur] || 1;
     $('evCalcRate').style.display = '';
     $('evCalcRateLabel').style.display = '';
-    $('evCurrencyAmt').placeholder = 'Foreign amt';
+    $('evCurrencyAmt').placeholder = t('ph_foreign_amt');
   } else {
     $('evCalcRate').style.display = 'none';
     $('evCalcRateLabel').style.display = 'none';
     $('evCurrencyAmt').value = '';
-    $('evCurrencyAmt').placeholder = 'Amount';
+    $('evCurrencyAmt').placeholder = t('ph_amount');
   }
   updateCurrencyCalc();
 });
@@ -1967,7 +1979,7 @@ function resetAddForm() {
   evCostType = 'total';
   $('evCostTotal').classList.add('active');
   $('evCostPerPerson').classList.remove('active');
-  $('evSubmitItem').textContent = '💾 Save';
+  $('evSubmitItem').textContent = t('save_btn');
 }
 
 function gatherItemMeta() {
@@ -1986,11 +1998,11 @@ function addEvItem() {
   const name = $('evItemName').value.trim();
   let amt = parseFloat($('evItemAmt').value);
   const paid = $('evItemPaid').checked;
-  if (!name || isNaN(amt) || amt <= 0) { showToast('Enter a name and valid amount.', 'warn'); return; }
+  if (!name || isNaN(amt) || amt <= 0) { showToast(t('toast_name_amount_short'), 'warn'); return; }
   const meta = gatherItemMeta();
   if (evCostType === 'per-person') amt = amt * getCalcPeople();
   ES.items.push({ id: uid(), name, amount: amt, paidByMe: paid, meta });
-  showToast(`"${name}" added!`);
+  showToast(t('toast_added', { name }));
   resetAddForm();
   $('evAddForm').classList.remove('open');
   renderEvItems(); renderReceipt(); persistES();
@@ -2004,8 +2016,8 @@ function formatItemMeta(item) {
     tags.push(`${m.currency} ${m.foreignAmt}`);
     if (m.rate) tags.push(`×${m.rate} rate`);
   }
-  tags.push(`÷${m.calcPeople} people`);
-  if (m.costType === 'per-person') tags.push(`${fmt(m.inputAmt)}/pp → ${fmt(item.amount)} total`);
+  tags.push(`÷${m.calcPeople} ${t('people')}`);
+  if (m.costType === 'per-person') tags.push(`${fmt(m.inputAmt)}/${t('person')} → ${fmt(item.amount)} ${t('total')}`);
   return tags.map(t => `<span class="ev-item-tag">${esc(t)}</span>`).join('');
 }
 
@@ -2025,22 +2037,22 @@ function buildInlineEditHTML(item) {
         <input class="field-input ie-amt" type="number" value="${inputAmt}" placeholder="Amount (TWD)" min="0" step="1" style="margin:0" />
       </div>
       <div style="margin-bottom:8px">
-        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Amount Type</div>
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${t('amount_type')}</div>
         <div class="cost-type-toggle">
-          <button type="button" class="cost-type-btn ie-costTotal${costType==='total'?' active':''}">Total</button>
-          <button type="button" class="cost-type-btn ie-costPP${costType==='per-person'?' active':''}">Per Person</button>
+          <button type="button" class="cost-type-btn ie-costTotal${costType==='total'?' active':''}">${t('total')}</button>
+          <button type="button" class="cost-type-btn ie-costPP${costType==='per-person'?' active':''}">${t('per_person')}</button>
         </div>
       </div>
       <label class="ev-paid-label">
         <input type="checkbox" class="ie-paid"${item.paidByMe?' checked':''} />
-        I paid this expense
+        ${t('i_paid')}
       </label>
       <div class="form-actions" style="margin-bottom:8px">
-        <button class="btn btn-expense ie-save" data-id="${item.id}">💾 Update</button>
-        <button class="btn btn-ghost ie-cancel" data-id="${item.id}">Cancel</button>
+        <button class="btn btn-expense ie-save" data-id="${item.id}">${t('update_btn')}</button>
+        <button class="btn btn-ghost ie-cancel" data-id="${item.id}">${t('cancel')}</button>
       </div>
       <div class="ev-currency-calc ie-calc-wrap">
-        <div class="ev-currency-calc-title">🧮 Calculator</div>
+        <div class="ev-currency-calc-title">${t('calculator')}</div>
         <div class="ev-currency-row">
           <select class="ev-currency-sel ie-cur">
             <option value="">TWD (direct)</option>
@@ -2049,21 +2061,21 @@ function buildInlineEditHTML(item) {
             <option value="JPY"${curVal==='JPY'?' selected':''}>JPY ¥</option>
             <option value="EUR"${curVal==='EUR'?' selected':''}>EUR €</option>
           </select>
-          <input type="number" class="ev-currency-amt ie-forAmt" placeholder="${hasCur?'Foreign amt':'Amount'}" value="${foreignAmt}" min="0" step="any" />
-          <span class="ev-calc-label ie-rateLabel" style="${hasCur?'':'display:none'}">× Rate</span>
+          <input type="number" class="ev-currency-amt ie-forAmt" placeholder="${hasCur?t('ph_foreign_amt'):t('ph_amount')}" value="${foreignAmt}" min="0" step="any" />
+          <span class="ev-calc-label ie-rateLabel" style="${hasCur?'':'display:none'}">${t('calc_rate')}</span>
           <input type="number" class="ev-currency-amt ev-rate-input ie-rate" value="${rate}" min="0" step="any" style="${hasCur?'':'display:none'}" />
         </div>
         <div class="ev-currency-row">
-          <span class="ev-calc-label">÷ People</span>
+          <span class="ev-calc-label">${t('calc_people')}</span>
           <input type="number" class="ev-currency-amt ev-people-input ie-people" value="${calcPeople}" min="1" step="1" />
         </div>
         <div class="ev-calc-result ie-result">
           <div class="ev-calc-result-row ie-totalRow" style="display:none">
-            <span>Total TWD</span>
+            <span>${t('calc_total_twd')}</span>
             <span class="ev-calc-result-val ie-totalVal">$0</span>
           </div>
           <div class="ev-calc-result-row ie-ppRow" style="display:none">
-            <span>Per person</span>
+            <span>${t('calc_per_person')}</span>
             <span class="ev-calc-result-pp ie-ppVal">$0</span>
           </div>
         </div>
@@ -2123,12 +2135,12 @@ function wireInlineEdit(el, item) {
       q('.ie-rate').value = FX_RATES[cur] || 1;
       q('.ie-rate').style.display = '';
       q('.ie-rateLabel').style.display = '';
-      q('.ie-forAmt').placeholder = 'Foreign amt';
+      q('.ie-forAmt').placeholder = t('ph_foreign_amt');
     } else {
       q('.ie-rate').style.display = 'none';
       q('.ie-rateLabel').style.display = 'none';
       q('.ie-forAmt').value = '';
-      q('.ie-forAmt').placeholder = 'Amount';
+      q('.ie-forAmt').placeholder = t('ph_amount');
     }
     updateInlineCalc(box);
   });
@@ -2162,10 +2174,10 @@ function renderEvItems() {
       <div class="ev-item-main">
         <span class="ev-item-arrow">▾</span>
         <span class="ev-item-name">${esc(item.name)}</span>
-        ${item.paidByMe ? '<span class="paid-badge">I paid</span>' : ''}
+        ${item.paidByMe ? `<span class="paid-badge">${t('i_paid')}</span>` : ''}
         <label class="ev-paid-chk-wrap" title="Mark as paid by me" onclick="event.stopPropagation()">
           <input type="checkbox" class="ev-paid-chk" data-id="${item.id}" ${item.paidByMe ? 'checked' : ''} />
-          <span>${item.paidByMe ? '' : 'I paid'}</span>
+          <span>${item.paidByMe ? '' : t('i_paid')}</span>
         </label>
         <span class="ev-item-amt">${fmt(evEffective(item, ES.people).total)}</span>
         <button class="btn-icon ev-del-btn" data-id="${item.id}" title="Remove">
@@ -2201,7 +2213,7 @@ document.addEventListener('click', e => {
     const name = box.querySelector('.ie-name').value.trim();
     let amt = parseFloat(box.querySelector('.ie-amt').value);
     const paid = box.querySelector('.ie-paid').checked;
-    if (!name || isNaN(amt) || amt <= 0) { showToast('Enter a name and valid amount.', 'warn'); return; }
+    if (!name || isNaN(amt) || amt <= 0) { showToast(t('toast_name_amount_short'), 'warn'); return; }
     const cur = box.querySelector('.ie-cur').value;
     const costType = box.querySelector('.ie-costPP').classList.contains('active') ? 'per-person' : 'total';
     const calcPeople = Math.max(1, parseInt(box.querySelector('.ie-people').value) || 1);
@@ -2215,7 +2227,7 @@ document.addEventListener('click', e => {
     item.name = name; item.amount = amt; item.paidByMe = paid; item.meta = meta;
     expandedItemId = null;
     renderEvItems(); renderReceipt(); persistES();
-    showToast(`"${name}" updated!`);
+    showToast(t('toast_updated', { name }));
     return;
   }
 
@@ -2254,7 +2266,7 @@ document.addEventListener('click', e => {
   ES.items = ES.items.filter(x => x.id !== btn.dataset.id);
   if (expandedItemId === btn.dataset.id) expandedItemId = null;
   renderEvItems(); renderReceipt(); persistES();
-  showToast('Item removed.', 'info');
+  showToast(t('toast_removed'), 'info');
 });
 
 $('evClearBtn').onclick = () => {
@@ -2264,7 +2276,7 @@ $('evClearBtn').onclick = () => {
   $('evPeople').value = '2';
   resetAddForm();
   renderEvItems(); renderReceipt(); persistES();
-  showToast('Cleared.', 'info');
+  showToast(t('toast_cleared'), 'info');
 };
 
 function evEffective(item, people) {
@@ -2281,25 +2293,25 @@ function renderReceipt() {
   const total  = ES.items.reduce((s, x) => evEffective(x, people).total, 0);
   const cpp    = total / people;
 
-  $('receiptEventName').textContent = ES.name || 'Unnamed Event';
-  $('receiptMeta').textContent      = `${people} ${people === 1 ? 'person' : 'people'}`;
+  $('receiptEventName').textContent = ES.name || t('unnamed_event');
+  $('receiptMeta').textContent      = `${people} ${people === 1 ? t('person') : t('people')}`;
   $('receiptTotal').textContent     = fmt(total);
   $('receiptCPP').textContent       = fmt(cpp);
 
   const bd = $('receiptBreakdown');
   if (ES.items.length === 0) {
-    bd.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.83rem;padding:10px 0">Add expenses to see breakdown</div>';
+    bd.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:.83rem;padding:10px 0">${t('add_to_see_breakdown')}</div>`;
   } else {
     bd.innerHTML = ES.items.map(item => {
       const eff = evEffective(item, people);
       const tag = eff.isPerPerson
-        ? '<span class="cost-type-badge ctype-per-person" style="font-size:.6rem;padding:1px 6px">Per Person</span>'
-        : '<span class="cost-type-badge ctype-total" style="font-size:.6rem;padding:1px 6px">Fixed</span>';
+        ? `<span class="cost-type-badge ctype-per-person" style="font-size:.6rem;padding:1px 6px">${t('per_person_tag')}</span>`
+        : `<span class="cost-type-badge ctype-total" style="font-size:.6rem;padding:1px 6px">${t('fixed')}</span>`;
       return `
       <div class="receipt-line">
         <span class="receipt-line-name">${esc(item.name)} ${tag}</span>
         <span class="receipt-line-total">${fmt(eff.total)}</span>
-        <span class="receipt-line-pp">${fmt(eff.perPerson)}/person</span>
+        <span class="receipt-line-pp">${fmt(eff.perPerson)}${t('person_unit')}</span>
       </div>`;
     }).join('');
   }
@@ -2315,7 +2327,7 @@ function renderReceipt() {
   const myNet            = paidTotal - totalToCollect;
 
   $('collectPerPerson').textContent  = fmt(collectPerPerson);
-  $('collectFromCount').textContent  = `from each of ${othersCount} other ${othersCount === 1 ? 'person' : 'people'}`;
+  $('collectFromCount').textContent  = t('collect_from', { n: othersCount, unit: othersCount === 1 ? t('person') : t('people') });
   $('collectTotal').textContent      = fmt(totalToCollect);
   $('myNetCost').textContent         = fmt(myNet);
 }
@@ -2324,13 +2336,13 @@ $('evShareBtn').onclick = () => {
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(ES))));
   const url = location.origin + location.pathname + '?e=' + encoded;
   navigator.clipboard.writeText(url)
-    .then(() => showToast('Event link copied to clipboard! 🔗'))
+    .then(() => showToast(t('toast_event_link')))
     .catch(() => {
       const inp = document.createElement('textarea');
       inp.value = url;
       document.body.appendChild(inp); inp.select();
       document.execCommand('copy'); document.body.removeChild(inp);
-      showToast('Event link copied!');
+      showToast(t('toast_event_link_short'));
     });
 };
 
@@ -2367,23 +2379,23 @@ function switchESProject(name) {
 $('esProjectSel').addEventListener('change', () => switchESProject($('esProjectSel').value));
 
 $('esNewProjectBtn').onclick = () => {
-  const name = prompt('Project name:');
+  const name = prompt(currentLang === 'zh' ? '專案名稱：' : 'Project name:');
   if (!name || !name.trim()) return;
   const n = name.trim();
   const projects = getESProjects();
-  if (projects[n]) { showToast('Project already exists.', 'warn'); return; }
+  if (projects[n]) { showToast(t('toast_project_exists'), 'warn'); return; }
   projects[n] = { name: '', people: 2, items: [] };
   saveESProjects(projects);
   currentESProject = n;
   try { localStorage.setItem('ev-active-project', n); } catch(_) {}
   renderESProjectDropdown();
   switchESProject(n);
-  showToast(`Project "${n}" created.`);
+  showToast(t('toast_project_created', { name: n }));
 };
 
 $('esDeleteProjectBtn').onclick = () => {
   if (!currentESProject) return;
-  if (!confirm(`Delete project "${currentESProject}"?`)) return;
+  if (!confirm(currentLang === 'zh' ? `確定刪除專案「${currentESProject}」？` : `Delete project "${currentESProject}"?`)) return;
   const projects = getESProjects();
   delete projects[currentESProject];
   saveESProjects(projects);
@@ -2402,7 +2414,7 @@ $('esDeleteProjectBtn').onclick = () => {
     renderESProjectDropdown();
     switchESProject(currentESProject);
   }
-  showToast('Project deleted.', 'info');
+  showToast(t('toast_project_deleted'), 'info');
 };
 
 function persistES() {
@@ -2425,7 +2437,7 @@ function loadES() {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelector('[data-tab="event"]').classList.add('active');
       $('tab-event').classList.add('active');
-      showToast('Event loaded from shared link! 🔗', 'info');
+      showToast(t('toast_event_loaded'), 'info');
       return;
     }
   } catch (_) {}
@@ -2469,7 +2481,7 @@ function loadState() {
       const d = JSON.parse(decodeURIComponent(escape(atob(param))));
       S.income   = d.income   || [];
       S.expenses = d.expenses || [];
-      showToast('Budget loaded from shared link! 🔗', 'info');
+      showToast(t('toast_budget_loaded'), 'info');
       return;
     }
   } catch (_) {}
@@ -2578,13 +2590,13 @@ function mjUpdatePreview() {
   let txt = '';
   if (mjWinType === 'self') {
     const losers = [0,1,2,3].filter(i => i !== w).map(i => mjPlayerName(i));
-    txt = `<strong>${esc(wName)}</strong> wins <strong>${fmt(pay * 3)}</strong> total<br>`;
-    txt += `Each of ${losers.map(n => '<span class="mj-round-loser">' + esc(n) + '</span>').join(', ')} pays <strong>${fmt(pay)}</strong>`;
-    txt += `<br><span style="font-size:.75rem;color:var(--muted)">底${MJ.base} + ${tai}台 × ${MJ.perTai} = ${pay}/person</span>`;
+    txt = t('mj_preview_self', { winner: `<strong>${esc(wName)}</strong>`, total: `<strong>${fmt(pay * 3)}</strong>` }) + '<br>';
+    txt += t('mj_preview_self2', { losers: losers.map(n => '<span class="mj-round-loser">' + esc(n) + '</span>').join(', '), pay: `<strong>${fmt(pay)}</strong>` });
+    txt += `<br><span style="font-size:.75rem;color:var(--muted)">底${MJ.base} + ${tai}台 × ${MJ.perTai} = ${pay}/${t('person')}</span>`;
   } else {
     const l = parseInt($('mjLoser').value);
     const lName = mjPlayerName(l);
-    txt = `<strong>${esc(wName)}</strong> wins <strong>${fmt(pay)}</strong> from <span class="mj-round-loser">${esc(lName)}</span>`;
+    txt = t('mj_preview_disc', { winner: `<strong>${esc(wName)}</strong>`, pay: `<strong>${fmt(pay)}</strong>`, loser: `<span class="mj-round-loser">${esc(lName)}</span>` });
     txt += `<br><span style="font-size:.75rem;color:var(--muted)">底${MJ.base} + ${tai}台 × ${MJ.perTai} = ${pay}</span>`;
   }
   $('mjPreviewText').innerHTML = txt;
@@ -2597,23 +2609,23 @@ $('mjAddRound').onclick = () => {
   const round = { winner: w, type: mjWinType, tai };
   if (mjWinType === 'discard') {
     const l = parseInt($('mjLoser').value);
-    if (l === w) { showToast('Winner and discarder cannot be the same!', 'warn'); return; }
+    if (l === w) { showToast(t('toast_same_winner'), 'warn'); return; }
     round.loser = l;
   }
   MJ.rounds.push(round);
   mjRenderAll();
   mjPersist();
-  showToast(`Round ${MJ.rounds.length} recorded!`);
+  showToast(t('toast_round_recorded', { n: MJ.rounds.length }));
 };
 
 // Reset
 $('mjResetBtn').onclick = () => {
   if (MJ.rounds.length === 0) return;
-  if (!confirm('Reset all rounds? Player names and settings will be kept.')) return;
+  if (!confirm(t('confirm_reset'))) return;
   MJ.rounds = [];
   mjRenderAll();
   mjPersist();
-  showToast('Game reset.', 'info');
+  showToast(t('toast_game_reset'), 'info');
 };
 
 function mjCalcScores() {
@@ -2636,9 +2648,9 @@ function mjRenderRounds() {
   const list = $('mjRoundsList');
   const empty = $('mjRoundsEmpty');
   list.querySelectorAll('.mj-round-item').forEach(el => el.remove());
-  if (MJ.rounds.length === 0) { empty.style.display = ''; $('mjRoundCount').textContent = '0 rounds'; return; }
+  if (MJ.rounds.length === 0) { empty.style.display = ''; $('mjRoundCount').textContent = `0 ${t('rounds_unit')}`; return; }
   empty.style.display = 'none';
-  $('mjRoundCount').textContent = `${MJ.rounds.length} round${MJ.rounds.length > 1 ? 's' : ''}`;
+  $('mjRoundCount').textContent = `${MJ.rounds.length} ${MJ.rounds.length > 1 ? t('rounds_unit') : t('round_unit')}`;
 
   MJ.rounds.slice().reverse().forEach((r, idx) => {
     const num = MJ.rounds.length - idx;
@@ -2647,9 +2659,9 @@ function mjRenderRounds() {
     el.className = 'mj-round-item';
     let desc = '';
     if (r.type === 'self') {
-      desc = `<span class="mj-round-winner">${esc(mjPlayerName(r.winner))}</span> 自摸 (${r.tai}台) — each pays ${fmt(pay)}`;
+      desc = t('mj_self_desc', { winner: `<span class="mj-round-winner">${esc(mjPlayerName(r.winner))}</span>`, tai: r.tai, pay: fmt(pay) });
     } else {
-      desc = `<span class="mj-round-winner">${esc(mjPlayerName(r.winner))}</span> wins from <span class="mj-round-loser">${esc(mjPlayerName(r.loser))}</span> (${r.tai}台)`;
+      desc = t('mj_disc_desc', { winner: `<span class="mj-round-winner">${esc(mjPlayerName(r.winner))}</span>`, loser: `<span class="mj-round-loser">${esc(mjPlayerName(r.loser))}</span>`, tai: r.tai });
     }
     const total = r.type === 'self' ? pay * 3 : pay;
     el.innerHTML = `
@@ -2672,13 +2684,13 @@ document.addEventListener('click', e => {
   MJ.rounds.splice(idx, 1);
   mjRenderAll();
   mjPersist();
-  showToast('Round removed.', 'info');
+  showToast(t('toast_round_removed'), 'info');
 });
 
 function mjRenderScoreboard() {
   const board = $('mjScoreboard');
   if (MJ.rounds.length === 0) {
-    board.innerHTML = '<div class="mj-empty">Scores will appear here after rounds.</div>';
+    board.innerHTML = `<div class="mj-empty">${t('no_scores')}</div>`;
     return;
   }
   const { scores, wins } = mjCalcScores();
@@ -2693,7 +2705,7 @@ function mjRenderScoreboard() {
         <div class="mj-score-rank mj-rank-${rank+1}">${rank+1}</div>
         <div style="flex:1;min-width:0">
           <div class="mj-score-name">${esc(mjPlayerName(pi))}</div>
-          <div class="mj-score-detail">${wins[pi]} win${wins[pi]!==1?'s':''}</div>
+          <div class="mj-score-detail">${wins[pi]} ${wins[pi]!==1?t('wins_unit'):t('win_unit')}</div>
         </div>
         <div class="mj-score-val ${cls}">${sign}${fmt(Math.abs(s))}</div>
       </div>`;
@@ -2703,7 +2715,7 @@ function mjRenderScoreboard() {
 function mjRenderSettlement() {
   const el = $('mjSettlement');
   if (MJ.rounds.length === 0) {
-    el.innerHTML = '<div class="mj-empty">Play some rounds to see who pays whom.</div>';
+    el.innerHTML = `<div class="mj-empty">${t('no_settlement')}</div>`;
     return;
   }
   const { scores } = mjCalcScores();
@@ -2726,18 +2738,18 @@ function mjRenderSettlement() {
   }
 
   if (transfers.length === 0) {
-    el.innerHTML = '<div class="mj-empty" style="color:var(--income)">Everyone is even! 🎉</div>';
+    el.innerHTML = `<div class="mj-empty" style="color:var(--income)">${t('everyone_even')}</div>`;
     return;
   }
 
   el.innerHTML = `
-    <div class="mj-settle-title">Transfers needed (${transfers.length})</div>
-    ${transfers.map(t => `
+    <div class="mj-settle-title">${t('transfers_needed', { n: transfers.length })}</div>
+    ${transfers.map(tr => `
       <div class="mj-settle-row">
-        <span class="mj-settle-from">${esc(mjPlayerName(t.from))}</span>
-        <span class="mj-settle-arrow">→ pays →</span>
-        <span class="mj-settle-to">${esc(mjPlayerName(t.to))}</span>
-        <span class="mj-settle-amt">${fmt(t.amount)}</span>
+        <span class="mj-settle-from">${esc(mjPlayerName(tr.from))}</span>
+        <span class="mj-settle-arrow">${t('pays_arrow')}</span>
+        <span class="mj-settle-to">${esc(mjPlayerName(tr.to))}</span>
+        <span class="mj-settle-amt">${fmt(tr.amount)}</span>
       </div>`).join('')}`;
 }
 
@@ -2767,14 +2779,260 @@ function mjLoad() {
   mjRenderAll();
 }
 
+// ─── i18n ─────────────────────────────────────────────────────
+let currentLang = localStorage.getItem('app-lang') || 'en';
+
+const I18N = {
+  en: {
+    // Tabs
+    tab_budget: 'Budget', tab_event: 'Event Splitter', tab_mahjong: 'Mahjong',
+    // Header
+    share: 'Share',
+    // Hero
+    total_income: 'Total Income', total_expenses: 'Total Expenses',
+    net_savings: 'Net Savings', savings_rate: 'Savings Rate',
+    sources: 'sources', source: 'source',
+    categories_count: 'categories', category_count: 'category',
+    on_track: '✓ On track', over_budget: '⚠ Over budget',
+    badge_on_track: '🎯 On track', badge_could_improve: '⚠ Could improve', badge_below_target: '🔴 Below target',
+    // Budget cards
+    income_sources: 'Income Sources', expense_categories: 'Expense Categories',
+    spending_breakdown: 'Spending Breakdown', savings_overview: 'Savings Overview',
+    add_btn: '+ Add', add_income: 'Add Income', add_expense: 'Add Expense', cancel: 'Cancel',
+    // Income categories
+    cat_salary: 'Salary', cat_freelance: 'Freelance', cat_investment: 'Investment',
+    cat_business: 'Business', cat_rental: 'Rental', cat_side_hustle: 'Side Hustle', cat_other: 'Other',
+    // Expense categories
+    cat_housing: 'Housing', cat_food: 'Food', cat_transport: 'Transport',
+    cat_healthcare: 'Healthcare', cat_education: 'Education', cat_entertainment: 'Entertainment',
+    cat_shopping: 'Shopping', cat_utilities: 'Utilities', cat_insurance: 'Insurance',
+    cat_subscriptions: 'Subscriptions',
+    // Placeholders
+    ph_income_name: 'e.g. Monthly Salary', ph_expense_name: 'e.g. Rent / Mortgage', ph_amount: 'Amount', ph_foreign_amt: 'Foreign amt',
+    // Empty states
+    no_income: 'No income sources yet.', click_add: 'Click <strong>+ Add</strong> to begin.',
+    no_expenses: 'No expenses yet.', click_add_expense: 'Click <strong>+ Add</strong> to track spending.',
+    add_expenses_chart: 'Add expenses to see<br>your spending breakdown.',
+    // Savings
+    saved: 'saved', monthly_income: 'Monthly Income', monthly_expenses: 'Monthly Expenses',
+    savings_month: 'Savings / Month', projected_annual: 'Projected Annual',
+    ring_tip: '💡 Experts recommend saving at least <strong>20%</strong> of your monthly income.',
+    advice_no_income: 'Add your income sources to unlock personalized savings insights.',
+    advice_great: "You're saving {rate}% of your income — great work! That's {annual} per year.",
+    advice_improve: "You're {rate}% of the way there. Reduce expenses by {gap}/mo to hit the 20% goal.",
+    advice_over: "You're spending {over}/mo more than you earn. Consider cutting expenses or growing income.",
+    // Event Splitter
+    event_details: 'Event Details', project: 'Project', new_btn: '+ New', delete: 'Delete',
+    event_name: 'Event Name', num_people: 'Number of People',
+    expense_items: 'Expense Items', calculator: '🧮 Calculator',
+    amount_type: 'Amount Type', total: 'Total', per_person: 'Per Person',
+    i_paid: 'I paid this expense', save_btn: '💾 Save', update_btn: '💾 Update',
+    ph_event_name: 'e.g. Gathering April 2026', ph_item_name: 'e.g. Venue Rent', ph_amount_twd: 'Amount (TWD)',
+    ph_east: 'East', ph_south: 'South', ph_west: 'West', ph_north: 'North',
+    // Receipt
+    total_cost: 'Total Cost', cost_per_person: 'Cost per Person',
+    breakdown_pp: 'Breakdown per person', add_to_see_breakdown: 'Add expenses to see breakdown',
+    fixed: 'Fixed', per_person_tag: 'Per Person', person_unit: '/person',
+    what_to_collect: 'What to Collect from Others',
+    collect_pp: 'Collect per person', total_to_collect: 'Total to collect', your_net_cost: 'Your net cost',
+    collect_from: 'from each of {n} other {unit}',
+    copy_share_link: 'Copy Shareable Link',
+    people: 'people', person: 'person',
+    unnamed_event: 'Unnamed Event',
+    calc_total_twd: 'Total TWD', calc_per_person: 'Per person', calc_people: '÷ People', calc_rate: '× Rate',
+    calc_use_total: '↑ Use total TWD amount', calc_use_pp: '↑ Use per-person amount',
+    // Mahjong
+    game_settings: 'Game Settings', reset: 'Reset', players_label: 'Players (4)',
+    base_label: 'Base 底 ($)', per_tai_label: 'Per Tai 每台 ($)',
+    add_round: 'Add Round', winner: 'Winner', win_type: 'Win Type',
+    self_drawn_btn: '🀄 自摸 Self-drawn', discard_btn: '🎯 放槍 Discard',
+    discarder: 'Discarder', tai_label: 'Tai 台數', payment_preview: 'Payment Preview',
+    add_round_btn: '➕ Add Round', round_history: 'Round History',
+    scoreboard: 'Scoreboard', settlement: 'Settlement 結算',
+    rounds_unit: 'rounds', round_unit: 'round',
+    wins_unit: 'wins', win_unit: 'win',
+    no_rounds: 'No rounds yet. Play and record!',
+    no_scores: 'Scores will appear here after rounds.',
+    no_settlement: 'Play some rounds to see who pays whom.',
+    everyone_even: 'Everyone is even! 🎉',
+    transfers_needed: 'Transfers needed ({n})',
+    pays_arrow: '→ pays →',
+    mj_self_desc: '{winner} 自摸 ({tai}台) — each pays {pay}',
+    mj_disc_desc: '{winner} wins from {loser} ({tai}台)',
+    mj_preview_self: '{winner} wins {total} total',
+    mj_preview_self2: 'Each of {losers} pays {pay}',
+    mj_preview_disc: '{winner} wins {pay} from {loser}',
+    // Share modal
+    share_budget: 'Share Your Budget',
+    share_desc: 'All your budget data is encoded directly into this URL — no account or server needed. Share it with family or friends so they can view your breakdown.',
+    copy: 'Copy', close: 'Close',
+    // Toast
+    toast_done: 'Done!', toast_removed: 'Item removed.', toast_cleared: 'Cleared.',
+    toast_link_copied: 'Link copied to clipboard!', toast_link_copied_short: 'Link copied!',
+    toast_event_link: 'Event link copied to clipboard! 🔗',
+    toast_event_link_short: 'Event link copied!',
+    toast_budget_loaded: 'Budget loaded from shared link! 🔗',
+    toast_event_loaded: 'Event loaded from shared link! 🔗',
+    toast_name_amount: 'Please enter a name and a valid amount.',
+    toast_name_amount_short: 'Enter a name and valid amount.',
+    toast_added: '"{name}" added!', toast_updated: '"{name}" updated!',
+    toast_round_recorded: 'Round {n} recorded!', toast_round_removed: 'Round removed.',
+    toast_game_reset: 'Game reset.', toast_same_winner: 'Winner and discarder cannot be the same!',
+    toast_project_exists: 'Project already exists.', toast_project_created: 'Project "{name}" created.',
+    toast_project_deleted: 'Project deleted.',
+    confirm_reset: 'Reset all rounds? Player names and settings will be kept.',
+  },
+  zh: {
+    tab_budget: '預算', tab_event: '活動分帳', tab_mahjong: '麻將',
+    share: '分享',
+    total_income: '總收入', total_expenses: '總支出',
+    net_savings: '淨儲蓄', savings_rate: '儲蓄率',
+    sources: '筆收入', source: '筆收入',
+    categories_count: '筆支出', category_count: '筆支出',
+    on_track: '✓ 正常', over_budget: '⚠ 超支',
+    badge_on_track: '🎯 正常', badge_could_improve: '⚠ 可改善', badge_below_target: '🔴 低於目標',
+    income_sources: '收入來源', expense_categories: '支出分類',
+    spending_breakdown: '支出分佈', savings_overview: '儲蓄概覽',
+    add_btn: '+ 新增', add_income: '新增收入', add_expense: '新增支出', cancel: '取消',
+    cat_salary: '薪資', cat_freelance: '接案', cat_investment: '投資',
+    cat_business: '事業', cat_rental: '租金收入', cat_side_hustle: '副業', cat_other: '其他',
+    cat_housing: '住房', cat_food: '餐飲', cat_transport: '交通',
+    cat_healthcare: '醫療', cat_education: '教育', cat_entertainment: '娛樂',
+    cat_shopping: '購物', cat_utilities: '水電', cat_insurance: '保險',
+    cat_subscriptions: '訂閱',
+    ph_income_name: '例：月薪', ph_expense_name: '例：房租', ph_amount: '金額', ph_foreign_amt: '外幣金額',
+    no_income: '尚無收入來源', click_add: '點擊 <strong>+ 新增</strong> 開始',
+    no_expenses: '尚無支出', click_add_expense: '點擊 <strong>+ 新增</strong> 開始',
+    add_expenses_chart: '新增支出以查看分佈',
+    saved: '已存', monthly_income: '月收入', monthly_expenses: '月支出',
+    savings_month: '月儲蓄', projected_annual: '預估年度',
+    ring_tip: '💡 專家建議每月至少儲蓄收入的 <strong>20%</strong>。',
+    advice_no_income: '新增收入來源以獲得個人化儲蓄建議。',
+    advice_great: '你正在儲蓄收入的 {rate}%——做得好！每年可存 {annual}。',
+    advice_improve: '目前達到 {rate}%。每月減少支出 {gap} 即可達到 20% 目標。',
+    advice_over: '你每月超支 {over}。請考慮減少支出或增加收入。',
+    event_details: '活動詳情', project: '專案', new_btn: '+ 新增', delete: '刪除',
+    event_name: '活動名稱', num_people: '人數',
+    expense_items: '費用項目', calculator: '🧮 計算機',
+    amount_type: '金額類型', total: '總額', per_person: '每人',
+    i_paid: '我已付這筆費用', save_btn: '💾 儲存', update_btn: '💾 更新',
+    ph_event_name: '例：2026年4月聚會', ph_item_name: '例：場地費', ph_amount_twd: '金額 (TWD)',
+    ph_east: '東', ph_south: '南', ph_west: '西', ph_north: '北',
+    total_cost: '總費用', cost_per_person: '每人費用',
+    breakdown_pp: '每人明細', add_to_see_breakdown: '新增支出以查看明細',
+    fixed: '固定', per_person_tag: '每人', person_unit: '/人',
+    what_to_collect: '向他人收款',
+    collect_pp: '每人收', total_to_collect: '總收金額', your_net_cost: '你的淨支出',
+    collect_from: '向其他 {n} {unit}收取',
+    copy_share_link: '複製分享連結',
+    people: '人', person: '人',
+    unnamed_event: '未命名活動',
+    calc_total_twd: '總額 TWD', calc_per_person: '每人', calc_people: '÷ 人數', calc_rate: '× 匯率',
+    calc_use_total: '↑ 使用總額', calc_use_pp: '↑ 使用每人金額',
+    game_settings: '遊戲設定', reset: '重置', players_label: '玩家 (4)',
+    base_label: '底 ($)', per_tai_label: '每台 ($)',
+    add_round: '新增回合', winner: '贏家', win_type: '胡牌方式',
+    self_drawn_btn: '🀄 自摸', discard_btn: '🎯 放槍',
+    discarder: '放槍者', tai_label: '台數', payment_preview: '付款預覽',
+    add_round_btn: '➕ 新增回合', round_history: '回合紀錄',
+    scoreboard: '計分板', settlement: '結算',
+    rounds_unit: '回合', round_unit: '回合',
+    wins_unit: '勝', win_unit: '勝',
+    no_rounds: '尚無回合。開始遊戲並記錄！',
+    no_scores: '完成回合後會顯示分數。',
+    no_settlement: '進行回合後查看誰付款給誰。',
+    everyone_even: '大家扯平了！🎉',
+    transfers_needed: '需要轉帳 ({n})',
+    pays_arrow: '→ 付 →',
+    mj_self_desc: '{winner} 自摸 ({tai}台) — 每人付 {pay}',
+    mj_disc_desc: '{winner} 胡 {loser} ({tai}台)',
+    mj_preview_self: '{winner} 贏得 {total}',
+    mj_preview_self2: '{losers} 各付 {pay}',
+    mj_preview_disc: '{winner} 從 {loser} 贏得 {pay}',
+    share_budget: '分享你的預算',
+    share_desc: '所有預算資料都編碼在此網址中——不需帳號或伺服器。分享給家人或朋友即可查看你的預算明細。',
+    copy: '複製', close: '關閉',
+    toast_done: '完成！', toast_removed: '項目已刪除', toast_cleared: '已清除',
+    toast_link_copied: '連結已複製！', toast_link_copied_short: '連結已複製！',
+    toast_event_link: '活動連結已複製！🔗',
+    toast_event_link_short: '活動連結已複製！',
+    toast_budget_loaded: '已從分享連結載入預算！🔗',
+    toast_event_loaded: '已從分享連結載入活動！🔗',
+    toast_name_amount: '請輸入名稱和有效金額。',
+    toast_name_amount_short: '請輸入名稱和有效金額。',
+    toast_added: '已新增「{name}」！', toast_updated: '已更新「{name}」！',
+    toast_round_recorded: '第 {n} 回合已記錄！', toast_round_removed: '回合已刪除。',
+    toast_game_reset: '遊戲已重置。', toast_same_winner: '贏家和放槍者不能相同！',
+    toast_project_exists: '專案已存在。', toast_project_created: '已建立專案「{name}」。',
+    toast_project_deleted: '專案已刪除。',
+    confirm_reset: '重置所有回合？玩家名稱和設定會保留。',
+  }
+};
+
+function t(key, params) {
+  let s = (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key] || key;
+  if (params) Object.keys(params).forEach(k => { s = s.replace('{' + k + '}', params[k]); });
+  return s;
+}
+
+const CAT_KEY_MAP = {
+  'Salary':'cat_salary','Freelance':'cat_freelance','Investment':'cat_investment',
+  'Business':'cat_business','Rental':'cat_rental','Side Hustle':'cat_side_hustle',
+  'Housing':'cat_housing','Food':'cat_food','Transport':'cat_transport',
+  'Healthcare':'cat_healthcare','Education':'cat_education','Entertainment':'cat_entertainment',
+  'Shopping':'cat_shopping','Utilities':'cat_utilities','Insurance':'cat_insurance',
+  'Subscriptions':'cat_subscriptions','Other':'cat_other'
+};
+function tCat(cat) { return CAT_KEY_MAP[cat] ? t(CAT_KEY_MAP[cat]) : cat; }
+
+function updateStaticText() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (el.tagName === 'OPTION') {
+      el.textContent = val;
+    } else if (el.innerHTML !== val && (val.includes('<') || val.includes('&'))) {
+      el.innerHTML = val;
+    } else {
+      el.textContent = val;
+    }
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-ph'));
+  });
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  try { localStorage.setItem('app-lang', lang); } catch(_) {}
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', (lang === 'en' && b.textContent.trim() === 'EN') || (lang === 'zh' && b.textContent.trim() === '中文'));
+  });
+  updateStaticText();
+  updateMonthChip();
+  render();
+  renderEvItems();
+  renderReceipt();
+  mjRenderAll();
+}
+
 // ─── Month chip ───────────────────────────────────────────────
-$('monthChip').textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+function updateMonthChip() {
+  const locale = currentLang === 'zh' ? 'zh-TW' : 'en-US';
+  $('monthChip').textContent = new Date().toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+}
+updateMonthChip();
 
 // ─── Boot ─────────────────────────────────────────────────────
 loadState();
 loadES();
 mjLoad();
 applyTheme();
+// Apply saved language
+document.querySelectorAll('.lang-btn').forEach(b => {
+  b.classList.toggle('active', (currentLang === 'en' && b.textContent.trim() === 'EN') || (currentLang === 'zh' && b.textContent.trim() === '中文'));
+});
+updateStaticText();
 render();
 // Sync event splitter inputs with loaded state
 renderESProjectDropdown();
