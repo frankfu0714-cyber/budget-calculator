@@ -1807,7 +1807,7 @@ $('evEventName').addEventListener('input', () => {
 });
 $('evPeople').addEventListener('input', () => {
   ES.people = Math.max(1, parseInt($('evPeople').value) || 1);
-  renderReceipt(); persistES();
+  renderEvItems(); renderReceipt(); persistES();
   if (typeof updateCurrencyCalc === 'function') {
     $('evCalcPeople').value = ES.people;
     updateCurrencyCalc();
@@ -2167,7 +2167,7 @@ function renderEvItems() {
           <input type="checkbox" class="ev-paid-chk" data-id="${item.id}" ${item.paidByMe ? 'checked' : ''} />
           <span>${item.paidByMe ? '' : 'I paid'}</span>
         </label>
-        <span class="ev-item-amt">${fmt(item.amount)}</span>
+        <span class="ev-item-amt">${fmt(evEffective(item, ES.people).total)}</span>
         <button class="btn-icon ev-del-btn" data-id="${item.id}" title="Remove">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/>
@@ -2267,9 +2267,18 @@ $('evClearBtn').onclick = () => {
   showToast('Cleared.', 'info');
 };
 
+function evEffective(item, people) {
+  const isPerPerson = item.meta && item.meta.costType === 'per-person';
+  if (isPerPerson && item.meta.inputAmt) {
+    const pp = item.meta.inputAmt;
+    return { total: pp * people, perPerson: pp, isPerPerson: true };
+  }
+  return { total: item.amount, perPerson: item.amount / people, isPerPerson: false };
+}
+
 function renderReceipt() {
   const people = Math.max(1, ES.people);
-  const total  = ES.items.reduce((s, x) => s + x.amount, 0);
+  const total  = ES.items.reduce((s, x) => evEffective(x, people).total, 0);
   const cpp    = total / people;
 
   $('receiptEventName').textContent = ES.name || 'Unnamed Event';
@@ -2282,15 +2291,15 @@ function renderReceipt() {
     bd.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.83rem;padding:10px 0">Add expenses to see breakdown</div>';
   } else {
     bd.innerHTML = ES.items.map(item => {
-      const isPerPerson = item.meta && item.meta.costType === 'per-person';
-      const tag = isPerPerson
+      const eff = evEffective(item, people);
+      const tag = eff.isPerPerson
         ? '<span class="cost-type-badge ctype-per-person" style="font-size:.6rem;padding:1px 6px">Per Person</span>'
         : '<span class="cost-type-badge ctype-total" style="font-size:.6rem;padding:1px 6px">Fixed</span>';
       return `
       <div class="receipt-line">
         <span class="receipt-line-name">${esc(item.name)} ${tag}</span>
-        <span class="receipt-line-total">${fmt(item.amount)}</span>
-        <span class="receipt-line-pp">${fmt(item.amount / people)}/person</span>
+        <span class="receipt-line-total">${fmt(eff.total)}</span>
+        <span class="receipt-line-pp">${fmt(eff.perPerson)}/person</span>
       </div>`;
     }).join('');
   }
@@ -2299,7 +2308,7 @@ function renderReceipt() {
   const cb = $('collectBox');
   if (paidItems.length === 0 || people <= 1) { cb.style.display = 'none'; return; }
   cb.style.display = '';
-  const paidTotal       = paidItems.reduce((s, x) => s + x.amount, 0);
+  const paidTotal        = paidItems.reduce((s, x) => s + evEffective(x, people).total, 0);
   const collectPerPerson = paidTotal / people;
   const othersCount      = people - 1;
   const totalToCollect   = collectPerPerson * othersCount;
