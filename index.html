@@ -1448,6 +1448,22 @@
         </div>
       </div>
 
+      <!-- Share Game -->
+      <div class="card">
+        <div class="card-body" style="padding:12px 18px;display:flex;gap:8px">
+          <button class="btn btn-primary" id="mjShareBtn" style="flex:1;justify-content:center">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            <span data-i18n="mj_share">Share Game Link</span>
+          </button>
+        </div>
+        <div style="padding:0 18px 14px;font-size:.74rem;color:var(--muted);line-height:1.5" data-i18n="mj_share_hint">
+          Share after each round so other players can verify scores on their own phone.
+        </div>
+      </div>
+
     </div><!-- /right -->
 
   </div><!-- /mj-wrap -->
@@ -2747,8 +2763,34 @@ function mjRenderAll() {
 function mjPersist() {
   try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
 }
+function mjShareUrl() {
+  return location.origin + location.pathname + '?mj=' + btoa(unescape(encodeURIComponent(JSON.stringify(MJ))));
+}
 
 function mjLoad() {
+  try {
+    const param = new URLSearchParams(location.search).get('mj');
+    if (param) {
+      const d = JSON.parse(decodeURIComponent(escape(atob(param))));
+      if (d.players) MJ.players = d.players;
+      if (d.base !== undefined) MJ.base = d.base;
+      if (d.perTai !== undefined) MJ.perTai = d.perTai;
+      if (d.rounds) MJ.rounds = d.rounds;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('[data-tab="mahjong"]').classList.add('active');
+      $('tab-mahjong').classList.add('active');
+      history.replaceState(null, '', location.pathname);
+      setTimeout(() => showToast(t('mj_loaded_link'), 'info'), 300);
+      [0,1,2,3].forEach(i => $('mjP'+i).value = MJ.players[i]);
+      $('mjBase').value = MJ.base;
+      $('mjPerTai').value = MJ.perTai;
+      mjUpdateDropdowns();
+      mjRenderAll();
+      mjPersist();
+      return;
+    }
+  } catch(_) {}
   try {
     const saved = JSON.parse(localStorage.getItem('mahjong-calc') || '{}');
     if (saved.players) MJ.players = saved.players;
@@ -2762,6 +2804,19 @@ function mjLoad() {
   mjUpdateDropdowns();
   mjRenderAll();
 }
+
+$('mjShareBtn').onclick = () => {
+  const url = mjShareUrl();
+  navigator.clipboard.writeText(url)
+    .then(() => showToast(currentLang === 'zh' ? '遊戲連結已複製！🔗' : 'Game link copied! 🔗'))
+    .catch(() => {
+      const inp = document.createElement('textarea');
+      inp.value = url; document.body.appendChild(inp);
+      inp.select(); document.execCommand('copy');
+      document.body.removeChild(inp);
+      showToast(currentLang === 'zh' ? '遊戲連結已複製！' : 'Game link copied!');
+    });
+};
 
 // ─── i18n ─────────────────────────────────────────────────────
 let currentLang = localStorage.getItem('app-lang') || 'en';
@@ -2840,6 +2895,9 @@ const I18N = {
     no_settlement: 'Play some rounds to see who pays whom.',
     everyone_even: 'Everyone is even! 🎉',
     transfers_needed: 'Transfers needed ({n})',
+    mj_share: 'Share Game Link',
+    mj_share_hint: 'Share after each round so other players can verify scores on their own phone.',
+    mj_loaded_link: 'Game loaded from shared link! 🔗',
     pays_arrow: '→ pays →',
     mj_self_desc: '{winner} 自摸 ({tai}台) — each pays {pay}',
     mj_disc_desc: '{winner} wins from {loser} ({tai}台)',
@@ -2927,6 +2985,9 @@ const I18N = {
     no_settlement: '進行回合後查看誰付款給誰。',
     everyone_even: '大家扯平了！🎉',
     transfers_needed: '需要轉帳 ({n})',
+    mj_share: '分享遊戲連結',
+    mj_share_hint: '每回合後分享，讓其他玩家可以在自己手機上驗證分數。',
+    mj_loaded_link: '已從分享連結載入遊戲！🔗',
     pays_arrow: '→ 付 →',
     mj_self_desc: '{winner} 自摸 ({tai}台) — 每人付 {pay}',
     mj_disc_desc: '{winner} 胡 {loser} ({tai}台)',
