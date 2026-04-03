@@ -574,12 +574,6 @@
       font-size: .74rem; color: var(--muted); white-space: nowrap; flex-shrink: 0;
     }
     .ev-paid-chk-wrap input { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
-    .ev-item-details {
-      display: none; margin-top: 7px; padding-top: 7px;
-      border-top: 1px dashed var(--border);
-      font-size: .75rem; color: var(--muted); line-height: 1.6;
-    }
-    .ev-item.expanded .ev-item-details { display: block; }
     .ev-item-detail-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
     .ev-item-tag {
       display: inline-flex; align-items: center; gap: 3px;
@@ -587,11 +581,19 @@
       font-size: .7rem; font-weight: 600;
       background: var(--surface); border: 1px solid var(--border);
     }
-    .ev-item-edit-hint {
-      font-size: .68rem; color: var(--muted); opacity: 0;
-      transition: opacity .15s; margin-left: auto; flex-shrink: 0;
+    .ev-item-inline-edit {
+      display: none; margin-top: 8px; padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      animation: fadeIn .15s ease;
     }
-    .ev-item:hover .ev-item-edit-hint { opacity: 1; }
+    .ev-item.editing { border-color: var(--accent); cursor: default; }
+    .ev-item.editing .ev-item-inline-edit { display: block; }
+    .ev-item-inline-edit .field-input {
+      padding: 7px 10px; font-size: .84rem;
+    }
+    .ev-item-inline-edit .ev-add-row { margin-bottom: 6px; }
+    .ev-item-inline-edit .ev-currency-calc { margin-bottom: 6px; }
+    .ev-item-inline-edit .form-actions { margin-top: 8px; }
 
     /* ── Receipt Card ──────────────────────────────────────── */
     .receipt {
@@ -1648,7 +1650,6 @@ $('evCalcUsePP').onclick = () => {
 };
 
 function resetAddForm() {
-  editingItemId = null;
   $('evItemName').value = ''; $('evItemAmt').value = '';
   $('evItemPaid').checked = false;
   $('evCurrencySel').value = ''; $('evCurrencyAmt').value = '';
@@ -1666,8 +1667,6 @@ function resetAddForm() {
   $('evCostPerPerson').classList.remove('active');
   $('evSubmitItem').textContent = '💾 Save';
 }
-
-let editingItemId = null;
 
 function gatherItemMeta() {
   const cur = $('evCurrencySel').value;
@@ -1688,18 +1687,8 @@ function addEvItem() {
   if (!name || isNaN(amt) || amt <= 0) { showToast('Enter a name and valid amount.', 'warn'); return; }
   const meta = gatherItemMeta();
   if (evCostType === 'per-person') amt = amt * getCalcPeople();
-
-  if (editingItemId) {
-    const item = ES.items.find(x => x.id === editingItemId);
-    if (item) {
-      item.name = name; item.amount = amt; item.paidByMe = paid; item.meta = meta;
-    }
-    editingItemId = null;
-    showToast(`"${name}" updated!`);
-  } else {
-    ES.items.push({ id: uid(), name, amount: amt, paidByMe: paid, meta });
-    showToast(`"${name}" added!`);
-  }
+  ES.items.push({ id: uid(), name, amount: amt, paidByMe: paid, meta });
+  showToast(`"${name}" added!`);
   resetAddForm();
   $('evAddForm').classList.remove('open');
   renderEvItems(); renderReceipt(); persistES();
@@ -1718,17 +1707,191 @@ function formatItemMeta(item) {
   return tags.map(t => `<span class="ev-item-tag">${esc(t)}</span>`).join('');
 }
 
+function buildInlineEditHTML(item) {
+  const m = item.meta || {};
+  const hasCur = !!m.currency;
+  const curVal = m.currency || '';
+  const foreignAmt = m.foreignAmt || '';
+  const rate = m.rate || (m.currency ? FX_RATES[m.currency] : '') || '';
+  const calcPeople = m.calcPeople || ES.people;
+  const costType = m.costType || 'total';
+  const inputAmt = m.inputAmt || item.amount;
+  return `
+    <div class="ev-item-inline-edit" onclick="event.stopPropagation()">
+      <div class="ev-add-row">
+        <input class="field-input ie-name" type="text" value="${esc(item.name)}" placeholder="e.g. Venue Rent" autocomplete="off" style="margin:0" />
+        <input class="field-input ie-amt" type="number" value="${inputAmt}" placeholder="Amount (TWD)" min="0" step="1" style="margin:0" />
+      </div>
+      <div class="ev-currency-calc ie-calc-wrap">
+        <div class="ev-currency-calc-title">🧮 Calculator</div>
+        <div class="ev-currency-row">
+          <select class="ev-currency-sel ie-cur">
+            <option value="">TWD (direct)</option>
+            <option value="CNY"${curVal==='CNY'?' selected':''}>CNY ¥</option>
+            <option value="USD"${curVal==='USD'?' selected':''}>USD $</option>
+            <option value="JPY"${curVal==='JPY'?' selected':''}>JPY ¥</option>
+            <option value="EUR"${curVal==='EUR'?' selected':''}>EUR €</option>
+          </select>
+          <input type="number" class="ev-currency-amt ie-forAmt" placeholder="${hasCur?'Foreign amt':'Amount'}" value="${foreignAmt}" min="0" step="any" />
+          <span class="ev-calc-label ie-rateLabel" style="${hasCur?'':'display:none'}">× Rate</span>
+          <input type="number" class="ev-currency-amt ev-rate-input ie-rate" value="${rate}" min="0" step="any" style="${hasCur?'':'display:none'}" />
+        </div>
+        <div class="ev-currency-row">
+          <span class="ev-calc-label">÷ People</span>
+          <input type="number" class="ev-currency-amt ev-people-input ie-people" value="${calcPeople}" min="1" step="1" />
+        </div>
+        <div class="ev-calc-result ie-result">
+          <div class="ev-calc-result-row ie-totalRow" style="display:none">
+            <span>Total TWD</span>
+            <span class="ev-calc-result-val ie-totalVal">$0</span>
+          </div>
+          <div class="ev-calc-result-row ie-ppRow" style="display:none">
+            <span>Per person</span>
+            <span class="ev-calc-result-pp ie-ppVal">$0</span>
+          </div>
+          <button type="button" class="ev-calc-use-btn ie-useTotal" style="display:none">↑ Use total TWD amount</button>
+          <button type="button" class="ev-calc-use-btn ie-usePP" style="display:none;margin-top:3px">↑ Use per-person amount</button>
+        </div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Amount Type</div>
+        <div class="cost-type-toggle">
+          <button type="button" class="cost-type-btn ie-costTotal${costType==='total'?' active':''}">Total</button>
+          <button type="button" class="cost-type-btn ie-costPP${costType==='per-person'?' active':''}">Per Person</button>
+        </div>
+      </div>
+      <label class="ev-paid-label">
+        <input type="checkbox" class="ie-paid"${item.paidByMe?' checked':''} />
+        I paid this expense
+      </label>
+      <div class="form-actions">
+        <button class="btn btn-expense ie-save" data-id="${item.id}">💾 Update</button>
+        <button class="btn btn-ghost ie-cancel" data-id="${item.id}">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function updateInlineCalc(box) {
+  const cur = box.querySelector('.ie-cur').value;
+  const calcAmt = parseFloat(box.querySelector('.ie-forAmt').value);
+  const mainAmt = parseFloat(box.querySelector('.ie-amt').value);
+  const people = Math.max(1, parseInt(box.querySelector('.ie-people').value) || 1);
+  const result = box.querySelector('.ie-result');
+  const calcWrap = box.querySelector('.ie-calc-wrap');
+  const hasCalcAmt = !isNaN(calcAmt) && calcAmt > 0;
+  const hasMain = !isNaN(mainAmt) && mainAmt > 0;
+
+  if (cur && hasCalcAmt) {
+    const rate = parseFloat(box.querySelector('.ie-rate').value) || 1;
+    const totalTWD = Math.round(calcAmt * rate);
+    const ppTWD = Math.round(totalTWD / people);
+    box.querySelector('.ie-totalVal').textContent = fmt(totalTWD);
+    box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
+    box.querySelector('.ie-totalRow').style.display = '';
+    box.querySelector('.ie-ppRow').style.display = '';
+    box.querySelector('.ie-useTotal').style.display = '';
+    box.querySelector('.ie-usePP').style.display = '';
+    box.querySelector('.ie-usePP').style.marginTop = '3px';
+    result.classList.add('visible');
+    calcWrap.classList.add('has-result');
+  } else if (hasCalcAmt && !cur) {
+    const ppTWD = Math.round(calcAmt / people);
+    box.querySelector('.ie-totalVal').textContent = fmt(calcAmt);
+    box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
+    box.querySelector('.ie-totalRow').style.display = '';
+    box.querySelector('.ie-ppRow').style.display = '';
+    box.querySelector('.ie-useTotal').style.display = '';
+    box.querySelector('.ie-usePP').style.display = '';
+    box.querySelector('.ie-usePP').style.marginTop = '3px';
+    result.classList.add('visible');
+    calcWrap.classList.add('has-result');
+  } else if (hasMain) {
+    const ppTWD = Math.round(mainAmt / people);
+    box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
+    box.querySelector('.ie-totalRow').style.display = 'none';
+    box.querySelector('.ie-ppRow').style.display = '';
+    box.querySelector('.ie-useTotal').style.display = 'none';
+    box.querySelector('.ie-usePP').style.display = '';
+    box.querySelector('.ie-usePP').style.marginTop = '6px';
+    result.classList.add('visible');
+    calcWrap.classList.add('has-result');
+  } else {
+    result.classList.remove('visible');
+    calcWrap.classList.remove('has-result');
+  }
+}
+
+function wireInlineEdit(el, item) {
+  const box = el.querySelector('.ev-item-inline-edit');
+  if (!box) return;
+  const q = sel => box.querySelector(sel);
+
+  q('.ie-cur').addEventListener('change', () => {
+    const cur = q('.ie-cur').value;
+    if (cur) {
+      q('.ie-rate').value = FX_RATES[cur] || 1;
+      q('.ie-rate').style.display = '';
+      q('.ie-rateLabel').style.display = '';
+      q('.ie-forAmt').placeholder = 'Foreign amt';
+    } else {
+      q('.ie-rate').style.display = 'none';
+      q('.ie-rateLabel').style.display = 'none';
+      q('.ie-forAmt').value = '';
+      q('.ie-forAmt').placeholder = 'Amount';
+    }
+    updateInlineCalc(box);
+  });
+  ['.ie-forAmt','.ie-amt','.ie-rate','.ie-people'].forEach(s =>
+    q(s).addEventListener('input', () => updateInlineCalc(box))
+  );
+  q('.ie-costTotal').onclick = () => { q('.ie-costTotal').classList.add('active'); q('.ie-costPP').classList.remove('active'); };
+  q('.ie-costPP').onclick = () => { q('.ie-costPP').classList.add('active'); q('.ie-costTotal').classList.remove('active'); };
+
+  q('.ie-useTotal').onclick = () => {
+    const cur = q('.ie-cur').value;
+    const cAmt = parseFloat(q('.ie-forAmt').value);
+    if (isNaN(cAmt) || cAmt <= 0) return;
+    const rate = parseFloat(q('.ie-rate').value) || 1;
+    q('.ie-amt').value = cur ? Math.round(cAmt * rate) : Math.round(cAmt);
+    q('.ie-costTotal').classList.add('active'); q('.ie-costPP').classList.remove('active');
+    updateInlineCalc(box);
+  };
+  q('.ie-usePP').onclick = () => {
+    const cur = q('.ie-cur').value;
+    const cAmt = parseFloat(q('.ie-forAmt').value);
+    const mAmt = parseFloat(q('.ie-amt').value);
+    const ppl = Math.max(1, parseInt(q('.ie-people').value) || 1);
+    if (!isNaN(cAmt) && cAmt > 0) {
+      const rate = parseFloat(q('.ie-rate').value) || 1;
+      const total = cur ? Math.round(cAmt * rate) : Math.round(cAmt);
+      q('.ie-amt').value = Math.round(total / ppl);
+    } else if (!isNaN(mAmt) && mAmt > 0) {
+      q('.ie-amt').value = Math.round(mAmt / ppl);
+    }
+    q('.ie-costPP').classList.add('active'); q('.ie-costTotal').classList.remove('active');
+    updateInlineCalc(box);
+  };
+
+  ['.ie-name','.ie-amt'].forEach(s =>
+    q(s).addEventListener('keydown', e => { if (e.key === 'Enter') q('.ie-save').click(); })
+  );
+
+  updateInlineCalc(box);
+}
+
+let expandedItemId = null;
+
 function renderEvItems() {
   const list  = $('evItemsList');
   const empty = $('evItemsEmpty');
   list.querySelectorAll('.ev-item').forEach(el => el.remove());
-  if (ES.items.length === 0) { empty.style.display = ''; return; }
+  if (ES.items.length === 0) { empty.style.display = ''; expandedItemId = null; return; }
   empty.style.display = 'none';
   ES.items.forEach(item => {
     const el = document.createElement('div');
-    el.className = 'ev-item' + (item.paidByMe ? ' is-paid' : '');
+    const isEditing = expandedItemId === item.id;
+    el.className = 'ev-item' + (item.paidByMe ? ' is-paid' : '') + (isEditing ? ' editing' : '');
     el.dataset.id = item.id;
-    const detailTags = formatItemMeta(item);
     el.innerHTML = `
       <div class="ev-item-main">
         <span class="ev-item-name">${esc(item.name)}</span>
@@ -1747,8 +1910,9 @@ function renderEvItems() {
           </svg>
         </button>
       </div>
-      ${detailTags ? '<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;">' + detailTags + '</div>' : ''}`;
+      ${buildInlineEditHTML(item)}`;
     list.appendChild(el);
+    if (isEditing) wireInlineEdit(el, item);
   });
 }
 
@@ -1759,65 +1923,69 @@ document.addEventListener('change', e => {
   if (item) { item.paidByMe = chk.checked; renderEvItems(); renderReceipt(); persistES(); }
 });
 
-function editEvItem(itemId) {
-  const item = ES.items.find(x => x.id === itemId);
-  if (!item) return;
-  editingItemId = item.id;
-  $('evAddForm').classList.add('open');
-  $('evItemName').value = item.name;
-  $('evItemPaid').checked = item.paidByMe;
-
-  const m = item.meta;
-  if (m) {
-    if (m.currency) {
-      $('evCurrencySel').value = m.currency;
-      $('evCurrencyAmt').value = m.foreignAmt || '';
-      $('evCalcRate').value = m.rate || FX_RATES[m.currency] || 1;
-      $('evCalcRate').style.display = '';
-      $('evCalcRateLabel').style.display = '';
-      $('evCurrencyAmt').placeholder = 'Foreign amt';
-    } else {
-      $('evCurrencySel').value = '';
-      $('evCurrencyAmt').value = '';
-      $('evCalcRate').style.display = 'none';
-      $('evCalcRateLabel').style.display = 'none';
-    }
-    $('evCalcPeople').value = m.calcPeople || ES.people;
-    evCostType = m.costType || 'total';
-    $('evItemAmt').value = m.inputAmt || item.amount;
-  } else {
-    $('evCurrencySel').value = '';
-    $('evCurrencyAmt').value = '';
-    $('evCalcRate').style.display = 'none';
-    $('evCalcRateLabel').style.display = 'none';
-    $('evCalcPeople').value = ES.people;
-    evCostType = 'total';
-    $('evItemAmt').value = item.amount;
-  }
-
-  if (evCostType === 'per-person') {
-    $('evCostPerPerson').classList.add('active');
-    $('evCostTotal').classList.remove('active');
-  } else {
-    $('evCostTotal').classList.add('active');
-    $('evCostPerPerson').classList.remove('active');
-  }
-  updateCurrencyCalc();
-  $('evSubmitItem').textContent = '💾 Update';
-  $('evAddForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  $('evItemName').focus();
-}
-
 document.addEventListener('click', e => {
-  const evItem = e.target.closest('.ev-item');
-  if (evItem && !e.target.closest('.ev-del-btn') && !e.target.closest('.ev-paid-chk-wrap')) {
-    editEvItem(evItem.dataset.id);
+  // Save inline edit
+  const saveBtn = e.target.closest('.ie-save');
+  if (saveBtn) {
+    const id = saveBtn.dataset.id;
+    const item = ES.items.find(x => x.id === id);
+    const box = saveBtn.closest('.ev-item-inline-edit');
+    if (!item || !box) return;
+    const name = box.querySelector('.ie-name').value.trim();
+    let amt = parseFloat(box.querySelector('.ie-amt').value);
+    const paid = box.querySelector('.ie-paid').checked;
+    if (!name || isNaN(amt) || amt <= 0) { showToast('Enter a name and valid amount.', 'warn'); return; }
+    const cur = box.querySelector('.ie-cur').value;
+    const costType = box.querySelector('.ie-costPP').classList.contains('active') ? 'per-person' : 'total';
+    const calcPeople = Math.max(1, parseInt(box.querySelector('.ie-people').value) || 1);
+    const meta = {
+      currency: cur || null,
+      foreignAmt: cur ? (parseFloat(box.querySelector('.ie-forAmt').value) || null) : null,
+      rate: cur ? (parseFloat(box.querySelector('.ie-rate').value) || 1) : null,
+      calcPeople, costType, inputAmt: amt
+    };
+    if (costType === 'per-person') amt = amt * calcPeople;
+    item.name = name; item.amount = amt; item.paidByMe = paid; item.meta = meta;
+    expandedItemId = null;
+    renderEvItems(); renderReceipt(); persistES();
+    showToast(`"${name}" updated!`);
     return;
   }
 
+  // Cancel inline edit
+  const cancelBtn = e.target.closest('.ie-cancel');
+  if (cancelBtn) {
+    expandedItemId = null;
+    renderEvItems();
+    return;
+  }
+
+  // Click item row to expand its inline edit
+  const evItem = e.target.closest('.ev-item');
+  if (evItem && !e.target.closest('.ev-del-btn') && !e.target.closest('.ev-paid-chk-wrap') && !e.target.closest('.ev-item-inline-edit')) {
+    const id = evItem.dataset.id;
+    if (expandedItemId === id) {
+      expandedItemId = null;
+    } else {
+      expandedItemId = id;
+    }
+    renderEvItems();
+    if (expandedItemId) {
+      const openEl = $('evItemsList').querySelector(`.ev-item[data-id="${expandedItemId}"]`);
+      if (openEl) {
+        openEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const nameInput = openEl.querySelector('.ie-name');
+        if (nameInput) nameInput.focus();
+      }
+    }
+    return;
+  }
+
+  // Delete item
   const btn = e.target.closest('.ev-del-btn');
   if (!btn) return;
   ES.items = ES.items.filter(x => x.id !== btn.dataset.id);
+  if (expandedItemId === btn.dataset.id) expandedItemId = null;
   renderEvItems(); renderReceipt(); persistES();
   showToast('Item removed.', 'info');
 });
