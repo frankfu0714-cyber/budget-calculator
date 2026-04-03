@@ -253,7 +253,7 @@
     /* ── Items list ───────────────────────────────────────── */
     .items-list {
       display: flex; flex-direction: column; gap: 7px;
-      max-height: 300px; overflow-y: auto;
+      max-height: 600px; overflow-y: auto;
       padding-right: 2px;
     }
     .items-list::-webkit-scrollbar { width: 4px; }
@@ -1972,6 +1972,21 @@ function buildInlineEditHTML(item) {
         <input class="field-input ie-name" type="text" value="${esc(item.name)}" placeholder="e.g. Venue Rent" autocomplete="off" style="margin:0" />
         <input class="field-input ie-amt" type="number" value="${inputAmt}" placeholder="Amount (TWD)" min="0" step="1" style="margin:0" />
       </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Amount Type</div>
+        <div class="cost-type-toggle">
+          <button type="button" class="cost-type-btn ie-costTotal${costType==='total'?' active':''}">Total</button>
+          <button type="button" class="cost-type-btn ie-costPP${costType==='per-person'?' active':''}">Per Person</button>
+        </div>
+      </div>
+      <label class="ev-paid-label">
+        <input type="checkbox" class="ie-paid"${item.paidByMe?' checked':''} />
+        I paid this expense
+      </label>
+      <div class="form-actions" style="margin-bottom:8px">
+        <button class="btn btn-expense ie-save" data-id="${item.id}">💾 Update</button>
+        <button class="btn btn-ghost ie-cancel" data-id="${item.id}">Cancel</button>
+      </div>
       <div class="ev-currency-calc ie-calc-wrap">
         <div class="ev-currency-calc-title">🧮 Calculator</div>
         <div class="ev-currency-row">
@@ -1999,24 +2014,7 @@ function buildInlineEditHTML(item) {
             <span>Per person</span>
             <span class="ev-calc-result-pp ie-ppVal">$0</span>
           </div>
-          <button type="button" class="ev-calc-use-btn ie-useTotal" style="display:none">↑ Use total TWD amount</button>
-          <button type="button" class="ev-calc-use-btn ie-usePP" style="display:none;margin-top:3px">↑ Use per-person amount</button>
         </div>
-      </div>
-      <div style="margin-bottom:8px">
-        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Amount Type</div>
-        <div class="cost-type-toggle">
-          <button type="button" class="cost-type-btn ie-costTotal${costType==='total'?' active':''}">Total</button>
-          <button type="button" class="cost-type-btn ie-costPP${costType==='per-person'?' active':''}">Per Person</button>
-        </div>
-      </div>
-      <label class="ev-paid-label">
-        <input type="checkbox" class="ie-paid"${item.paidByMe?' checked':''} />
-        I paid this expense
-      </label>
-      <div class="form-actions">
-        <button class="btn btn-expense ie-save" data-id="${item.id}">💾 Update</button>
-        <button class="btn btn-ghost ie-cancel" data-id="${item.id}">Cancel</button>
       </div>
     </div>`;
 }
@@ -2039,9 +2037,6 @@ function updateInlineCalc(box) {
     box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
     box.querySelector('.ie-totalRow').style.display = '';
     box.querySelector('.ie-ppRow').style.display = '';
-    box.querySelector('.ie-useTotal').style.display = '';
-    box.querySelector('.ie-usePP').style.display = '';
-    box.querySelector('.ie-usePP').style.marginTop = '3px';
     result.classList.add('visible');
     calcWrap.classList.add('has-result');
   } else if (hasCalcAmt && !cur) {
@@ -2050,9 +2045,6 @@ function updateInlineCalc(box) {
     box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
     box.querySelector('.ie-totalRow').style.display = '';
     box.querySelector('.ie-ppRow').style.display = '';
-    box.querySelector('.ie-useTotal').style.display = '';
-    box.querySelector('.ie-usePP').style.display = '';
-    box.querySelector('.ie-usePP').style.marginTop = '3px';
     result.classList.add('visible');
     calcWrap.classList.add('has-result');
   } else if (hasMain) {
@@ -2060,9 +2052,6 @@ function updateInlineCalc(box) {
     box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
     box.querySelector('.ie-totalRow').style.display = 'none';
     box.querySelector('.ie-ppRow').style.display = '';
-    box.querySelector('.ie-useTotal').style.display = 'none';
-    box.querySelector('.ie-usePP').style.display = '';
-    box.querySelector('.ie-usePP').style.marginTop = '6px';
     result.classList.add('visible');
     calcWrap.classList.add('has-result');
   } else {
@@ -2096,31 +2085,6 @@ function wireInlineEdit(el, item) {
   );
   q('.ie-costTotal').onclick = () => { q('.ie-costTotal').classList.add('active'); q('.ie-costPP').classList.remove('active'); };
   q('.ie-costPP').onclick = () => { q('.ie-costPP').classList.add('active'); q('.ie-costTotal').classList.remove('active'); };
-
-  q('.ie-useTotal').onclick = () => {
-    const cur = q('.ie-cur').value;
-    const cAmt = parseFloat(q('.ie-forAmt').value);
-    if (isNaN(cAmt) || cAmt <= 0) return;
-    const rate = parseFloat(q('.ie-rate').value) || 1;
-    q('.ie-amt').value = cur ? Math.round(cAmt * rate) : Math.round(cAmt);
-    q('.ie-costTotal').classList.add('active'); q('.ie-costPP').classList.remove('active');
-    updateInlineCalc(box);
-  };
-  q('.ie-usePP').onclick = () => {
-    const cur = q('.ie-cur').value;
-    const cAmt = parseFloat(q('.ie-forAmt').value);
-    const mAmt = parseFloat(q('.ie-amt').value);
-    const ppl = Math.max(1, parseInt(q('.ie-people').value) || 1);
-    if (!isNaN(cAmt) && cAmt > 0) {
-      const rate = parseFloat(q('.ie-rate').value) || 1;
-      const total = cur ? Math.round(cAmt * rate) : Math.round(cAmt);
-      q('.ie-amt').value = Math.round(total / ppl);
-    } else if (!isNaN(mAmt) && mAmt > 0) {
-      q('.ie-amt').value = Math.round(mAmt / ppl);
-    }
-    q('.ie-costPP').classList.add('active'); q('.ie-costTotal').classList.remove('active');
-    updateInlineCalc(box);
-  };
 
   ['.ie-name','.ie-amt'].forEach(s =>
     q(s).addEventListener('keydown', e => { if (e.key === 'Enter') q('.ie-save').click(); })
