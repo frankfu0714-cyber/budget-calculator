@@ -1283,6 +1283,58 @@
         </div>
       </div>
 
+      <!-- Tai Reference -->
+      <div class="card">
+        <div class="card-head" style="cursor:pointer" id="mjTaiRefToggle">
+          <div class="card-title">
+            <span class="dot" style="background:var(--accent)"></span>
+            📖 台數參考 Tai Reference
+          </div>
+          <span style="font-size:.8rem;color:var(--muted)" id="mjTaiRefArrow">▾</span>
+        </div>
+        <div class="card-body" id="mjTaiRefBody" style="display:none;padding:10px 16px">
+          <div style="font-size:.78rem;line-height:1.8;color:var(--text)">
+            <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+              <thead>
+                <tr style="border-bottom:2px solid var(--border);text-align:left">
+                  <th style="padding:6px 8px;color:var(--muted);font-weight:700">牌型 Pattern</th>
+                  <th style="padding:6px 8px;color:var(--accent);font-weight:700;text-align:center;white-space:nowrap">台 Tai</th>
+                </tr>
+              </thead>
+              <tbody id="mjTaiRefTable">
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">自摸 Self-drawn</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">門清 Concealed hand</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">門清自摸 Concealed + Self-drawn</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+3</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">莊家 Dealer (win/lose)</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">搶槓 Rob a Kong</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">槓上開花 Win on Kong draw</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">海底撈月 Last tile win</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">花牌 Flower (each)</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">正花 Matched Flower</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+2</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">四花 All 4 Flowers (same set)</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+8</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">八仙過海 All 8 Flowers</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+8</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">三元牌 Dragon Triplet (中/發/白 each)</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">風牌 Seat/Round Wind Triplet</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+1</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">碰碰胡 All Triplets</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+4</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">混一色 Half Flush</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+4</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">清一色 Full Flush</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+8</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">小三元 Small Three Dragons</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+4</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">大三元 Big Three Dragons</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+8</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">小四喜 Small Four Winds</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+8</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">大四喜 Big Four Winds</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+16</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">平胡 All Sequences (no triplets)</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+2</td></tr>
+                <tr><td style="padding:5px 8px;border-bottom:1px solid var(--border)">全求人 Win on others' discards only</td><td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-weight:700">+2</td></tr>
+                <tr><td style="padding:5px 8px">天胡/地胡 Heavenly/Earthly Hand</td><td style="padding:5px 8px;text-align:center;font-weight:700">+16</td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:8px;font-size:.72rem;color:var(--muted);line-height:1.5">
+              💡 台數可累加。例：自摸(1) + 門清(1) + 門清自摸(3) = 5台<br>
+              Tai are additive. E.g.: Self-drawn(1) + Concealed(1) + Concealed self-drawn bonus(3) = 5 tai
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Add Round -->
       <div class="card">
         <div class="card-head">
@@ -1320,7 +1372,7 @@
             </div>
             <div class="mj-form-row">
               <label>Tai 台數</label>
-              <input id="mjTai" type="number" value="1" min="0" max="50" step="1" style="width:80px;flex:0" />
+              <input id="mjTai" type="number" value="1" min="0" max="50" step="1" style="width:100px;flex:none;padding:10px 14px;font-size:1.1rem;font-weight:700;text-align:center" />
             </div>
             <div class="mj-preview" id="mjPreview">
               <div class="mj-preview-label">Payment Preview</div>
@@ -2430,6 +2482,19 @@ let MJ = {
   rounds: []
 };
 let mjWinType = 'self';
+
+// Tai reference toggle
+$('mjTaiRefToggle').onclick = () => {
+  const body = $('mjTaiRefBody');
+  const arrow = $('mjTaiRefArrow');
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    arrow.textContent = '▴';
+  } else {
+    body.style.display = 'none';
+    arrow.textContent = '▾';
+  }
+};
 
 function mjPlayerName(i) { return MJ.players[i] || `P${i+1}`; }
 function mjPayment() { return MJ.base + (parseInt($('mjTai').value) || 0) * MJ.perTai; }
