@@ -1912,16 +1912,6 @@ function updateCurrencyCalc() {
     $('evCalcUsePP').style.marginTop = '3px';
     result.classList.add('visible');
     calc.classList.add('has-result');
-  } else if (hasMain) {
-    const ppTWD = Math.round(mainAmt / people);
-    $('evCalcPerPerson').textContent = fmt(ppTWD);
-    $('evCalcTotalRow').style.display = 'none';
-    $('evCalcPPRow').style.display = '';
-    $('evCalcUseTotal').style.display = 'none';
-    $('evCalcUsePP').style.display = '';
-    $('evCalcUsePP').style.marginTop = '6px';
-    result.classList.add('visible');
-    calc.classList.add('has-result');
   } else {
     result.classList.remove('visible');
     calc.classList.remove('has-result');
@@ -2108,13 +2098,6 @@ function updateInlineCalc(box) {
     box.querySelector('.ie-totalVal').textContent = fmt(calcAmt);
     box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
     box.querySelector('.ie-totalRow').style.display = '';
-    box.querySelector('.ie-ppRow').style.display = '';
-    result.classList.add('visible');
-    calcWrap.classList.add('has-result');
-  } else if (hasMain) {
-    const ppTWD = Math.round(mainAmt / people);
-    box.querySelector('.ie-ppVal').textContent = fmt(ppTWD);
-    box.querySelector('.ie-totalRow').style.display = 'none';
     box.querySelector('.ie-ppRow').style.display = '';
     result.classList.add('visible');
     calcWrap.classList.add('has-result');
