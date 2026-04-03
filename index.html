@@ -2229,12 +2229,18 @@ function renderReceipt() {
   if (ES.items.length === 0) {
     bd.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.83rem;padding:10px 0">Add expenses to see breakdown</div>';
   } else {
-    bd.innerHTML = ES.items.map(item => `
+    bd.innerHTML = ES.items.map(item => {
+      const isPerPerson = item.meta && item.meta.costType === 'per-person';
+      const tag = isPerPerson
+        ? '<span class="cost-type-badge ctype-per-person" style="font-size:.6rem;padding:1px 6px">Per Person</span>'
+        : '<span class="cost-type-badge ctype-total" style="font-size:.6rem;padding:1px 6px">Fixed</span>';
+      return `
       <div class="receipt-line">
-        <span class="receipt-line-name">${esc(item.name)}</span>
+        <span class="receipt-line-name">${esc(item.name)} ${tag}</span>
         <span class="receipt-line-total">${fmt(item.amount)}</span>
         <span class="receipt-line-pp">${fmt(item.amount / people)}/person</span>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   const paidItems = ES.items.filter(x => x.paidByMe);
