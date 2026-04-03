@@ -553,9 +553,10 @@
       border: 1px solid var(--border);
       border-radius: 9px;
       animation: slideIn .18s ease;
-      transition: box-shadow .15s;
+      transition: box-shadow .15s, border-color .15s;
+      cursor: pointer;
     }
-    .ev-item:hover { box-shadow: var(--sh-md); }
+    .ev-item:hover { box-shadow: var(--sh-md); border-color: rgba(99,102,241,.3); }
     .ev-item.is-paid { border-color: rgba(99,102,241,.3); background: rgba(99,102,241,.05); }
     .ev-item-main {
       display: flex; align-items: center; gap: 9px;
@@ -586,19 +587,11 @@
       font-size: .7rem; font-weight: 600;
       background: var(--surface); border: 1px solid var(--border);
     }
-    .ev-item-edit-btn {
-      background: none; border: 1px solid var(--border); border-radius: 6px;
-      padding: 3px 10px; font-size: .72rem; font-weight: 600; font-family: inherit;
-      color: var(--accent); cursor: pointer;
-      transition: background .12s, border-color .12s;
+    .ev-item-edit-hint {
+      font-size: .68rem; color: var(--muted); opacity: 0;
+      transition: opacity .15s; margin-left: auto; flex-shrink: 0;
     }
-    .ev-item-edit-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .ev-item-toggle {
-      background: none; border: none; cursor: pointer;
-      padding: 0 2px; font-size: .7rem; color: var(--muted);
-      transition: color .12s; flex-shrink: 0;
-    }
-    .ev-item-toggle:hover { color: var(--accent); }
+    .ev-item:hover .ev-item-edit-hint { opacity: 1; }
 
     /* ── Receipt Card ──────────────────────────────────────── */
     .receipt {
@@ -1738,15 +1731,14 @@ function renderEvItems() {
     const detailTags = formatItemMeta(item);
     el.innerHTML = `
       <div class="ev-item-main">
-        <button class="ev-item-toggle" data-id="${item.id}" title="Show details">▸</button>
         <span class="ev-item-name">${esc(item.name)}</span>
         ${item.paidByMe ? '<span class="paid-badge">I paid</span>' : ''}
-        <label class="ev-paid-chk-wrap" title="Mark as paid by me">
+        <label class="ev-paid-chk-wrap" title="Mark as paid by me" onclick="event.stopPropagation()">
           <input type="checkbox" class="ev-paid-chk" data-id="${item.id}" ${item.paidByMe ? 'checked' : ''} />
           <span>${item.paidByMe ? '' : 'I paid'}</span>
         </label>
         <span class="ev-item-amt">${fmt(item.amount)}</span>
-        <button class="btn-icon ev-del-btn" data-id="${item.id}" title="Remove">
+        <button class="btn-icon ev-del-btn" data-id="${item.id}" title="Remove" onclick="event.stopPropagation()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6l-1 14H6L5 6"/>
@@ -1755,10 +1747,7 @@ function renderEvItems() {
           </svg>
         </button>
       </div>
-      <div class="ev-item-details">
-        ${detailTags ? '<div class="ev-item-detail-tags">' + detailTags + '</div>' : '<div style="font-size:.73rem;color:var(--muted)">No calculator details</div>'}
-        <button class="ev-item-edit-btn" data-id="${item.id}">✎ Edit</button>
-      </div>`;
+      ${detailTags ? '<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;">' + detailTags + '</div>' : ''}`;
     list.appendChild(el);
   });
 }
@@ -1770,62 +1759,59 @@ document.addEventListener('change', e => {
   if (item) { item.paidByMe = chk.checked; renderEvItems(); renderReceipt(); persistES(); }
 });
 
-document.addEventListener('click', e => {
-  const toggle = e.target.closest('.ev-item-toggle');
-  if (toggle) {
-    const item = toggle.closest('.ev-item');
-    item.classList.toggle('expanded');
-    toggle.textContent = item.classList.contains('expanded') ? '▾' : '▸';
-    return;
-  }
+function editEvItem(itemId) {
+  const item = ES.items.find(x => x.id === itemId);
+  if (!item) return;
+  editingItemId = item.id;
+  $('evAddForm').classList.add('open');
+  $('evItemName').value = item.name;
+  $('evItemPaid').checked = item.paidByMe;
 
-  const editBtn = e.target.closest('.ev-item-edit-btn');
-  if (editBtn) {
-    const item = ES.items.find(x => x.id === editBtn.dataset.id);
-    if (!item) return;
-    editingItemId = item.id;
-    $('evAddForm').classList.add('open');
-    $('evItemName').value = item.name;
-    $('evItemPaid').checked = item.paidByMe;
-
-    const m = item.meta;
-    if (m) {
-      if (m.currency) {
-        $('evCurrencySel').value = m.currency;
-        $('evCurrencyAmt').value = m.foreignAmt || '';
-        $('evCalcRate').value = m.rate || FX_RATES[m.currency] || 1;
-        $('evCalcRate').style.display = '';
-        $('evCalcRateLabel').style.display = '';
-        $('evCurrencyAmt').placeholder = 'Foreign amt';
-      } else {
-        $('evCurrencySel').value = '';
-        $('evCurrencyAmt').value = '';
-        $('evCalcRate').style.display = 'none';
-        $('evCalcRateLabel').style.display = 'none';
-      }
-      $('evCalcPeople').value = m.calcPeople || ES.people;
-      evCostType = m.costType || 'total';
-      $('evItemAmt').value = m.inputAmt || item.amount;
+  const m = item.meta;
+  if (m) {
+    if (m.currency) {
+      $('evCurrencySel').value = m.currency;
+      $('evCurrencyAmt').value = m.foreignAmt || '';
+      $('evCalcRate').value = m.rate || FX_RATES[m.currency] || 1;
+      $('evCalcRate').style.display = '';
+      $('evCalcRateLabel').style.display = '';
+      $('evCurrencyAmt').placeholder = 'Foreign amt';
     } else {
       $('evCurrencySel').value = '';
       $('evCurrencyAmt').value = '';
       $('evCalcRate').style.display = 'none';
       $('evCalcRateLabel').style.display = 'none';
-      $('evCalcPeople').value = ES.people;
-      evCostType = 'total';
-      $('evItemAmt').value = item.amount;
     }
+    $('evCalcPeople').value = m.calcPeople || ES.people;
+    evCostType = m.costType || 'total';
+    $('evItemAmt').value = m.inputAmt || item.amount;
+  } else {
+    $('evCurrencySel').value = '';
+    $('evCurrencyAmt').value = '';
+    $('evCalcRate').style.display = 'none';
+    $('evCalcRateLabel').style.display = 'none';
+    $('evCalcPeople').value = ES.people;
+    evCostType = 'total';
+    $('evItemAmt').value = item.amount;
+  }
 
-    if (evCostType === 'per-person') {
-      $('evCostPerPerson').classList.add('active');
-      $('evCostTotal').classList.remove('active');
-    } else {
-      $('evCostTotal').classList.add('active');
-      $('evCostPerPerson').classList.remove('active');
-    }
-    updateCurrencyCalc();
-    $('evSubmitItem').textContent = '💾 Update';
-    $('evItemName').focus();
+  if (evCostType === 'per-person') {
+    $('evCostPerPerson').classList.add('active');
+    $('evCostTotal').classList.remove('active');
+  } else {
+    $('evCostTotal').classList.add('active');
+    $('evCostPerPerson').classList.remove('active');
+  }
+  updateCurrencyCalc();
+  $('evSubmitItem').textContent = '💾 Update';
+  $('evAddForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  $('evItemName').focus();
+}
+
+document.addEventListener('click', e => {
+  const evItem = e.target.closest('.ev-item');
+  if (evItem && !e.target.closest('.ev-del-btn') && !e.target.closest('.ev-paid-chk-wrap')) {
+    editEvItem(evItem.dataset.id);
     return;
   }
 
