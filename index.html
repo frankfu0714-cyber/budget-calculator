@@ -2264,17 +2264,18 @@ $('evClearBtn').onclick = () => {
 
 function evEffective(item, people) {
   const isPerPerson = item.meta && item.meta.costType === 'per-person';
-  if (isPerPerson && item.meta.inputAmt) {
-    const pp = item.meta.inputAmt;
-    return { total: pp * people, perPerson: pp, isPerPerson: true };
+  if (isPerPerson) {
+    let pp = item.meta.inputAmt;
+    if (!pp && item.meta.calcPeople) pp = item.amount / item.meta.calcPeople;
+    if (pp) return { total: pp * people, perPerson: pp, isPerPerson: true };
   }
   return { total: item.amount, perPerson: item.amount / people, isPerPerson: false };
 }
 
 function renderReceipt() {
   const people = Math.max(1, ES.people);
-  const total  = ES.items.reduce((s, x) => evEffective(x, people).total, 0);
-  const cpp    = total / people;
+  const total  = ES.items.reduce((s, x) => s + evEffective(x, people).total, 0);
+  const cpp    = ES.items.reduce((s, x) => s + evEffective(x, people).perPerson, 0);
 
   $('receiptEventName').textContent = ES.name || t('unnamed_event');
   $('receiptMeta').textContent      = `${people} ${people === 1 ? t('person') : t('people')}`;
