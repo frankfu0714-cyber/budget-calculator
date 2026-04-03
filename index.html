@@ -1723,7 +1723,7 @@ function buildInlineEditHTML(item) {
   const costType = m.costType || 'total';
   const inputAmt = m.inputAmt || item.amount;
   return `
-    <div class="ev-item-inline-edit" onclick="event.stopPropagation()">
+    <div class="ev-item-inline-edit">
       <div class="ev-add-row">
         <input class="field-input ie-name" type="text" value="${esc(item.name)}" placeholder="e.g. Venue Rent" autocomplete="off" style="margin:0" />
         <input class="field-input ie-amt" type="number" value="${inputAmt}" placeholder="Amount (TWD)" min="0" step="1" style="margin:0" />
