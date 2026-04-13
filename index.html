@@ -900,6 +900,45 @@
     .sx-split-cb-label:hover { border-color: var(--accent); }
     .sx-split-cb-label input { display: none; }
     .sx-split-cb-label.checked { background: rgba(99,102,241,.15); border-color: var(--accent); color: var(--accent); }
+
+    .sx-split-mode-toggle {
+      display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .sx-split-mode-btn {
+      background: transparent; border: none; cursor: pointer;
+      font-family: inherit; font-size: .76rem; font-weight: 600;
+      padding: 4px 12px; color: var(--muted);
+      transition: background .12s, color .12s; line-height: 1;
+    }
+    .sx-split-mode-btn.active { background: var(--accent); color: #fff; }
+
+    .sx-custom-amt-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    }
+    .sx-custom-amt-name {
+      flex: 1; font-size: .84rem; font-weight: 500;
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sx-custom-amt-input {
+      width: 100px; flex-shrink: 0;
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text);
+      font-family: inherit; font-size: .84rem; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .sx-custom-amt-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+    .sx-custom-amt-input.warn { border-color: var(--expense); }
+    .sx-custom-sum-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 6px; font-size: .8rem; padding: 6px 10px;
+      border-radius: 8px; background: var(--surface2); border: 1px solid var(--border);
+    }
+    .sx-custom-sum-row.ok   { border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.06); }
+    .sx-custom-sum-row.warn { border-color: rgba(239,68,68,.4);  background: rgba(239,68,68,.06); }
+    .sx-sum-warn {
+      display: none; margin-top: 4px; font-size: .76rem; color: var(--expense);
+      padding: 4px 8px; background: rgba(239,68,68,.08); border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -1641,8 +1680,26 @@
               </div>
             </div>
             <div class="field-group" style="margin-bottom:10px">
-              <label class="field-label" data-i18n="sx_split_among">Split Among</label>
-              <div class="sx-split-checkboxes" id="sxSplitCheckboxes"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+                <label class="field-label" style="margin:0" data-i18n="sx_split_among">Split Among</label>
+                <div class="sx-split-mode-toggle">
+                  <button type="button" class="sx-split-mode-btn active" id="sxSplitEqualBtn" data-i18n="sx_split_equal">均分</button>
+                  <button type="button" class="sx-split-mode-btn" id="sxSplitCustomBtn" data-i18n="sx_split_custom">自訂金額</button>
+                </div>
+              </div>
+              <!-- Equal split panel -->
+              <div id="sxEqualSplitPanel">
+                <div class="sx-split-checkboxes" id="sxSplitCheckboxes"></div>
+              </div>
+              <!-- Custom amounts panel -->
+              <div id="sxCustomSplitPanel" style="display:none">
+                <div id="sxCustomAmtInputs"></div>
+                <div class="sx-custom-sum-row" id="sxCustomSumRow">
+                  <span data-i18n="sx_custom_sum">Sum</span>
+                  <span id="sxCustomSumVal" style="font-weight:700">$0</span>
+                </div>
+                <div class="sx-sum-warn" id="sxSumWarn" data-i18n="sx_sum_mismatch">⚠ Sum does not equal total amount</div>
+              </div>
             </div>
             <div class="form-actions">
               <button class="btn btn-expense" id="sxSubmitExp"  data-i18n="save_btn">💾 Save</button>
@@ -3179,11 +3236,19 @@ function addSXPerson() {
 }
 
 function removeSXPerson(idx) {
-  // Remap expense indices after removal
   SX.expenses.forEach(exp => {
     exp.splitAmong = exp.splitAmong.filter(i => i !== idx).map(i => i > idx ? i - 1 : i);
     if (exp.paidBy > idx) exp.paidBy--;
     else if (exp.paidBy === idx) exp.paidBy = 0;
+    // Remap customAmounts keys
+    if (exp.customAmounts) {
+      const newCustom = {};
+      Object.entries(exp.customAmounts).forEach(([k, v]) => {
+        const ki = parseInt(k);
+        if (ki !== idx) newCustom[ki > idx ? ki - 1 : ki] = v;
+      });
+      exp.customAmounts = newCustom;
+    }
   });
   SX.participants.splice(idx, 1);
   sxRenderAll();
@@ -3217,12 +3282,35 @@ document.addEventListener('click', e => {
 });
 
 // ── Add Expense Form ──────────────────────────────────────────
+let sxSplitMode = 'equal';
+
+$('sxSplitEqualBtn').onclick = () => {
+  sxSplitMode = 'equal';
+  $('sxSplitEqualBtn').classList.add('active');
+  $('sxSplitCustomBtn').classList.remove('active');
+  $('sxEqualSplitPanel').style.display = '';
+  $('sxCustomSplitPanel').style.display = 'none';
+};
+$('sxSplitCustomBtn').onclick = () => {
+  sxSplitMode = 'custom';
+  $('sxSplitCustomBtn').classList.add('active');
+  $('sxSplitEqualBtn').classList.remove('active');
+  $('sxEqualSplitPanel').style.display = 'none';
+  $('sxCustomSplitPanel').style.display = '';
+  sxBuildCustomInputs();
+};
+
 $('sxAddExpBtn').onclick = () => {
   if (SX.participants.length === 0) {
     showToast(t('sx_add_participants_first'), 'warn'); return;
   }
   $('sxExpForm').classList.toggle('open');
   if ($('sxExpForm').classList.contains('open')) {
+    sxSplitMode = 'equal';
+    $('sxSplitEqualBtn').classList.add('active');
+    $('sxSplitCustomBtn').classList.remove('active');
+    $('sxEqualSplitPanel').style.display = '';
+    $('sxCustomSplitPanel').style.display = 'none';
     sxPopulateExpForm();
     $('sxExpDesc').focus();
   }
@@ -3236,20 +3324,63 @@ $('sxSubmitExp').onclick = addSXExpense;
 ['sxExpDesc', 'sxExpAmt'].forEach(id =>
   $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addSXExpense(); })
 );
+// Re-run custom sum check when total amount changes
+$('sxExpAmt').addEventListener('input', () => {
+  if (sxSplitMode === 'custom') sxUpdateCustomSum();
+});
 
 function sxPopulateExpForm() {
   $('sxExpPaidBy').innerHTML = SX.participants.map((n, i) =>
     `<option value="${i}">${esc(n)}</option>`).join('');
+  // Equal split checkboxes
   const cbs = $('sxSplitCheckboxes');
   cbs.innerHTML = SX.participants.map((n, i) => `
     <label class="sx-split-cb-label checked" data-idx="${i}">
       <input type="checkbox" checked />${esc(n)}
     </label>`).join('');
   cbs.querySelectorAll('.sx-split-cb-label').forEach(lbl => {
-    lbl.querySelector('input').addEventListener('change', () => {
-      lbl.classList.toggle('checked', lbl.querySelector('input').checked);
-    });
+    lbl.querySelector('input').addEventListener('change', () =>
+      lbl.classList.toggle('checked', lbl.querySelector('input').checked));
   });
+}
+
+function sxBuildCustomInputs() {
+  const wrap = $('sxCustomAmtInputs');
+  wrap.innerHTML = SX.participants.map((n, i) => `
+    <div class="sx-custom-amt-row">
+      <span class="sx-custom-amt-name">${esc(n)}</span>
+      <input type="number" class="sx-custom-amt-input" data-idx="${i}"
+        placeholder="0" min="0" step="any" />
+    </div>`).join('');
+  wrap.querySelectorAll('.sx-custom-amt-input').forEach(inp =>
+    inp.addEventListener('input', sxUpdateCustomSum));
+  sxUpdateCustomSum();
+}
+
+function sxUpdateCustomSum() {
+  const total = parseFloat($('sxExpAmt').value) || 0;
+  let sum = 0;
+  $('sxCustomAmtInputs').querySelectorAll('.sx-custom-amt-input').forEach(inp => {
+    sum += parseFloat(inp.value) || 0;
+  });
+  const sumRow  = $('sxCustomSumRow');
+  const sumWarn = $('sxSumWarn');
+  const diff = Math.abs(sum - total);
+  $('sxCustomSumVal').textContent = fmt(sum);
+  if (total > 0 && diff < 0.01) {
+    sumRow.className = 'sx-custom-sum-row ok';
+    sumWarn.style.display = 'none';
+    $('sxCustomAmtInputs').querySelectorAll('.sx-custom-amt-input')
+      .forEach(inp => inp.classList.remove('warn'));
+  } else if (total > 0) {
+    sumRow.className = 'sx-custom-sum-row warn';
+    sumWarn.style.display = '';
+    $('sxCustomAmtInputs').querySelectorAll('.sx-custom-amt-input')
+      .forEach(inp => inp.classList.add('warn'));
+  } else {
+    sumRow.className = 'sx-custom-sum-row';
+    sumWarn.style.display = 'none';
+  }
 }
 
 function getSXSplitAmong() {
@@ -3260,14 +3391,36 @@ function getSXSplitAmong() {
   return result;
 }
 
+function getSXCustomAmounts() {
+  const result = {};
+  $('sxCustomAmtInputs').querySelectorAll('.sx-custom-amt-input').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v) && v > 0) result[parseInt(inp.dataset.idx)] = v;
+  });
+  return result;
+}
+
 function addSXExpense() {
-  const desc = $('sxExpDesc').value.trim();
-  const amt = parseFloat($('sxExpAmt').value);
+  const desc   = $('sxExpDesc').value.trim();
+  const amt    = parseFloat($('sxExpAmt').value);
   const paidBy = parseInt($('sxExpPaidBy').value);
-  const splitAmong = getSXSplitAmong();
   if (!desc || isNaN(amt) || amt <= 0) { showToast(t('toast_name_amount_short'), 'warn'); return; }
-  if (splitAmong.length === 0) { showToast(t('sx_select_split'), 'warn'); return; }
-  SX.expenses.push({ id: uid(), desc, paidBy, amount: amt, splitAmong });
+
+  let exp;
+  if (sxSplitMode === 'custom') {
+    const customAmounts = getSXCustomAmounts();
+    const splitAmong = Object.keys(customAmounts).map(Number);
+    if (splitAmong.length === 0) { showToast(t('sx_select_split'), 'warn'); return; }
+    const sum = Object.values(customAmounts).reduce((a, b) => a + b, 0);
+    if (Math.abs(sum - amt) >= 0.01) { showToast(t('sx_sum_mismatch_toast'), 'warn'); return; }
+    exp = { id: uid(), desc, paidBy, amount: amt, splitAmong, splitMode: 'custom', customAmounts };
+  } else {
+    const splitAmong = getSXSplitAmong();
+    if (splitAmong.length === 0) { showToast(t('sx_select_split'), 'warn'); return; }
+    exp = { id: uid(), desc, paidBy, amount: amt, splitAmong, splitMode: 'equal' };
+  }
+
+  SX.expenses.push(exp);
   $('sxExpForm').classList.remove('open');
   $('sxExpDesc').value = '';
   $('sxExpAmt').value = '';
@@ -3284,7 +3437,15 @@ function renderSXExpenses() {
   empty.style.display = 'none';
   SX.expenses.forEach(exp => {
     const payer = SX.participants[exp.paidBy] || '?';
-    const splitNames = exp.splitAmong.map(i => SX.participants[i] || '?').join(', ');
+    const isCustom = exp.splitMode === 'custom' && exp.customAmounts;
+    let splitDetail;
+    if (isCustom) {
+      splitDetail = Object.entries(exp.customAmounts)
+        .map(([i, v]) => `${esc(SX.participants[parseInt(i)] || '?')} ${fmt(v)}`)
+        .join(' · ');
+    } else {
+      splitDetail = '÷ ' + exp.splitAmong.map(i => SX.participants[i] || '?').map(esc).join(', ');
+    }
     const el = document.createElement('div');
     el.className = 'sx-expense-item';
     el.innerHTML = `
@@ -3301,7 +3462,7 @@ function renderSXExpenses() {
           </svg>
         </button>
       </div>
-      <div style="font-size:.72rem;color:var(--muted);margin-top:3px">÷ ${esc(splitNames)}</div>`;
+      <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${splitDetail}</div>`;
     list.appendChild(el);
   });
 }
@@ -3320,11 +3481,17 @@ function sxCalcBalances() {
   const n = SX.participants.length;
   const balances = new Array(n).fill(0);
   SX.expenses.forEach(exp => {
-    const splitCount = exp.splitAmong.length;
-    if (splitCount === 0) return;
-    const share = exp.amount / splitCount;
     balances[exp.paidBy] += exp.amount;
-    exp.splitAmong.forEach(i => { balances[i] -= share; });
+    if (exp.splitMode === 'custom' && exp.customAmounts) {
+      Object.entries(exp.customAmounts).forEach(([k, v]) => {
+        balances[parseInt(k)] -= v;
+      });
+    } else {
+      const splitCount = exp.splitAmong.length;
+      if (splitCount === 0) return;
+      const share = exp.amount / splitCount;
+      exp.splitAmong.forEach(i => { balances[i] -= share; });
+    }
   });
   return balances;
 }
@@ -3599,6 +3766,9 @@ const I18N = {
     sx_add_participants_first: 'Add participants before adding expenses.',
     sx_select_split: 'Select at least one person to split with.',
     sx_group_exists: 'Group already exists.', sx_group_created: 'Group "{name}" created.',
+    sx_split_equal: 'Split Equally', sx_split_custom: 'Custom Amounts',
+    sx_custom_sum: 'Sum of shares', sx_sum_mismatch: '⚠ Sum does not equal total amount',
+    sx_sum_mismatch_toast: 'Custom amounts must add up to the total.',
   },
   zh: {
     tab_budget: '預算', tab_event: '活動分帳', tab_mahjong: '麻將',
@@ -3708,6 +3878,9 @@ const I18N = {
     sx_add_participants_first: '請先新增參與者再新增費用',
     sx_select_split: '請至少選擇一位分攤者',
     sx_group_exists: '群組已存在', sx_group_created: '已建立群組「{name}」',
+    sx_split_equal: '均分', sx_split_custom: '自訂金額',
+    sx_custom_sum: '分攤總計', sx_sum_mismatch: '⚠ 分攤金額總和不等於費用總額',
+    sx_sum_mismatch_toast: '自訂金額總和必須等於費用總額。',
   }
 };
 
