@@ -1855,6 +1855,30 @@ const fmt = n => '$' + Math.abs(n).toLocaleString('en-US', { maximumFractionDigi
 const fmtS = n => (n >= 0 ? '+' : '−') + fmt(n);
 const uid = () => Date.now() + Math.random().toString(36).slice(2);
 
+// ─── URL-safe share helpers ───────────────────────────────────
+// Encodes data to a URL-safe base64 string (no +, /, = to break URLSearchParams)
+function shareEncode(obj) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+// Decodes a shared URL param; handles both new URL-safe format and old standard base64
+function shareDecode(param) {
+  // Normalise: restore padding and convert URL-safe chars to standard base64
+  let b64 = param.replace(/-/g, '+').replace(/_/g, '/');
+  b64 += '=='.slice(0, (4 - b64.length % 4) % 4);
+  return JSON.parse(decodeURIComponent(escape(atob(b64))));
+}
+// Off-screen clipboard fallback for browsers without navigator.clipboard
+function clipboardFallback(text) {
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none';
+  document.body.appendChild(el);
+  el.select();
+  try { document.execCommand('copy'); } catch(_) {}
+  document.body.removeChild(el);
+}
+
 function total(arr) { return arr.reduce((s, x) => s + x.amount, 0); }
 
 // ─── Compute & Render ─────────────────────────────────────────
@@ -2114,9 +2138,7 @@ $('copyBtn').onclick = () => {
 };
 
 function openShare() {
-  const payload = JSON.stringify({ income: S.income, expenses: S.expenses });
-  const encoded = btoa(unescape(encodeURIComponent(payload)));
-  const url = location.origin + location.pathname + '?b=' + encoded;
+  const url = location.origin + location.pathname + '?b=' + shareEncode({ income: S.income, expenses: S.expenses });
   $('shareUrl').value = url;
   $('shareOverlay').classList.add('open');
 }
@@ -2656,17 +2678,10 @@ function renderReceipt() {
 }
 
 $('evShareBtn').onclick = () => {
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(ES))));
-  const url = location.origin + location.pathname + '?e=' + encoded;
+  const url = location.origin + location.pathname + '?e=' + shareEncode(ES);
   navigator.clipboard.writeText(url)
     .then(() => showToast(t('toast_event_link')))
-    .catch(() => {
-      const inp = document.createElement('textarea');
-      inp.value = url;
-      document.body.appendChild(inp); inp.select();
-      document.execCommand('copy'); document.body.removeChild(inp);
-      showToast(t('toast_event_link_short'));
-    });
+    .catch(() => { clipboardFallback(url); showToast(t('toast_event_link_short')); });
 };
 
 // ─── Event Splitter Projects ──────────────────────────────────
@@ -2751,10 +2766,11 @@ function loadES() {
   try {
     const param = new URLSearchParams(location.search).get('e');
     if (param) {
-      const d = JSON.parse(decodeURIComponent(escape(atob(param))));
+      const d = shareDecode(param);
       ES.name   = d.name   || '';
       ES.people = d.people || 2;
       ES.items  = d.items  || [];
+      history.replaceState(null, '', location.pathname);
       // Switch to event tab
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -2801,9 +2817,10 @@ function loadState() {
   try {
     const param = new URLSearchParams(location.search).get('b');
     if (param) {
-      const d = JSON.parse(decodeURIComponent(escape(atob(param))));
+      const d = shareDecode(param);
       S.income   = d.income   || [];
       S.expenses = d.expenses || [];
+      history.replaceState(null, '', location.pathname);
       showToast(t('toast_budget_loaded'), 'info');
       return;
     }
@@ -3087,14 +3104,14 @@ function mjPersist() {
   try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
 }
 function mjShareUrl() {
-  return location.origin + location.pathname + '?mj=' + btoa(unescape(encodeURIComponent(JSON.stringify(MJ))));
+  return location.origin + location.pathname + '?mj=' + shareEncode(MJ);
 }
 
 function mjLoad() {
   try {
     const param = new URLSearchParams(location.search).get('mj');
     if (param) {
-      const d = JSON.parse(decodeURIComponent(escape(atob(param))));
+      const d = shareDecode(param);
       if (d.players) MJ.players = d.players;
       if (d.base !== undefined) MJ.base = d.base;
       if (d.perTai !== undefined) MJ.perTai = d.perTai;
@@ -3132,13 +3149,7 @@ $('mjShareBtn').onclick = () => {
   const url = mjShareUrl();
   navigator.clipboard.writeText(url)
     .then(() => showToast(currentLang === 'zh' ? '遊戲連結已複製！🔗' : 'Game link copied! 🔗'))
-    .catch(() => {
-      const inp = document.createElement('textarea');
-      inp.value = url; document.body.appendChild(inp);
-      inp.select(); document.execCommand('copy');
-      document.body.removeChild(inp);
-      showToast(currentLang === 'zh' ? '遊戲連結已複製！' : 'Game link copied!');
-    });
+    .catch(() => { clipboardFallback(url); showToast(currentLang === 'zh' ? '遊戲連結已複製！' : 'Game link copied!'); });
 };
 
 // ─── Expense Settlement 分帳結算 ──────────────────────────────
@@ -3682,7 +3693,7 @@ function sxLoad() {
   try {
     const param = new URLSearchParams(location.search).get('sx');
     if (param) {
-      const d = JSON.parse(decodeURIComponent(escape(atob(param))));
+      const d = shareDecode(param);
       SX.name         = d.name         || '';
       SX.participants = d.participants || [];
       SX.expenses     = d.expenses     || [];
@@ -3720,17 +3731,10 @@ function sxLoad() {
 }
 
 $('sxShareBtn').onclick = () => {
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(SX))));
-  const url = location.origin + location.pathname + '?sx=' + encoded;
+  const url = location.origin + location.pathname + '?sx=' + shareEncode(SX);
   navigator.clipboard.writeText(url)
     .then(() => showToast(t('sx_link_copied')))
-    .catch(() => {
-      const inp = document.createElement('textarea');
-      inp.value = url; document.body.appendChild(inp);
-      inp.select(); document.execCommand('copy');
-      document.body.removeChild(inp);
-      showToast(t('sx_link_copied'));
-    });
+    .catch(() => { clipboardFallback(url); showToast(t('sx_link_copied')); });
 };
 
 // ─── i18n ─────────────────────────────────────────────────────
