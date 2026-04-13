@@ -2159,7 +2159,7 @@ function addItem(type) {
     return;
   }
 
-  S[type].push({ id: uid(), name, category: cat, amount: amt });
+  S[type].unshift({ id: uid(), name, category: cat, amount: amt });
   toggleForm(type, false);
   $(isInc ? 'iName' : 'eName').value = '';
   $(isInc ? 'iAmt'  : 'eAmt').value  = '';
@@ -2444,7 +2444,7 @@ function addEvItem() {
   if (!name || isNaN(amt) || amt <= 0) { showToast(t('toast_name_amount_short'), 'warn'); return; }
   const meta = gatherItemMeta();
   if (evCostType === 'per-person') amt = amt * getCalcPeople();
-  ES.items.push({ id: uid(), name, amount: amt, paidByMe: paid, meta });
+  ES.items.unshift({ id: uid(), name, amount: amt, paidByMe: paid, meta });
   showToast(t('toast_added', { name }));
   resetAddForm();
   $('evAddForm').classList.remove('open');
@@ -3044,7 +3044,7 @@ $('mjAddRound').onclick = () => {
     if (l === w) { showToast(t('toast_same_winner'), 'warn'); return; }
     round.loser = l;
   }
-  MJ.rounds.push(round);
+  MJ.rounds.unshift(round);
   mjRenderAll();
   mjPersist();
   showToast(t('toast_round_recorded', { n: MJ.rounds.length }));
@@ -3516,14 +3516,14 @@ $('sxAddExpBtn').onclick = () => {
     splitAmong: SX.participants.map((_, i) => i),
     splitMode: 'equal'
   };
-  SX.expenses.push(exp);
+  SX.expenses.unshift(exp);
   renderSXExpenses();
   renderSXSummary();
   renderSXSettlement();
   persistSX();
   const items = $('sxExpensesList').querySelectorAll('.sx-expense-item');
   if (items.length > 0) {
-    const inp = items[items.length - 1].querySelector('.sx-exp-desc');
+    const inp = items[0].querySelector('.sx-exp-desc');
     if (inp) { inp.focus(); inp.select(); }
   }
 };
