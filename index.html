@@ -2140,7 +2140,17 @@ $('copyBtn').onclick = () => {
 };
 
 function openShare() {
-  const url = location.origin + location.pathname + '?b=' + shareEncode({ income: S.income, expenses: S.expenses });
+  const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab || 'budget';
+  let url;
+  if (activeTab === 'event') {
+    url = location.origin + location.pathname + '?e=' + shareEncode(ES);
+  } else if (activeTab === 'mahjong') {
+    url = location.origin + location.pathname + '?mj=' + shareEncode(MJ);
+  } else if (activeTab === 'settle') {
+    url = location.origin + location.pathname + '?sx=' + shareEncode(SX);
+  } else {
+    url = location.origin + location.pathname + '?b=' + shareEncode({ income: S.income, expenses: S.expenses });
+  }
   $('shareUrl').value = url;
   $('shareOverlay').classList.add('open');
 }
