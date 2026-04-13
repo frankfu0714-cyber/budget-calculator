@@ -823,6 +823,83 @@
       border-radius: 9px; font-size: .82rem; line-height: 1.6; color: var(--text);
     }
     .mj-preview-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+
+    /* ── Expense Settlement Tab ──────────────────────────────── */
+    .sx-wrap {
+      max-width: 1180px; margin: 0 auto; padding: 24px 16px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start;
+    }
+    @media (max-width: 720px) { .sx-wrap { grid-template-columns: 1fr; padding: 14px 12px; gap: 14px; } }
+    .sx-left  { display: flex; flex-direction: column; gap: 18px; }
+    .sx-right { display: flex; flex-direction: column; gap: 18px; }
+
+    .sx-participants { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sx-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px 4px 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; font-size: .82rem; font-weight: 500;
+    }
+    .sx-chip-del {
+      background: transparent; border: none; cursor: pointer;
+      font-size: .85rem; color: var(--muted); padding: 0 1px;
+      line-height: 1; transition: color .12s;
+    }
+    .sx-chip-del:hover { color: var(--expense); }
+
+    .sx-expense-item {
+      padding: 10px 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; animation: slideIn .18s ease; transition: box-shadow .15s;
+    }
+    .sx-expense-item:hover { box-shadow: var(--sh-md); }
+    .sx-expense-main { display: flex; align-items: center; gap: 9px; }
+    .sx-expense-desc { flex: 1; font-weight: 500; font-size: .88rem; }
+    .sx-expense-payer { font-size: .73rem; color: var(--muted); white-space: nowrap; }
+    .sx-expense-amt { font-weight: 700; font-size: .92rem; color: var(--expense); min-width: 64px; text-align: right; }
+
+    .sx-balance-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; margin-bottom: 6px;
+    }
+    .sx-balance-name { flex: 1; font-weight: 600; font-size: .9rem; }
+    .sx-balance-detail { font-size: .72rem; color: var(--muted); }
+    .sx-balance-val { font-weight: 800; font-size: 1rem; min-width: 72px; text-align: right; }
+    .sx-bal-pos  { color: var(--income); }
+    .sx-bal-neg  { color: var(--expense); }
+    .sx-bal-zero { color: var(--muted); }
+
+    .sx-settle-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 8px; }
+    .sx-settle-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2);
+      border-radius: 9px; margin-bottom: 6px; font-size: .86rem;
+    }
+    .sx-settle-from  { font-weight: 600; color: var(--expense); }
+    .sx-settle-arrow { color: var(--muted); font-size: .75rem; }
+    .sx-settle-to    { font-weight: 600; color: var(--income); }
+    .sx-settle-amt   { margin-left: auto; font-weight: 800; color: var(--accent); }
+
+    .sx-total-hero {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      border-radius: 10px; padding: 16px 18px; margin-bottom: 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sx-total-label { font-size: .78rem; font-weight: 700; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .05em; }
+    .sx-total-val   { font-size: 1.5rem; font-weight: 800; color: #fff; }
+
+    .sx-split-checkboxes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .sx-split-cb-label {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 11px; border: 1px solid var(--border); border-radius: 20px;
+      font-size: .79rem; font-weight: 500; cursor: pointer;
+      background: var(--surface2); transition: background .12s, border-color .12s;
+      user-select: none;
+    }
+    .sx-split-cb-label:hover { border-color: var(--accent); }
+    .sx-split-cb-label input { display: none; }
+    .sx-split-cb-label.checked { background: rgba(99,102,241,.15); border-color: var(--accent); color: var(--accent); }
   </style>
 </head>
 <body>
@@ -882,6 +959,10 @@
     <button class="tab-btn" data-tab="mahjong">
       🀄
       <span data-i18n="tab_mahjong">Mahjong</span>
+    </button>
+    <button class="tab-btn" data-tab="settle">
+      💰
+      <span data-i18n="tab_settle">分帳結算</span>
     </button>
   </div>
 </nav>
@@ -1468,6 +1549,183 @@
 
   </div><!-- /mj-wrap -->
 </div><!-- /tab-mahjong -->
+
+<!-- ── Expense Settlement Tab ─────────────────────────────── -->
+<div id="tab-settle" class="tab-panel">
+  <div class="sx-wrap">
+
+    <!-- Left column -->
+    <div class="sx-left">
+
+      <!-- Group selector -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--income)"></span>
+            <span data-i18n="sx_group">Group</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="field-group">
+            <label class="field-label" data-i18n="sx_group_select">Group</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select class="field-input" id="sxGroupSel" style="flex:1;margin:0"></select>
+              <button class="btn btn-ghost btn-sm" id="sxNewGroupBtn" style="white-space:nowrap;flex-shrink:0" data-i18n="new_btn">+ New</button>
+              <button class="btn btn-ghost btn-sm" id="sxDeleteGroupBtn" title="Delete group" style="white-space:nowrap;flex-shrink:0"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
+            </div>
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label" for="sxGroupName" data-i18n="sx_group_name">Group Name</label>
+            <input class="field-input" id="sxGroupName" type="text" placeholder="e.g. Saturday BBQ" data-i18n-ph="sx_ph_group_name" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Participants -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--accent)"></span>
+            <span data-i18n="sx_participants">Participants</span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="sxAddPersonBtn" data-i18n="add_btn">+ Add</button>
+        </div>
+        <div class="card-body">
+          <div class="add-form" id="sxPersonForm">
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input class="field-input" id="sxPersonName" type="text" placeholder="e.g. Frank" data-i18n-ph="sx_ph_person_name" autocomplete="off" style="margin:0;flex:1" />
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" id="sxSubmitPerson" data-i18n="sx_add_person">Add Person</button>
+              <button class="btn btn-ghost"   id="sxCancelPerson" data-i18n="cancel">Cancel</button>
+            </div>
+          </div>
+          <div id="sxParticipantsList">
+            <div class="empty" id="sxParticipantsEmpty">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <p><span data-i18n="sx_no_participants">No participants yet.</span><br><span data-i18n="sx_add_participants_hint">Add people to split expenses.</span></p>
+            </div>
+            <div class="sx-participants" id="sxChips" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expenses -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--expense)"></span>
+            <span data-i18n="expense_items">Expense Items</span>
+          </div>
+          <button class="btn btn-expense btn-sm" id="sxAddExpBtn" data-i18n="add_btn">+ Add</button>
+        </div>
+        <div class="card-body">
+          <div class="add-form" id="sxExpForm">
+            <div class="field-group">
+              <label class="field-label" data-i18n="sx_description">Description</label>
+              <input class="field-input" id="sxExpDesc" type="text" placeholder="e.g. Groceries" data-i18n-ph="sx_ph_desc" autocomplete="off" style="margin:0" />
+            </div>
+            <div class="ev-add-row" style="margin-bottom:10px">
+              <div class="field-group" style="margin:0">
+                <label class="field-label" data-i18n="sx_paid_by">Paid By</label>
+                <select class="field-input" id="sxExpPaidBy" style="margin:0"></select>
+              </div>
+              <div class="field-group" style="margin:0">
+                <label class="field-label" data-i18n="sx_amount">Amount</label>
+                <input class="field-input" id="sxExpAmt" type="number" placeholder="0" min="0" step="any" style="margin:0" />
+              </div>
+            </div>
+            <div class="field-group" style="margin-bottom:10px">
+              <label class="field-label" data-i18n="sx_split_among">Split Among</label>
+              <div class="sx-split-checkboxes" id="sxSplitCheckboxes"></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-expense" id="sxSubmitExp"  data-i18n="save_btn">💾 Save</button>
+              <button class="btn btn-ghost"   id="sxCancelExp"  data-i18n="cancel">Cancel</button>
+            </div>
+          </div>
+
+          <div class="items-list" id="sxExpensesList">
+            <div class="empty" id="sxExpensesEmpty">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+              </svg>
+              <p><span data-i18n="sx_no_expenses">No expenses yet.</span><br><span data-i18n="sx_add_expense_hint">Click <strong>+ Add</strong> to begin.</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sx-left -->
+
+    <!-- Right column -->
+    <div class="sx-right">
+
+      <!-- Summary card -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--savings)"></span>
+            <span data-i18n="sx_summary">Summary</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="sx-total-hero">
+            <div>
+              <div class="sx-total-label" data-i18n="sx_total_spent">Total Spent</div>
+              <div class="sx-total-val" id="sxTotalSpent">$0</div>
+            </div>
+            <div style="text-align:right">
+              <div class="sx-total-label" data-i18n="sx_num_expenses">Expenses</div>
+              <div class="sx-total-val" id="sxNumExpenses">0</div>
+            </div>
+          </div>
+          <div class="receipt-section-label" data-i18n="sx_balances">Balances</div>
+          <div id="sxBalances">
+            <div id="sxBalancesEmpty" style="text-align:center;color:var(--muted);font-size:.83rem;padding:10px 0" data-i18n="sx_add_to_see">Add participants and expenses to see balances.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settlement card -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--income)"></span>
+            <span data-i18n="sx_settlement">Settlement</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="sxSettlement">
+            <div class="mj-empty" data-i18n="sx_no_settlement">Add expenses to see who owes whom.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Share -->
+      <div class="card">
+        <div class="card-body" style="padding:12px 18px;display:flex;gap:8px">
+          <button class="btn btn-primary" id="sxShareBtn" style="flex:1;justify-content:center">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            <span data-i18n="sx_share">Share Group Link</span>
+          </button>
+        </div>
+        <div style="padding:0 18px 14px;font-size:.74rem;color:var(--muted);line-height:1.5" data-i18n="sx_share_hint">Share this link so friends can view expenses and settlement.</div>
+      </div>
+
+    </div><!-- /sx-right -->
+
+  </div><!-- /sx-wrap -->
+</div><!-- /tab-settle -->
 
 <!-- ── Share Modal ──────────────────────────────────────────── -->
 <div class="overlay" id="shareOverlay">
@@ -2818,6 +3076,403 @@ $('mjShareBtn').onclick = () => {
     });
 };
 
+// ─── Expense Settlement 分帳結算 ──────────────────────────────
+let SX = { name: '', participants: [], expenses: [] };
+let currentSXGroup = null;
+
+function getSXGroups() {
+  try { return JSON.parse(localStorage.getItem('sx-groups') || '{}'); } catch(_) { return {}; }
+}
+function saveSXGroups(p) {
+  try { localStorage.setItem('sx-groups', JSON.stringify(p)); } catch(_) {}
+}
+
+function renderSXGroupDropdown() {
+  const sel = $('sxGroupSel');
+  const groups = getSXGroups();
+  const names = Object.keys(groups);
+  sel.innerHTML = names.length === 0
+    ? '<option value="">—</option>'
+    : names.map(n => `<option value="${esc(n)}"${n === currentSXGroup ? ' selected' : ''}>${esc(n)}</option>`).join('');
+}
+
+function switchSXGroup(name) {
+  if (!name) return;
+  const groups = getSXGroups();
+  const g = groups[name] || { name: '', participants: [], expenses: [] };
+  currentSXGroup = name;
+  SX.name = g.name || '';
+  SX.participants = g.participants || [];
+  SX.expenses = g.expenses || [];
+  $('sxGroupName').value = SX.name;
+  sxRenderAll();
+  try { localStorage.setItem('sx-active-group', name); } catch(_) {}
+}
+
+$('sxGroupSel').addEventListener('change', () => switchSXGroup($('sxGroupSel').value));
+
+$('sxNewGroupBtn').onclick = () => {
+  const name = prompt(currentLang === 'zh' ? '群組名稱：' : 'Group name:');
+  if (!name || !name.trim()) return;
+  const n = name.trim();
+  const groups = getSXGroups();
+  if (groups[n]) { showToast(t('sx_group_exists'), 'warn'); return; }
+  groups[n] = { name: '', participants: [], expenses: [] };
+  saveSXGroups(groups);
+  currentSXGroup = n;
+  try { localStorage.setItem('sx-active-group', n); } catch(_) {}
+  renderSXGroupDropdown();
+  switchSXGroup(n);
+  showToast(t('sx_group_created', { name: n }));
+};
+
+$('sxDeleteGroupBtn').onclick = () => {
+  if (!currentSXGroup) return;
+  if (!confirm(currentLang === 'zh' ? `確定刪除群組「${currentSXGroup}」？` : `Delete group "${currentSXGroup}"?`)) return;
+  const groups = getSXGroups();
+  delete groups[currentSXGroup];
+  saveSXGroups(groups);
+  const names = Object.keys(groups);
+  if (names.length > 0) {
+    currentSXGroup = names[0];
+    try { localStorage.setItem('sx-active-group', currentSXGroup); } catch(_) {}
+    renderSXGroupDropdown();
+    switchSXGroup(currentSXGroup);
+  } else {
+    groups['Default'] = { name: '', participants: [], expenses: [] };
+    saveSXGroups(groups);
+    currentSXGroup = 'Default';
+    try { localStorage.setItem('sx-active-group', currentSXGroup); } catch(_) {}
+    renderSXGroupDropdown();
+    switchSXGroup(currentSXGroup);
+  }
+  showToast(t('toast_project_deleted'), 'info');
+};
+
+$('sxGroupName').addEventListener('input', () => {
+  SX.name = $('sxGroupName').value;
+  persistSX();
+});
+
+// ── Participants ──────────────────────────────────────────────
+$('sxAddPersonBtn').onclick = () => {
+  $('sxPersonForm').classList.toggle('open');
+  if ($('sxPersonForm').classList.contains('open')) $('sxPersonName').focus();
+};
+$('sxCancelPerson').onclick = () => {
+  $('sxPersonForm').classList.remove('open');
+  $('sxPersonName').value = '';
+};
+$('sxSubmitPerson').onclick = addSXPerson;
+$('sxPersonName').addEventListener('keydown', e => { if (e.key === 'Enter') addSXPerson(); });
+
+function addSXPerson() {
+  const name = $('sxPersonName').value.trim();
+  if (!name) { showToast(t('sx_enter_name'), 'warn'); return; }
+  if (SX.participants.includes(name)) { showToast(t('sx_person_exists'), 'warn'); return; }
+  SX.participants.push(name);
+  $('sxPersonName').value = '';
+  $('sxPersonForm').classList.remove('open');
+  sxRenderAll();
+  persistSX();
+  showToast(t('toast_added', { name }));
+}
+
+function removeSXPerson(idx) {
+  // Remap expense indices after removal
+  SX.expenses.forEach(exp => {
+    exp.splitAmong = exp.splitAmong.filter(i => i !== idx).map(i => i > idx ? i - 1 : i);
+    if (exp.paidBy > idx) exp.paidBy--;
+    else if (exp.paidBy === idx) exp.paidBy = 0;
+  });
+  SX.participants.splice(idx, 1);
+  sxRenderAll();
+  persistSX();
+  showToast(t('toast_removed'), 'info');
+}
+
+function renderSXParticipants() {
+  const chips = $('sxChips');
+  const empty = $('sxParticipantsEmpty');
+  chips.innerHTML = '';
+  if (SX.participants.length === 0) {
+    empty.style.display = '';
+    chips.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  chips.style.display = '';
+  SX.participants.forEach((name, idx) => {
+    const chip = document.createElement('span');
+    chip.className = 'sx-chip';
+    chip.innerHTML = `${esc(name)}<button class="sx-chip-del" data-idx="${idx}" title="Remove">×</button>`;
+    chips.appendChild(chip);
+  });
+}
+
+document.addEventListener('click', e => {
+  const del = e.target.closest('.sx-chip-del');
+  if (!del) return;
+  removeSXPerson(parseInt(del.dataset.idx));
+});
+
+// ── Add Expense Form ──────────────────────────────────────────
+$('sxAddExpBtn').onclick = () => {
+  if (SX.participants.length === 0) {
+    showToast(t('sx_add_participants_first'), 'warn'); return;
+  }
+  $('sxExpForm').classList.toggle('open');
+  if ($('sxExpForm').classList.contains('open')) {
+    sxPopulateExpForm();
+    $('sxExpDesc').focus();
+  }
+};
+$('sxCancelExp').onclick = () => {
+  $('sxExpForm').classList.remove('open');
+  $('sxExpDesc').value = '';
+  $('sxExpAmt').value = '';
+};
+$('sxSubmitExp').onclick = addSXExpense;
+['sxExpDesc', 'sxExpAmt'].forEach(id =>
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addSXExpense(); })
+);
+
+function sxPopulateExpForm() {
+  $('sxExpPaidBy').innerHTML = SX.participants.map((n, i) =>
+    `<option value="${i}">${esc(n)}</option>`).join('');
+  const cbs = $('sxSplitCheckboxes');
+  cbs.innerHTML = SX.participants.map((n, i) => `
+    <label class="sx-split-cb-label checked" data-idx="${i}">
+      <input type="checkbox" checked />${esc(n)}
+    </label>`).join('');
+  cbs.querySelectorAll('.sx-split-cb-label').forEach(lbl => {
+    lbl.querySelector('input').addEventListener('change', () => {
+      lbl.classList.toggle('checked', lbl.querySelector('input').checked);
+    });
+  });
+}
+
+function getSXSplitAmong() {
+  const result = [];
+  $('sxSplitCheckboxes').querySelectorAll('.sx-split-cb-label').forEach(lbl => {
+    if (lbl.querySelector('input').checked) result.push(parseInt(lbl.dataset.idx));
+  });
+  return result;
+}
+
+function addSXExpense() {
+  const desc = $('sxExpDesc').value.trim();
+  const amt = parseFloat($('sxExpAmt').value);
+  const paidBy = parseInt($('sxExpPaidBy').value);
+  const splitAmong = getSXSplitAmong();
+  if (!desc || isNaN(amt) || amt <= 0) { showToast(t('toast_name_amount_short'), 'warn'); return; }
+  if (splitAmong.length === 0) { showToast(t('sx_select_split'), 'warn'); return; }
+  SX.expenses.push({ id: uid(), desc, paidBy, amount: amt, splitAmong });
+  $('sxExpForm').classList.remove('open');
+  $('sxExpDesc').value = '';
+  $('sxExpAmt').value = '';
+  sxRenderAll();
+  persistSX();
+  showToast(t('toast_added', { name: desc }));
+}
+
+function renderSXExpenses() {
+  const list  = $('sxExpensesList');
+  const empty = $('sxExpensesEmpty');
+  list.querySelectorAll('.sx-expense-item').forEach(el => el.remove());
+  if (SX.expenses.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  SX.expenses.forEach(exp => {
+    const payer = SX.participants[exp.paidBy] || '?';
+    const splitNames = exp.splitAmong.map(i => SX.participants[i] || '?').join(', ');
+    const el = document.createElement('div');
+    el.className = 'sx-expense-item';
+    el.innerHTML = `
+      <div class="sx-expense-main">
+        <span class="sx-expense-desc">${esc(exp.desc)}</span>
+        <span class="sx-expense-payer">${t('sx_paid_by_label', { name: esc(payer) })}</span>
+        <span class="sx-expense-amt">${fmt(exp.amount)}</span>
+        <button class="btn-icon sx-del-exp" data-id="${exp.id}" title="Remove">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+          </svg>
+        </button>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:3px">÷ ${esc(splitNames)}</div>`;
+    list.appendChild(el);
+  });
+}
+
+document.addEventListener('click', e => {
+  const del = e.target.closest('.sx-del-exp');
+  if (!del) return;
+  SX.expenses = SX.expenses.filter(x => x.id !== del.dataset.id);
+  sxRenderAll();
+  persistSX();
+  showToast(t('toast_removed'), 'info');
+});
+
+// ── Settlement calculation ────────────────────────────────────
+function sxCalcBalances() {
+  const n = SX.participants.length;
+  const balances = new Array(n).fill(0);
+  SX.expenses.forEach(exp => {
+    const splitCount = exp.splitAmong.length;
+    if (splitCount === 0) return;
+    const share = exp.amount / splitCount;
+    balances[exp.paidBy] += exp.amount;
+    exp.splitAmong.forEach(i => { balances[i] -= share; });
+  });
+  return balances;
+}
+
+function sxMinTransfers(balances) {
+  const credits = balances.map((b, i) => ({ idx: i, bal: b })).filter(x => x.bal >  0.005);
+  const debts   = balances.map((b, i) => ({ idx: i, bal: b })).filter(x => x.bal < -0.005);
+  credits.sort((a, b) => b.bal - a.bal);
+  debts.sort((a, b) => a.bal - b.bal);
+  const transfers = [];
+  let di = 0, ci = 0;
+  while (di < debts.length && ci < credits.length) {
+    const d = debts[di], c = credits[ci];
+    const amt = Math.min(-d.bal, c.bal);
+    if (amt > 0.005) transfers.push({ from: d.idx, to: c.idx, amount: Math.round(amt) });
+    d.bal += amt;
+    c.bal -= amt;
+    if (-d.bal < 0.005) di++;
+    if ( c.bal < 0.005) ci++;
+  }
+  return transfers;
+}
+
+function renderSXSummary() {
+  const total = SX.expenses.reduce((s, e) => s + e.amount, 0);
+  $('sxTotalSpent').textContent  = fmt(total);
+  $('sxNumExpenses').textContent = SX.expenses.length;
+
+  const balDiv  = $('sxBalances');
+  const balEmpty = $('sxBalancesEmpty');
+  balDiv.querySelectorAll('.sx-balance-row').forEach(el => el.remove());
+
+  if (SX.participants.length === 0) { balEmpty.style.display = ''; return; }
+  balEmpty.style.display = 'none';
+
+  const balances = sxCalcBalances();
+  SX.participants.forEach((name, i) => {
+    const b    = balances[i];
+    const paid = SX.expenses.filter(e => e.paidBy === i).reduce((s, e) => s + e.amount, 0);
+    const share = SX.expenses.reduce((s, e) => {
+      if (e.splitAmong.includes(i)) return s + e.amount / e.splitAmong.length;
+      return s;
+    }, 0);
+    const cls  = b >  0.5 ? 'sx-bal-pos' : b < -0.5 ? 'sx-bal-neg' : 'sx-bal-zero';
+    const sign = b >  0.5 ? '+' : b < -0.5 ? '−' : '';
+    const row  = document.createElement('div');
+    row.className = 'sx-balance-row';
+    row.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div class="sx-balance-name">${esc(name)}</div>
+        <div class="sx-balance-detail">${t('sx_paid_label')}: ${fmt(Math.round(paid))} · ${t('sx_share_label')}: ${fmt(Math.round(share))}</div>
+      </div>
+      <div class="sx-balance-val ${cls}">${sign}${fmt(Math.round(Math.abs(b)))}</div>`;
+    balDiv.appendChild(row);
+  });
+}
+
+function renderSXSettlement() {
+  const el = $('sxSettlement');
+  if (SX.participants.length === 0 || SX.expenses.length === 0) {
+    el.innerHTML = `<div class="mj-empty">${t('sx_no_settlement')}</div>`;
+    return;
+  }
+  const transfers = sxMinTransfers(sxCalcBalances());
+  if (transfers.length === 0) {
+    el.innerHTML = `<div class="mj-empty" style="color:var(--income)">${t('sx_all_even')}</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="sx-settle-title">${t('transfers_needed', { n: transfers.length })}</div>
+    ${transfers.map(tr => `
+      <div class="sx-settle-row">
+        <span class="sx-settle-from">${esc(SX.participants[tr.from])}</span>
+        <span class="sx-settle-arrow">${t('sx_owes_arrow')}</span>
+        <span class="sx-settle-to">${esc(SX.participants[tr.to])}</span>
+        <span class="sx-settle-amt">${fmt(tr.amount)}</span>
+      </div>`).join('')}`;
+}
+
+function sxRenderAll() {
+  renderSXParticipants();
+  renderSXExpenses();
+  renderSXSummary();
+  renderSXSettlement();
+}
+
+function persistSX() {
+  if (!currentSXGroup) return;
+  const groups = getSXGroups();
+  groups[currentSXGroup] = { name: SX.name, participants: SX.participants, expenses: SX.expenses };
+  saveSXGroups(groups);
+}
+
+function sxLoad() {
+  try {
+    const param = new URLSearchParams(location.search).get('sx');
+    if (param) {
+      const d = JSON.parse(decodeURIComponent(escape(atob(param))));
+      SX.name         = d.name         || '';
+      SX.participants = d.participants || [];
+      SX.expenses     = d.expenses     || [];
+      $('sxGroupName').value = SX.name;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('[data-tab="settle"]').classList.add('active');
+      $('tab-settle').classList.add('active');
+      history.replaceState(null, '', location.pathname);
+      setTimeout(() => showToast(t('sx_loaded_link'), 'info'), 300);
+      sxRenderAll();
+      return;
+    }
+  } catch(_) {}
+  const groups = getSXGroups();
+  const names = Object.keys(groups);
+  let active = null;
+  try { active = localStorage.getItem('sx-active-group'); } catch(_) {}
+  if (active && groups[active]) {
+    currentSXGroup = active;
+  } else if (names.length > 0) {
+    currentSXGroup = names[0];
+    try { localStorage.setItem('sx-active-group', currentSXGroup); } catch(_) {}
+  } else {
+    currentSXGroup = 'Default';
+    groups[currentSXGroup] = { name: '', participants: [], expenses: [] };
+    saveSXGroups(groups);
+    try { localStorage.setItem('sx-active-group', currentSXGroup); } catch(_) {}
+  }
+  const g = groups[currentSXGroup];
+  SX.name = g.name || '';
+  SX.participants = g.participants || [];
+  SX.expenses = g.expenses || [];
+  $('sxGroupName').value = SX.name;
+}
+
+$('sxShareBtn').onclick = () => {
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(SX))));
+  const url = location.origin + location.pathname + '?sx=' + encoded;
+  navigator.clipboard.writeText(url)
+    .then(() => showToast(t('sx_link_copied')))
+    .catch(() => {
+      const inp = document.createElement('textarea');
+      inp.value = url; document.body.appendChild(inp);
+      inp.select(); document.execCommand('copy');
+      document.body.removeChild(inp);
+      showToast(t('sx_link_copied'));
+    });
+};
+
 // ─── i18n ─────────────────────────────────────────────────────
 let currentLang = localStorage.getItem('app-lang') || 'en';
 
@@ -2923,6 +3578,27 @@ const I18N = {
     toast_project_exists: 'Project already exists.', toast_project_created: 'Project "{name}" created.',
     toast_project_deleted: 'Project deleted.',
     confirm_reset: 'Reset all rounds? Player names and settings will be kept.',
+    // Expense Settlement
+    tab_settle: 'Expense Settlement',
+    sx_group: 'Group', sx_group_select: 'Group', sx_group_name: 'Group Name',
+    sx_ph_group_name: 'e.g. Saturday BBQ', sx_ph_person_name: 'e.g. Frank', sx_ph_desc: 'e.g. Groceries',
+    sx_participants: 'Participants', sx_add_person: 'Add Person',
+    sx_no_participants: 'No participants yet.', sx_add_participants_hint: 'Add people to split expenses.',
+    sx_description: 'Description', sx_paid_by: 'Paid By', sx_amount: 'Amount',
+    sx_split_among: 'Split Among', sx_no_expenses: 'No expenses yet.',
+    sx_add_expense_hint: 'Click <strong>+ Add</strong> to begin.',
+    sx_summary: 'Summary', sx_total_spent: 'Total Spent', sx_num_expenses: 'Expenses',
+    sx_balances: 'Balances', sx_add_to_see: 'Add participants and expenses to see balances.',
+    sx_settlement: 'Settlement', sx_no_settlement: 'Add expenses to see who owes whom.',
+    sx_all_even: 'Everyone is settled! 🎉',
+    sx_paid_by_label: 'Paid by {name}', sx_paid_label: 'Paid', sx_share_label: 'Share',
+    sx_owes_arrow: '→ pays →',
+    sx_share: 'Share Group Link', sx_share_hint: 'Share this link so friends can view expenses and settlement.',
+    sx_loaded_link: 'Group loaded from shared link! 🔗', sx_link_copied: 'Group link copied! 🔗',
+    sx_enter_name: 'Please enter a name.', sx_person_exists: 'This person is already added.',
+    sx_add_participants_first: 'Add participants before adding expenses.',
+    sx_select_split: 'Select at least one person to split with.',
+    sx_group_exists: 'Group already exists.', sx_group_created: 'Group "{name}" created.',
   },
   zh: {
     tab_budget: '預算', tab_event: '活動分帳', tab_mahjong: '麻將',
@@ -3011,6 +3687,27 @@ const I18N = {
     toast_project_exists: '專案已存在。', toast_project_created: '已建立專案「{name}」。',
     toast_project_deleted: '專案已刪除。',
     confirm_reset: '重置所有回合？玩家名稱和設定會保留。',
+    // 分帳結算
+    tab_settle: '分帳結算',
+    sx_group: '群組', sx_group_select: '群組', sx_group_name: '群組名稱',
+    sx_ph_group_name: '例：週六烤肉', sx_ph_person_name: '例：小明', sx_ph_desc: '例：食材費',
+    sx_participants: '參與者', sx_add_person: '新增成員',
+    sx_no_participants: '尚無參與者', sx_add_participants_hint: '新增人員以進行分帳',
+    sx_description: '描述', sx_paid_by: '付款人', sx_amount: '金額',
+    sx_split_among: '分攤對象', sx_no_expenses: '尚無費用',
+    sx_add_expense_hint: '點擊 <strong>+ 新增</strong> 開始',
+    sx_summary: '摘要', sx_total_spent: '總支出', sx_num_expenses: '筆費用',
+    sx_balances: '餘額', sx_add_to_see: '新增參與者和費用以查看餘額',
+    sx_settlement: '結算', sx_no_settlement: '新增費用以計算誰欠誰',
+    sx_all_even: '大家已結清！🎉',
+    sx_paid_by_label: '{name} 付款', sx_paid_label: '已付', sx_share_label: '應付',
+    sx_owes_arrow: '→ 付 →',
+    sx_share: '分享群組連結', sx_share_hint: '分享此連結讓朋友查看費用與結算結果',
+    sx_loaded_link: '已從分享連結載入群組！🔗', sx_link_copied: '群組連結已複製！🔗',
+    sx_enter_name: '請輸入名稱', sx_person_exists: '此人已新增',
+    sx_add_participants_first: '請先新增參與者再新增費用',
+    sx_select_split: '請至少選擇一位分攤者',
+    sx_group_exists: '群組已存在', sx_group_created: '已建立群組「{name}」',
   }
 };
 
@@ -3059,6 +3756,7 @@ function setLang(lang) {
   renderEvItems();
   renderReceipt();
   mjRenderAll();
+  sxRenderAll();
 }
 
 // ─── Month chip ───────────────────────────────────────────────
@@ -3072,6 +3770,7 @@ updateMonthChip();
 loadState();
 loadES();
 mjLoad();
+sxLoad();
 applyTheme();
 // Apply saved language
 document.querySelectorAll('.lang-btn').forEach(b => {
@@ -3085,6 +3784,9 @@ $('evEventName').value = ES.name;
 $('evPeople').value    = ES.people;
 renderEvItems();
 renderReceipt();
+// Sync settlement tab
+renderSXGroupDropdown();
+sxRenderAll();
 </script>
 </body>
 </html>
