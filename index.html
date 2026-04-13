@@ -6,6 +6,7 @@
   <title>Budget Calculator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <style>
     /* ── Tokens ───────────────────────────────────────────── */
     :root {
@@ -1856,14 +1857,15 @@ const fmtS = n => (n >= 0 ? '+' : '−') + fmt(n);
 const uid = () => Date.now() + Math.random().toString(36).slice(2);
 
 // ─── URL-safe share helpers ───────────────────────────────────
-// Encodes data to a URL-safe base64 string (no +, /, = to break URLSearchParams)
+// Encodes data using LZString compression for shorter URLs
 function shareEncode(obj) {
-  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return LZString.compressToEncodedURIComponent(JSON.stringify(obj));
 }
-// Decodes a shared URL param; handles both new URL-safe format and old standard base64
+// Decodes a shared URL param; tries LZString first, falls back to old base64 format
 function shareDecode(param) {
-  // Normalise: restore padding and convert URL-safe chars to standard base64
+  const lz = LZString.decompressFromEncodedURIComponent(param);
+  if (lz) return JSON.parse(lz);
+  // Legacy fallback: URL-safe base64 (old links still work)
   let b64 = param.replace(/-/g, '+').replace(/_/g, '/');
   b64 += '=='.slice(0, (4 - b64.length % 4) % 4);
   return JSON.parse(decodeURIComponent(escape(atob(b64))));
