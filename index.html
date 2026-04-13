@@ -4203,6 +4203,37 @@ function fbWriteSettle() {
   roomRef('settle').set({ name: SX.name, participants: SX.participants, expenses: SX.expenses });
 }
 
+// ── IME-safe helpers ──────────────────────────────────────────
+// Set .value only when the element isn't focused (prevents killing IME composition)
+function _safeSet(el, val) {
+  if (!el || document.activeElement === el) return;
+  if (el.value !== String(val)) el.value = val;
+}
+
+// Skip a re-render if the user is actively typing inside that tab panel
+function _safeRender(panelId, renderFn) {
+  const active = document.activeElement;
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+    const panel = $(panelId);
+    if (panel && panel.contains(active)) return; // user is typing — don't nuke their focus
+  }
+  renderFn();
+}
+
+// Debounce helper — used to batch rapid keystrokes before writing to Firebase
+function _fbDebounce(fn, ms) {
+  let t; return function() { clearTimeout(t); t = setTimeout(fn, ms); };
+}
+
+// Track IME composition so we can extend the debounce over the full composition
+let _imeComposing = false;
+document.addEventListener('compositionstart', () => { _imeComposing = true;  });
+document.addEventListener('compositionend',   () => {
+  _imeComposing = false;
+  // Flush any pending debounced writes now that composition is done
+  if (activeRoom) { _fbWBD(); _fbWED(); _fbWMD(); _fbWSD(); }
+});
+
 function attachRoomListeners() {
   if (!activeRoom || !fbDb) return;
   detachRoomListeners();
@@ -4213,7 +4244,7 @@ function attachRoomListeners() {
     S.income   = d.income   || [];
     S.expenses = d.expenses || [];
     try { localStorage.setItem('budgetcalc', JSON.stringify(S)); } catch(_) {}
-    render();
+    _safeRender('tab-budget', render);
     _fbUpdating = false;
   });
   fbListeners.budget = budgetCb;
@@ -4225,10 +4256,10 @@ function attachRoomListeners() {
     if (d.base    !== undefined) MJ.base    = d.base;
     if (d.perTai  !== undefined) MJ.perTai  = d.perTai;
     if (d.rounds) MJ.rounds = d.rounds;
-    [0,1,2,3].forEach(i => { const el = $('mjP'+i); if (el) el.value = MJ.players[i]; });
-    const mjB = $('mjBase');   if (mjB)  mjB.value  = MJ.base;
-    const mjP = $('mjPerTai'); if (mjP)  mjP.value  = MJ.perTai;
-    mjUpdateDropdowns(); mjRenderAll();
+    [0,1,2,3].forEach(i => _safeSet($('mjP'+i), MJ.players[i]));
+    _safeSet($('mjBase'),   MJ.base);
+    _safeSet($('mjPerTai'), MJ.perTai);
+    _safeRender('tab-mahjong', () => { mjUpdateDropdowns(); mjRenderAll(); });
     try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
     _fbUpdating = false;
   });
@@ -4240,9 +4271,9 @@ function attachRoomListeners() {
     ES.name   = d.name   || '';
     ES.people = d.people || 2;
     ES.items  = d.items  || [];
-    const en = $('evEventName'); if (en) en.value = ES.name;
-    const ep = $('evPeople');    if (ep) ep.value = ES.people;
-    renderEvItems(); renderReceipt();
+    _safeSet($('evEventName'), ES.name);
+    _safeSet($('evPeople'),    ES.people);
+    _safeRender('tab-event', () => { renderEvItems(); renderReceipt(); });
     _fbUpdating = false;
   });
   fbListeners.event = eventCb;
@@ -4253,8 +4284,8 @@ function attachRoomListeners() {
     SX.name         = d.name         || '';
     SX.participants = d.participants || [];
     SX.expenses     = d.expenses     || [];
-    const gn = $('sxGroupName'); if (gn) gn.value = SX.name;
-    sxRenderAll();
+    _safeSet($('sxGroupName'), SX.name);
+    _safeRender('tab-settle', sxRenderAll);
     _fbUpdating = false;
   });
   fbListeners.settle = settleCb;
@@ -4370,15 +4401,21 @@ function copyRoomLink() {
     .catch(() => { clipboardFallback(url); showToast(currentLang === 'zh' ? '連結已複製！' : 'Link copied!'); });
 }
 
-// Wrap persist functions to push changes to Firebase
+// Wrap persist functions to push changes to Firebase (debounced + IME-safe)
 const _origPersist   = persist;
 const _origPersistES = persistES;
 const _origMjPersist = mjPersist;
 const _origPersistSX = persistSX;
-persist    = function() { _origPersist();   fbWriteBudget();  };
-persistES  = function() { _origPersistES(); fbWriteEvent();   };
-mjPersist  = function() { _origMjPersist(); fbWriteMahjong(); };
-persistSX  = function() { _origPersistSX(); fbWriteSettle();  };
+// Debounced Firebase writers — 400ms groups rapid keystrokes into one write;
+// compositionend handler above flushes immediately after IME confirms a character.
+const _fbWBD = _fbDebounce(fbWriteBudget,  400);
+const _fbWED = _fbDebounce(fbWriteEvent,   400);
+const _fbWMD = _fbDebounce(fbWriteMahjong, 400);
+const _fbWSD = _fbDebounce(fbWriteSettle,  400);
+persist    = function() { _origPersist();   _fbWBD(); };
+persistES  = function() { _origPersistES(); _fbWED(); };
+mjPersist  = function() { _origMjPersist(); _fbWMD(); };
+persistSX  = function() { _origPersistSX(); _fbWSD(); };
 
 // Button wiring
 $('createRoomBtn').onclick = openRoomModal;
