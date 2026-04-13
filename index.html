@@ -44,6 +44,7 @@
       color: var(--text);
       min-height: 100vh;
       transition: background .25s, color .25s;
+      overflow-x: hidden;
     }
 
     /* ── Header ───────────────────────────────────────────── */
@@ -426,6 +427,7 @@
       top: 63px;
       z-index: 40;
       box-shadow: var(--sh);
+      overflow: hidden;
     }
     .tab-nav-inner {
       max-width: 1180px;
@@ -433,7 +435,11 @@
       padding: 0 16px;
       display: flex;
       gap: 2px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
     }
+    .tab-nav-inner::-webkit-scrollbar { display: none; }
     .tab-btn {
       background: transparent;
       border: none;
@@ -449,10 +455,14 @@
       align-items: center;
       gap: 7px;
       white-space: nowrap;
+      flex-shrink: 0;
       margin-bottom: -1px;
     }
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    @media (max-width: 480px) {
+      .tab-btn { padding: 10px 13px; font-size: .8rem; gap: 5px; }
+    }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
@@ -948,6 +958,14 @@
       display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
     }
     .sx-extras-row .field-group { flex: 1; min-width: 80px; }
+
+    /* Mobile: settle tab form tweaks */
+    @media (max-width: 480px) {
+      .sx-settle-row { flex-wrap: wrap; }
+      .sx-settle-amt { margin-left: 0; width: 100%; text-align: right; }
+      .sx-balance-val { min-width: 60px; }
+      .sx-custom-amt-input { width: 80px; }
+    }
     .sx-exp-breakdown {
       font-size: .75rem; color: var(--muted);
       margin: 5px 0 0; padding: 5px 9px;
