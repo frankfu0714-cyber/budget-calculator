@@ -71,6 +71,7 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
       user-select: none;
+      flex-shrink: 0;
     }
     .logo-icon {
       width: 34px; height: 34px;
@@ -83,6 +84,14 @@
     }
     .logo-icon svg { width: 18px; height: 18px; color: white; }
     .header-right { display: flex; gap: 8px; align-items: center; }
+    @media (max-width: 480px) {
+      header { padding: 10px 12px; }
+      .logo-text { display: none; }
+      .month-chip { display: none; }
+      .header-right { gap: 5px; }
+      .lang-btn { padding: 4px 8px; font-size: .72rem; }
+      #shareBtn span { display: none; }
+    }
 
     .lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
     .lang-btn {
@@ -460,8 +469,11 @@
     }
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-lbl-short { display: none; }
     @media (max-width: 480px) {
       .tab-btn { padding: 10px 13px; font-size: .8rem; gap: 5px; }
+      .tab-lbl-full { display: none; }
+      .tab-lbl-short { display: inline; }
     }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -987,7 +999,7 @@
         <path d="M12 6v6l4 2"/>
       </svg>
     </div>
-    BudgetCalc
+    <span class="logo-text">BudgetCalc</span>
   </div>
   <div class="header-right">
     <div class="lang-toggle">
@@ -1021,22 +1033,26 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
-      <span data-i18n="tab_budget">Budget</span>
+      <span data-i18n="tab_budget" class="tab-lbl-full">Budget</span>
+      <span data-i18n="tab_budget_short" class="tab-lbl-short">Budget</span>
     </button>
     <button class="tab-btn" data-tab="event">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
-      <span data-i18n="tab_event">Event Splitter</span>
+      <span data-i18n="tab_event" class="tab-lbl-full">Event Splitter</span>
+      <span data-i18n="tab_event_short" class="tab-lbl-short">Split</span>
     </button>
     <button class="tab-btn" data-tab="mahjong">
       🀄
-      <span data-i18n="tab_mahjong">Mahjong</span>
+      <span data-i18n="tab_mahjong" class="tab-lbl-full">Mahjong</span>
+      <span data-i18n="tab_mahjong_short" class="tab-lbl-short">麻將</span>
     </button>
     <button class="tab-btn" data-tab="settle">
       💰
-      <span data-i18n="tab_settle">分帳結算</span>
+      <span data-i18n="tab_settle" class="tab-lbl-full">分帳結算</span>
+      <span data-i18n="tab_settle_short" class="tab-lbl-short">結算</span>
     </button>
   </div>
 </nav>
@@ -3724,6 +3740,7 @@ const I18N = {
   en: {
     // Tabs
     tab_budget: 'Budget', tab_event: 'Event Splitter', tab_mahjong: 'Mahjong',
+    tab_budget_short: 'Budget', tab_event_short: 'Split', tab_mahjong_short: '麻將', tab_settle_short: 'Settle',
     // Header
     share: 'Share',
     // Hero
@@ -3851,6 +3868,7 @@ const I18N = {
   },
   zh: {
     tab_budget: '預算', tab_event: '活動分帳', tab_mahjong: '麻將',
+    tab_budget_short: '預算', tab_event_short: '分帳', tab_mahjong_short: '麻將', tab_settle_short: '結算',
     share: '分享',
     total_income: '總收入', total_expenses: '總支出',
     net_savings: '淨儲蓄', savings_rate: '儲蓄率',
@@ -3987,7 +4005,7 @@ function updateStaticText() {
     const val = t(key);
     if (el.tagName === 'OPTION') {
       el.textContent = val;
-    } else if (el.innerHTML !== val && (val.includes('<') || val.includes('&'))) {
+    } else if (val.includes('<') || val.includes('&')) {
       el.innerHTML = val;
     } else {
       el.textContent = val;
