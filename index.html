@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
     /* ── Tokens ───────────────────────────────────────────── */
     :root {
@@ -987,6 +989,67 @@
     }
     .sx-exp-breakdown:empty { display: none; }
     .sx-expense-item { gap: 0; }
+
+    /* ── Room Sync ─────────────────────────────────────────── */
+    #roomBadge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg,#10b981,#059669);
+      color: #fff;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    #roomBadge.active { display: flex; }
+    .room-dot {
+      width: 7px; height: 7px;
+      background: #fff;
+      border-radius: 50%;
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .4; transform: scale(.7); }
+    }
+    #roomModal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #roomModal.open { display: flex; }
+    .room-modal-box {
+      background: var(--surface);
+      border-radius: var(--r);
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      padding: 28px 32px;
+      width: 380px;
+      max-width: 94vw;
+    }
+    .room-modal-box h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+    .room-code-display {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 6px;
+      text-align: center;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: 10px;
+      color: var(--accent);
+      margin: 14px 0 6px;
+      cursor: pointer;
+      user-select: all;
+    }
+    .room-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .room-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
   </style>
 </head>
 <body>
@@ -1016,6 +1079,15 @@
         <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
         <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
       </svg>
+    </button>
+    <span id="roomBadge" title="Click to manage room"><span class="room-dot"></span><span id="roomCodeLabel"></span></span>
+    <button class="btn btn-ghost" id="createRoomBtn" style="gap:6px;padding:7px 12px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+      </svg>
+      <span data-i18n="room_btn">Room</span>
     </button>
     <button class="btn btn-primary" id="shareBtn">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -3758,7 +3830,7 @@ const I18N = {
     tab_budget: 'Budget', tab_event: 'Event Splitter', tab_mahjong: 'Mahjong',
     tab_budget_short: 'Budget', tab_event_short: 'Split', tab_mahjong_short: '麻將', tab_settle_short: 'Settle',
     // Header
-    share: 'Share',
+    share: 'Share', room_btn: 'Room',
     // Hero
     total_income: 'Total Income', total_expenses: 'Total Expenses',
     net_savings: 'Net Savings', savings_rate: 'Savings Rate',
@@ -3885,7 +3957,7 @@ const I18N = {
   zh: {
     tab_budget: '預算', tab_event: '活動分帳', tab_mahjong: '麻將',
     tab_budget_short: '預算', tab_event_short: '分帳', tab_mahjong_short: '麻將', tab_settle_short: '結算',
-    share: '分享',
+    share: '分享', room_btn: '房間',
     total_income: '總收入', total_expenses: '總支出',
     net_savings: '淨儲蓄', savings_rate: '儲蓄率',
     sources: '筆收入', source: '筆收入',
@@ -4075,6 +4147,248 @@ renderReceipt();
 // Sync settlement tab
 renderSXGroupDropdown();
 sxRenderAll();
+
+// ─── Firebase Realtime Sync ───────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAdXgfeg_SAgSNoZxWES-I6VgPgi9K4FZs",
+  authDomain: "budget-calculator-ec837.firebaseapp.com",
+  databaseURL: "https://budget-calculator-ec837-default-rtdb.firebaseio.com",
+  projectId: "budget-calculator-ec837",
+  storageBucket: "budget-calculator-ec837.firebasestorage.app",
+  messagingSenderId: "1077477710331",
+  appId: "1:1077477710331:web:40cd12a9c472cfa18bd35e"
+};
+
+let fbDb;
+try {
+  firebase.initializeApp(firebaseConfig);
+  fbDb = firebase.database();
+} catch(e) { console.warn('Firebase init failed:', e); }
+
+let activeRoom = null;
+let fbListeners = {};
+let _fbUpdating = false;
+
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function roomRef(path) { return fbDb.ref('rooms/' + activeRoom + '/' + path); }
+
+function fbWriteBudget() {
+  if (!activeRoom || !fbDb || _fbUpdating) return;
+  roomRef('budget').set({ income: S.income, expenses: S.expenses });
+}
+function fbWriteMahjong() {
+  if (!activeRoom || !fbDb || _fbUpdating) return;
+  roomRef('mahjong').set({ players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds });
+}
+function fbWriteEvent() {
+  if (!activeRoom || !fbDb || _fbUpdating) return;
+  roomRef('event').set({ name: ES.name, people: ES.people, items: ES.items });
+}
+function fbWriteSettle() {
+  if (!activeRoom || !fbDb || _fbUpdating) return;
+  roomRef('settle').set({ name: SX.name, participants: SX.participants, expenses: SX.expenses });
+}
+
+function attachRoomListeners() {
+  if (!activeRoom || !fbDb) return;
+  detachRoomListeners();
+
+  const budgetCb = roomRef('budget').on('value', snap => {
+    const d = snap.val(); if (!d) return;
+    _fbUpdating = true;
+    S.income   = d.income   || [];
+    S.expenses = d.expenses || [];
+    try { localStorage.setItem('budgetcalc', JSON.stringify(S)); } catch(_) {}
+    render();
+    _fbUpdating = false;
+  });
+  fbListeners.budget = budgetCb;
+
+  const mahjongCb = roomRef('mahjong').on('value', snap => {
+    const d = snap.val(); if (!d) return;
+    _fbUpdating = true;
+    if (d.players) MJ.players = d.players;
+    if (d.base    !== undefined) MJ.base    = d.base;
+    if (d.perTai  !== undefined) MJ.perTai  = d.perTai;
+    if (d.rounds) MJ.rounds = d.rounds;
+    [0,1,2,3].forEach(i => { const el = $('mjP'+i); if (el) el.value = MJ.players[i]; });
+    const mjB = $('mjBase');   if (mjB)  mjB.value  = MJ.base;
+    const mjP = $('mjPerTai'); if (mjP)  mjP.value  = MJ.perTai;
+    mjUpdateDropdowns(); mjRenderAll();
+    try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
+    _fbUpdating = false;
+  });
+  fbListeners.mahjong = mahjongCb;
+
+  const eventCb = roomRef('event').on('value', snap => {
+    const d = snap.val(); if (!d) return;
+    _fbUpdating = true;
+    ES.name   = d.name   || '';
+    ES.people = d.people || 2;
+    ES.items  = d.items  || [];
+    const en = $('evEventName'); if (en) en.value = ES.name;
+    const ep = $('evPeople');    if (ep) ep.value = ES.people;
+    renderEvItems(); renderReceipt();
+    _fbUpdating = false;
+  });
+  fbListeners.event = eventCb;
+
+  const settleCb = roomRef('settle').on('value', snap => {
+    const d = snap.val(); if (!d) return;
+    _fbUpdating = true;
+    SX.name         = d.name         || '';
+    SX.participants = d.participants || [];
+    SX.expenses     = d.expenses     || [];
+    const gn = $('sxGroupName'); if (gn) gn.value = SX.name;
+    sxRenderAll();
+    _fbUpdating = false;
+  });
+  fbListeners.settle = settleCb;
+}
+
+function detachRoomListeners() {
+  if (!fbDb || !activeRoom) return;
+  ['budget','mahjong','event','settle'].forEach(key => {
+    if (fbListeners[key] !== undefined) {
+      try { roomRef(key).off('value', fbListeners[key]); } catch(_) {}
+      delete fbListeners[key];
+    }
+  });
+}
+
+function joinRoom(code) {
+  activeRoom = code.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const url = new URL(location.href);
+  url.searchParams.set('room', activeRoom);
+  ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  history.replaceState(null, '', url.toString());
+  $('roomCodeLabel').textContent = activeRoom;
+  $('roomBadge').classList.add('active');
+  attachRoomListeners();
+  showToast('🔴 ' + (currentLang === 'zh' ? '已加入房間 ' : 'Joined room ') + activeRoom, 'info');
+}
+
+function leaveRoom() {
+  detachRoomListeners();
+  activeRoom = null;
+  $('roomBadge').classList.remove('active');
+  const url = new URL(location.href);
+  url.searchParams.delete('room');
+  history.replaceState(null, '', url.toString());
+  showToast(currentLang === 'zh' ? '已離開房間' : 'Left room', 'info');
+}
+
+function createAndJoinRoom() {
+  const code = genRoomCode();
+  activeRoom = code;
+  const url = new URL(location.href);
+  url.searchParams.set('room', activeRoom);
+  ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  history.replaceState(null, '', url.toString());
+  $('roomCodeLabel').textContent = activeRoom;
+  $('roomBadge').classList.add('active');
+  // Push current local state as initial room data
+  if (fbDb) {
+    fbDb.ref('rooms/' + activeRoom).set({
+      budget:  { income: S.income, expenses: S.expenses },
+      mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
+      event:   { name: ES.name, people: ES.people, items: ES.items },
+      settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
+    }).then(() => { attachRoomListeners(); });
+  }
+  showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+}
+
+function openRoomModal() {
+  const zh = currentLang === 'zh';
+  if (!activeRoom) {
+    $('roomModalTitle').textContent = zh ? '🔴 即時共享房間' : '🔴 Live Room';
+    $('roomModalContent').innerHTML =
+      '<p style="color:var(--muted);font-size:.88rem;margin-bottom:16px">' +
+        (zh ? '建立新房間讓多人即時編輯，或輸入代碼加入現有房間。' : 'Create a room for live multi-user editing, or enter a code to join an existing room.') +
+      '</p>' +
+      '<button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:12px" onclick="createAndJoinRoom();openRoomModal()">' +
+        (zh ? '➕ 建立新房間' : '➕ Create New Room') +
+      '</button>' +
+      '<div style="display:flex;gap:8px;align-items:center">' +
+        '<input id="joinCodeInput" class="form-input" maxlength="6" placeholder="' + (zh ? '輸入代碼' : 'Room code') + '" style="flex:1;text-transform:uppercase;letter-spacing:3px;font-weight:700;font-size:1rem" />' +
+        '<button class="btn btn-primary" onclick="doJoinRoom()">' + (zh ? '加入' : 'Join') + '</button>' +
+      '</div>' +
+      '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:10px" onclick="closeRoomModal()">' + (zh ? '取消' : 'Cancel') + '</button>';
+  } else {
+    const shareUrl = location.origin + location.pathname + '?room=' + activeRoom;
+    $('roomModalTitle').textContent = (zh ? '🔴 房間：' : '🔴 Room: ') + activeRoom;
+    $('roomModalContent').innerHTML =
+      '<p style="color:var(--muted);font-size:.88rem;margin-bottom:6px">' +
+        (zh ? '分享此連結讓其他人即時加入：' : 'Share this link for others to join live:') +
+      '</p>' +
+      '<div class="room-code-display" onclick="copyRoomLink()" title="' + (zh ? '點擊複製連結' : 'Click to copy link') + '">' + activeRoom + '</div>' +
+      '<div style="font-size:.78rem;color:var(--muted);text-align:center;margin-bottom:12px">' + (zh ? '點擊代碼複製完整連結' : 'Click code to copy the full link') + '</div>' +
+      '<div class="room-actions">' +
+        '<button class="btn btn-primary" onclick="copyRoomLink()">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+          (zh ? ' 複製連結' : ' Copy Link') +
+        '</button>' +
+        '<button class="btn btn-ghost" onclick="leaveRoom();closeRoomModal()">' + (zh ? '離開房間' : 'Leave Room') + '</button>' +
+      '</div>' +
+      '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="closeRoomModal()">' + (zh ? '關閉' : 'Close') + '</button>';
+  }
+  $('roomModal').classList.add('open');
+}
+
+function closeRoomModal() { $('roomModal').classList.remove('open'); }
+
+function doJoinRoom() {
+  const inp = $('joinCodeInput');
+  const code = (inp ? inp.value : '').trim().toUpperCase();
+  if (code.length < 4) {
+    showToast(currentLang === 'zh' ? '請輸入有效的房間代碼' : 'Enter a valid room code', 'error');
+    return;
+  }
+  joinRoom(code);
+  closeRoomModal();
+}
+
+function copyRoomLink() {
+  const url = location.origin + location.pathname + '?room=' + activeRoom;
+  navigator.clipboard.writeText(url)
+    .then(() => showToast(currentLang === 'zh' ? '連結已複製！🔗' : 'Link copied! 🔗'))
+    .catch(() => { clipboardFallback(url); showToast(currentLang === 'zh' ? '連結已複製！' : 'Link copied!'); });
+}
+
+// Wrap persist functions to push changes to Firebase
+const _origPersist   = persist;
+const _origPersistES = persistES;
+const _origMjPersist = mjPersist;
+const _origPersistSX = persistSX;
+persist    = function() { _origPersist();   fbWriteBudget();  };
+persistES  = function() { _origPersistES(); fbWriteEvent();   };
+mjPersist  = function() { _origMjPersist(); fbWriteMahjong(); };
+persistSX  = function() { _origPersistSX(); fbWriteSettle();  };
+
+// Button wiring
+$('createRoomBtn').onclick = openRoomModal;
+$('roomBadge').onclick     = openRoomModal;
+$('roomModal').addEventListener('click', e => { if (e.target === $('roomModal')) closeRoomModal(); });
+
+// Auto-join room from URL on load
+(function() {
+  const roomCode = new URLSearchParams(location.search).get('room');
+  if (roomCode) setTimeout(() => joinRoom(roomCode), 400);
+})();
 </script>
+
+<div id="roomModal">
+  <div class="room-modal-box">
+    <h2 id="roomModalTitle">🔴 Live Room</h2>
+    <div id="roomModalContent"></div>
+  </div>
+</div>
 </body>
 </html>
