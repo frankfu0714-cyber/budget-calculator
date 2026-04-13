@@ -1904,6 +1904,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<div id="roomModal">
+  <div class="room-modal-box">
+    <h2 id="roomModalTitle">🔴 Live Room</h2>
+    <div id="roomModalContent"></div>
+  </div>
+</div>
+
 <script>
 // ─── Category Colors ──────────────────────────────────────────
 const INC_COLORS = {
@@ -4375,20 +4383,21 @@ persistSX  = function() { _origPersistSX(); fbWriteSettle();  };
 // Button wiring
 $('createRoomBtn').onclick = openRoomModal;
 $('roomBadge').onclick     = openRoomModal;
-$('roomModal').addEventListener('click', e => { if (e.target === $('roomModal')) closeRoomModal(); });
+const _roomModalEl = $('roomModal');
+if (_roomModalEl) _roomModalEl.addEventListener('click', e => { if (e.target === _roomModalEl) closeRoomModal(); });
 
 // Auto-join room from URL on load
 (function() {
   const roomCode = new URLSearchParams(location.search).get('room');
-  if (roomCode) setTimeout(() => joinRoom(roomCode), 400);
+  if (roomCode) {
+    // Retry until fbDb is ready (Firebase SDK may still be initializing on slow connections)
+    function tryJoin(attempts) {
+      if (fbDb) { joinRoom(roomCode); }
+      else if (attempts > 0) { setTimeout(() => tryJoin(attempts - 1), 300); }
+    }
+    setTimeout(() => tryJoin(10), 200);
+  }
 })();
 </script>
-
-<div id="roomModal">
-  <div class="room-modal-box">
-    <h2 id="roomModalTitle">🔴 Live Room</h2>
-    <div id="roomModalContent"></div>
-  </div>
-</div>
 </body>
 </html>
