@@ -4189,18 +4189,58 @@ function roomRef(path) { return fbDb.ref('rooms/' + activeRoom + '/' + path); }
 function fbWriteBudget() {
   if (!activeRoom || !fbDb || _fbUpdating) return;
   roomRef('budget').set({ income: S.income, expenses: S.expenses });
+  _fbTouchDebounced();
 }
 function fbWriteMahjong() {
   if (!activeRoom || !fbDb || _fbUpdating) return;
   roomRef('mahjong').set({ players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds });
+  _fbTouchDebounced();
 }
 function fbWriteEvent() {
   if (!activeRoom || !fbDb || _fbUpdating) return;
   roomRef('event').set({ name: ES.name, people: ES.people, items: ES.items });
+  _fbTouchDebounced();
 }
 function fbWriteSettle() {
   if (!activeRoom || !fbDb || _fbUpdating) return;
   roomRef('settle').set({ name: SX.name, participants: SX.participants, expenses: SX.expenses });
+  _fbTouchDebounced();
+}
+
+// ── Room timestamp touch (debounced 10s to avoid extra writes per keystroke) ──
+const _fbTouchDebounced = (function() {
+  let _t;
+  return function() {
+    clearTimeout(_t);
+    _t = setTimeout(function() {
+      if (!activeRoom || !fbDb) return;
+      fbDb.ref('rooms/' + activeRoom + '/meta/lastActivityAt').set(Date.now());
+    }, 10000);
+  };
+})();
+
+// ── Room cleanup: delete rooms inactive for 30+ days ──────────
+// Rooms with no lastActivityAt (created before this feature) are skipped — they
+// will get a timestamp naturally the next time someone uses them.
+const ROOM_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+function cleanupOldRooms() {
+  if (!fbDb) return;
+  const cutoff = Date.now() - ROOM_TTL_MS;
+  fbDb.ref('rooms').once('value', function(snap) {
+    const rooms = snap.val();
+    if (!rooms) return;
+    const deletions = [];
+    Object.keys(rooms).forEach(function(code) {
+      const meta = rooms[code] && rooms[code].meta;
+      if (!meta || !meta.lastActivityAt) return; // no timestamp → grace, skip
+      if (meta.lastActivityAt < cutoff) {
+        deletions.push(fbDb.ref('rooms/' + code).remove());
+      }
+    });
+    if (deletions.length) {
+      Promise.all(deletions).catch(function() {}); // best-effort, ignore errors
+    }
+  });
 }
 
 // ── IME-safe helpers ──────────────────────────────────────────
@@ -4310,6 +4350,7 @@ function joinRoom(code) {
   $('roomCodeLabel').textContent = activeRoom;
   $('roomBadge').classList.add('active');
   attachRoomListeners();
+  cleanupOldRooms();
   showToast('🔴 ' + (currentLang === 'zh' ? '已加入房間 ' : 'Joined room ') + activeRoom, 'info');
 }
 
@@ -4334,12 +4375,14 @@ function createAndJoinRoom() {
   $('roomBadge').classList.add('active');
   // Push current local state as initial room data
   if (fbDb) {
+    const now = Date.now();
     fbDb.ref('rooms/' + activeRoom).set({
+      meta:    { createdAt: now, lastActivityAt: now },
       budget:  { income: S.income, expenses: S.expenses },
       mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
       event:   { name: ES.name, people: ES.people, items: ES.items },
       settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
-    }).then(() => { attachRoomListeners(); });
+    }).then(() => { attachRoomListeners(); cleanupOldRooms(); });
   }
   showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
 }
