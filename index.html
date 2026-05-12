@@ -1931,25 +1931,28 @@ function renderSavings(inc, exp, net, rate) {
   }
 }
 
-// ─── Add Items ────────────────────────────────────────────────
-$('addIncomeBtn').onclick  = () => toggleForm('income', true);
-$('cancelIncome').onclick  = () => toggleForm('income', false);
-$('addExpenseBtn').onclick = () => toggleForm('expense', true);
-$('cancelExpense').onclick = () => toggleForm('expense', false);
-
+// ─── Add Items (Budget tab removed — only wire up if DOM exists) ──
 function toggleForm(type, open) {
   const isInc = type === 'income';
   const form  = $(isInc ? 'incomeForm' : 'expenseForm');
+  if (!form) return;
   form.classList.toggle('open', open);
   if (open) $(isInc ? 'iName' : 'eName').focus();
 }
 
-$('submitIncome').onclick  = () => addItem('income');
-$('submitExpense').onclick = () => addItem('expense');
+if (document.getElementById('tab-budget')) {
+  $('addIncomeBtn').onclick  = () => toggleForm('income', true);
+  $('cancelIncome').onclick  = () => toggleForm('income', false);
+  $('addExpenseBtn').onclick = () => toggleForm('expense', true);
+  $('cancelExpense').onclick = () => toggleForm('expense', false);
 
-// Enter key in forms
-['iName','iCat','iAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('income'); }));
-['eName','eCat','eAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('expense'); }));
+  $('submitIncome').onclick  = () => addItem('income');
+  $('submitExpense').onclick = () => addItem('expense');
+
+  // Enter key in forms
+  ['iName','iCat','iAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('income'); }));
+  ['eName','eCat','eAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('expense'); }));
+}
 
 function addItem(type) {
   const isInc = type === 'income';
