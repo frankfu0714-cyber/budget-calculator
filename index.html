@@ -1102,14 +1102,7 @@
 <!-- ── Tab Nav ────────────────────────────────────────────── -->
 <nav class="tab-nav" aria-label="Sections">
   <div class="tab-nav-inner">
-    <button class="tab-btn active" data-tab="budget">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-      </svg>
-      <span data-i18n="tab_budget" class="tab-lbl-full">Budget</span>
-      <span data-i18n="tab_budget_short" class="tab-lbl-short">Budget</span>
-    </button>
-    <button class="tab-btn" data-tab="event">
+    <button class="tab-btn active" data-tab="event">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -1130,200 +1123,8 @@
   </div>
 </nav>
 
-<!-- ── Budget Tab ─────────────────────────────────────────── -->
-<div id="tab-budget" class="tab-panel active">
-<main>
-
-  <!-- Hero summary -->
-  <div class="hero">
-    <div class="hero-item">
-      <div class="hero-label" data-i18n="total_income">Total Income</div>
-      <div class="hero-value" id="hIncome">$0</div>
-      <div class="hero-sub" id="hIncomeCount">0 sources</div>
-    </div>
-    <div class="hero-item">
-      <div class="hero-label" data-i18n="total_expenses">Total Expenses</div>
-      <div class="hero-value" id="hExpenses">$0</div>
-      <div class="hero-sub" id="hExpCount">0 categories</div>
-    </div>
-    <div class="hero-item">
-      <div class="hero-label" data-i18n="net_savings">Net Savings</div>
-      <div class="hero-value" id="hNet">$0</div>
-      <div class="hero-sub" id="hNetSub">—</div>
-    </div>
-    <div class="hero-item">
-      <div class="hero-label" data-i18n="savings_rate">Savings Rate</div>
-      <div class="hero-value" id="hRate">0%</div>
-      <div class="savings-progress">
-        <div class="savings-progress-bar" id="hProgress" style="width:0%"></div>
-      </div>
-      <div class="hero-sub">
-        <span class="hero-badge badge-neu" id="hBadge">—</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Income card -->
-  <div class="card">
-    <div class="card-head">
-      <div class="card-title">
-        <span class="dot" style="background:var(--income)"></span>
-        <span data-i18n="income_sources">Income Sources</span>
-      </div>
-      <button class="btn btn-income btn-sm" id="addIncomeBtn" data-i18n="add_btn">+ Add</button>
-    </div>
-    <div class="card-body">
-      <div class="add-form" id="incomeForm">
-        <div class="form-grid">
-          <input type="text"   id="iName"   placeholder="e.g. Monthly Salary" data-i18n-ph="ph_income_name" />
-          <select id="iCat">
-            <option data-i18n="cat_salary">Salary</option><option data-i18n="cat_freelance">Freelance</option>
-            <option data-i18n="cat_investment">Investment</option><option data-i18n="cat_business">Business</option>
-            <option data-i18n="cat_rental">Rental</option><option data-i18n="cat_side_hustle">Side Hustle</option>
-            <option data-i18n="cat_other">Other</option>
-          </select>
-          <input type="number" id="iAmt" placeholder="Amount" data-i18n-ph="ph_amount" min="0" step="1" />
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-income" id="submitIncome" data-i18n="add_income">Add Income</button>
-          <button class="btn btn-ghost"  id="cancelIncome" data-i18n="cancel">Cancel</button>
-        </div>
-      </div>
-      <div class="items-list" id="incomeList">
-        <div class="empty" id="incomeEmpty">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-          </svg>
-          <p><span data-i18n="no_income">No income sources yet.</span><br><span data-i18n="click_add">Click <strong>+ Add</strong> to begin.</span></p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Expenses card -->
-  <div class="card">
-    <div class="card-head">
-      <div class="card-title">
-        <span class="dot" style="background:var(--expense)"></span>
-        <span data-i18n="expense_categories">Expense Categories</span>
-      </div>
-      <button class="btn btn-expense btn-sm" id="addExpenseBtn" data-i18n="add_btn">+ Add</button>
-    </div>
-    <div class="card-body">
-      <div class="add-form" id="expenseForm">
-        <div class="form-grid">
-          <input type="text"   id="eName"  placeholder="e.g. Rent / Mortgage" data-i18n-ph="ph_expense_name" />
-          <select id="eCat">
-            <option data-i18n="cat_housing">Housing</option><option data-i18n="cat_food">Food</option>
-            <option data-i18n="cat_transport">Transport</option><option data-i18n="cat_healthcare">Healthcare</option>
-            <option data-i18n="cat_education">Education</option><option data-i18n="cat_entertainment">Entertainment</option>
-            <option data-i18n="cat_shopping">Shopping</option><option data-i18n="cat_utilities">Utilities</option>
-            <option data-i18n="cat_insurance">Insurance</option><option data-i18n="cat_subscriptions">Subscriptions</option>
-            <option data-i18n="cat_other">Other</option>
-          </select>
-          <input type="number" id="eAmt"  placeholder="Amount" data-i18n-ph="ph_amount" min="0" step="1" />
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-expense" id="submitExpense" data-i18n="add_expense">Add Expense</button>
-          <button class="btn btn-ghost"   id="cancelExpense" data-i18n="cancel">Cancel</button>
-        </div>
-      </div>
-      <div class="items-list" id="expenseList">
-        <div class="empty" id="expenseEmpty">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
-            <rect x="2" y="5" width="20" height="14" rx="2"/>
-            <line x1="2" y1="10" x2="22" y2="10"/>
-          </svg>
-          <p><span data-i18n="no_expenses">No expenses yet.</span><br><span data-i18n="click_add_expense">Click <strong>+ Add</strong> to track spending.</span></p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Spending breakdown chart -->
-  <div class="card">
-    <div class="card-head">
-      <div class="card-title">
-        <span class="dot" style="background:var(--accent)"></span>
-        <span data-i18n="spending_breakdown">Spending Breakdown</span>
-      </div>
-    </div>
-    <div class="card-body" style="padding-bottom:0">
-      <div class="chart-wrap">
-        <canvas id="donutChart"></canvas>
-        <div class="empty" id="chartEmpty" style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
-            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
-            <path d="M22 12A10 10 0 0 0 12 2v10z"/>
-          </svg>
-          <p style="font-size:.83rem;color:var(--muted);text-align:center;margin-top:8px" data-i18n="add_expenses_chart">Add expenses to see<br>your spending breakdown.</p>
-        </div>
-      </div>
-    </div>
-    <div class="chart-legend" id="chartLegend"></div>
-  </div>
-
-  <!-- Savings overview -->
-  <div class="card">
-    <div class="card-head">
-      <div class="card-title">
-        <span class="dot" style="background:var(--savings)"></span>
-        <span data-i18n="savings_overview">Savings Overview</span>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="savings-ring-wrap">
-        <div class="ring-svg-wrap">
-          <svg width="118" height="118" viewBox="0 0 118 118">
-            <circle cx="59" cy="59" r="48" fill="none" stroke="var(--surface2)" stroke-width="11"/>
-            <circle id="savingsRing" cx="59" cy="59" r="48" fill="none"
-              stroke="var(--savings)" stroke-width="11"
-              stroke-linecap="round"
-              stroke-dasharray="301.59"
-              stroke-dashoffset="301.59"
-              style="transition: stroke-dashoffset .65s ease, stroke .3s ease"/>
-          </svg>
-          <div class="ring-label">
-            <span class="ring-pct" id="ringPct">0%</span>
-            <span class="ring-sub" data-i18n="saved">saved</span>
-          </div>
-        </div>
-        <div class="ring-info">
-          <div class="ring-tip" data-i18n="ring_tip">
-            💡 Experts recommend saving at least <strong>20%</strong> of your monthly income.
-          </div>
-          <div class="ring-advice" id="ringAdvice">
-            Add income and expenses to see personalized insights.
-          </div>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="stat-label" data-i18n="monthly_income">Monthly Income</div>
-          <div class="stat-val col-income" id="sIncome">$0</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label" data-i18n="monthly_expenses">Monthly Expenses</div>
-          <div class="stat-val col-expense" id="sExpenses">$0</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label" data-i18n="savings_month">Savings / Month</div>
-          <div class="stat-val col-savings" id="sSavings">$0</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label" data-i18n="projected_annual">Projected Annual</div>
-          <div class="stat-val col-accent" id="sAnnual">$0</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</main>
-</div><!-- /tab-budget -->
-
 <!-- ── Event Splitter Tab ─────────────────────────────────── -->
-<div id="tab-event" class="tab-panel">
+<div id="tab-event" class="tab-panel active">
   <div class="ev-wrap">
 
     <!-- Left column: config + items -->
@@ -1965,6 +1766,8 @@ function total(arr) { return arr.reduce((s, x) => s + x.amount, 0); }
 
 // ─── Compute & Render ─────────────────────────────────────────
 function render() {
+  // Budget tab removed — bail out if the DOM isn't present.
+  if (!document.getElementById('tab-budget')) return;
   const inc  = total(S.income);
   const exp  = total(S.expenses);
   const net  = inc - exp;
@@ -2220,16 +2023,14 @@ $('copyBtn').onclick = () => {
 };
 
 function openShare() {
-  const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab || 'budget';
+  const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab || 'event';
   let url;
-  if (activeTab === 'event') {
-    url = location.origin + location.pathname + '?e=' + shareEncode(ES);
-  } else if (activeTab === 'mahjong') {
+  if (activeTab === 'mahjong') {
     url = location.origin + location.pathname + '?mj=' + shareEncode(MJ);
   } else if (activeTab === 'settle') {
     url = location.origin + location.pathname + '?sx=' + shareEncode(SX);
   } else {
-    url = location.origin + location.pathname + '?b=' + shareEncode({ income: S.income, expenses: S.expenses });
+    url = location.origin + location.pathname + '?e=' + shareEncode(ES);
   }
   $('shareUrl').value = url;
   $('shareOverlay').classList.add('open');
@@ -4481,3 +4282,4 @@ if (_roomModalEl) _roomModalEl.addEventListener('click', e => { if (e.target ===
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
