@@ -3,7 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Budget Calculator</title>
+  <title>SplitCalc — Event Splitter · 分帳 · 麻將 · 結算</title>
+  <meta name="description" content="Split event costs, tally mahjong scores, and settle group expenses. No account, works offline, share via link or live room." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#6366f1" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="SplitCalc" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="SplitCalc — Event Splitter · 分帳 · 麻將 · 結算" />
+  <meta property="og:description" content="Split event costs, tally mahjong scores, and settle group expenses. No account, works offline, share via link or live room." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://frankfu0714-cyber.github.io/budget-calculator/" />
+  <meta property="og:image" content="https://frankfu0714-cyber.github.io/budget-calculator/icon.svg" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SplitCalc — Event Splitter · 分帳 · 麻將 · 結算" />
+  <meta name="twitter:description" content="Split event costs, tally mahjong scores, and settle group expenses. No account, works offline, share via link or live room." />
+  <meta name="twitter:image" content="https://frankfu0714-cyber.github.io/budget-calculator/icon.svg" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
@@ -1063,7 +1086,7 @@
         <path d="M12 6v6l4 2"/>
       </svg>
     </div>
-    <span class="logo-text">BudgetCalc</span>
+    <span class="logo-text">SplitCalc</span>
   </div>
   <div class="header-right">
     <div class="lang-toggle">
@@ -1675,7 +1698,7 @@
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
           <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
         </svg>
-        <span data-i18n="share_budget">Share Your Budget</span>
+        <span data-i18n="share_title">Share Link</span>
       </div>
       <button class="btn-icon" id="closeModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -1684,7 +1707,7 @@
       </button>
     </div>
     <div class="modal-desc" data-i18n="share_desc">
-      All your budget data is encoded directly into this URL — no account or server needed. Share it with family or friends so they can view your breakdown.
+      Your data is encoded directly into this URL — no account or server needed. Share it with friends so they can view or continue on their side.
     </div>
     <div class="url-row">
       <input class="url-input" id="shareUrl" type="text" readonly />
@@ -1704,8 +1727,6 @@
   <span id="toastMsg">Done!</span>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-
 <div id="roomModal">
   <div class="room-modal-box">
     <h2 id="roomModalTitle">🔴 Live Room</h2>
@@ -1714,21 +1735,8 @@
 </div>
 
 <script>
-// ─── Category Colors ──────────────────────────────────────────
-const INC_COLORS = {
-  'Salary':'#10b981','Freelance':'#34d399','Investment':'#059669',
-  'Business':'#0d9488','Rental':'#6ee7b7','Side Hustle':'#a7f3d0','Other':'#d1fae5',
-};
-const EXP_COLORS = {
-  'Housing':'#6366f1','Food':'#f59e0b','Transport':'#3b82f6',
-  'Healthcare':'#10b981','Education':'#8b5cf6','Entertainment':'#ec4899',
-  'Shopping':'#f97316','Utilities':'#06b6d4','Insurance':'#64748b',
-  'Subscriptions':'#a78bfa','Other':'#94a3b8',
-};
-
 // ─── State ────────────────────────────────────────────────────
-let S = { income: [], expenses: [], theme: 'light' };
-let donut = null;
+let S = { theme: 'light' };
 
 // ─── Utils ────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -1751,6 +1759,18 @@ function shareDecode(param) {
   b64 += '=='.slice(0, (4 - b64.length % 4) % 4);
   return JSON.parse(decodeURIComponent(escape(atob(b64))));
 }
+// Read a share-link payload. New links put payloads in the hash (#e=...&mj=...);
+// legacy `?e=` support: fall back to the query string so old links still work.
+function readShareParam(key) {
+  const hash = location.hash.replace(/^#/, '');
+  if (hash) {
+    try {
+      const v = new URLSearchParams(hash).get(key);
+      if (v) return v;
+    } catch(_) {}
+  }
+  try { return new URLSearchParams(location.search).get(key); } catch(_) { return null; }
+}
 // Off-screen clipboard fallback for browsers without navigator.clipboard
 function clipboardFallback(text) {
   const el = document.createElement('textarea');
@@ -1762,235 +1782,10 @@ function clipboardFallback(text) {
   document.body.removeChild(el);
 }
 
-function total(arr) { return arr.reduce((s, x) => s + x.amount, 0); }
-
-// ─── Compute & Render ─────────────────────────────────────────
-function render() {
-  // Budget tab removed — bail out if the DOM isn't present.
-  if (!document.getElementById('tab-budget')) return;
-  const inc  = total(S.income);
-  const exp  = total(S.expenses);
-  const net  = inc - exp;
-  const rate = inc > 0 ? (net / inc) * 100 : 0;
-
-  // Hero
-  $('hIncome').textContent    = fmt(inc);
-  $('hExpenses').textContent  = fmt(exp);
-  $('hNet').textContent       = fmtS(net);
-  $('hIncomeCount').textContent = `${S.income.length} ${S.income.length !== 1 ? t('sources') : t('source')}`;
-  $('hExpCount').textContent  = `${S.expenses.length} ${S.expenses.length !== 1 ? t('categories_count') : t('category_count')}`;
-  $('hNetSub').textContent    = net >= 0 ? t('on_track') : t('over_budget');
-
-  const ratePct = Math.max(0, Math.min(100, rate));
-  $('hRate').textContent = (rate > 0 ? rate : 0).toFixed(1) + '%';
-  $('hProgress').style.width = ratePct + '%';
-
-  const badge = $('hBadge');
-  if (inc === 0) {
-    badge.textContent = '—'; badge.className = 'hero-badge badge-neu';
-  } else if (rate >= 20) {
-    badge.textContent = t('badge_on_track'); badge.className = 'hero-badge badge-good';
-  } else if (rate >= 10) {
-    badge.textContent = t('badge_could_improve'); badge.className = 'hero-badge badge-warn';
-  } else {
-    badge.textContent = t('badge_below_target'); badge.className = 'hero-badge badge-bad';
-  }
-
-  renderList('income');
-  renderList('expenses');
-  renderChart();
-  renderSavings(inc, exp, net, rate);
-  persist();
-}
-
-function renderList(type) {
-  const isInc = type === 'income';
-  const list  = $(isInc ? 'incomeList'  : 'expenseList');
-  const empty = $(isInc ? 'incomeEmpty' : 'expenseEmpty');
-  const items = S[type];
-  const colors = isInc ? INC_COLORS : EXP_COLORS;
-
-  list.querySelectorAll('.item').forEach(el => el.remove());
-
-  if (items.length === 0) { empty.style.display = ''; return; }
-  empty.style.display = 'none';
-
-  items.forEach(item => {
-    const el = document.createElement('div');
-    el.className = 'item';
-    el.dataset.id   = item.id;
-    el.dataset.type = type;
-    el.innerHTML = `
-      <span class="item-dot" style="background:${colors[item.category] || '#94a3b8'}"></span>
-      <span class="item-name">${esc(item.name)}</span>
-      <span class="item-cat">${esc(tCat(item.category))}</span>
-      <span class="item-amt ${isInc ? 'amt-income' : 'amt-expense'}">${fmt(item.amount)}</span>
-      <button class="btn-icon del-btn" data-id="${item.id}" data-type="${type}" title="Remove">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6l-1 14H6L5 6"/>
-          <path d="M10 11v6M14 11v6"/>
-          <path d="M9 6V4h6v2"/>
-        </svg>
-      </button>`;
-    list.appendChild(el);
-  });
-}
-
-function renderChart() {
-  const canvas = $('donutChart');
-  const empty  = $('chartEmpty');
-  const legend = $('chartLegend');
-
-  if (S.expenses.length === 0) {
-    canvas.style.display = 'none';
-    empty.style.display = '';
-    legend.innerHTML = '';
-    if (donut) { donut.destroy(); donut = null; }
-    return;
-  }
-
-  canvas.style.display = '';
-  empty.style.display = 'none';
-
-  // Aggregate by category
-  const cats = {};
-  S.expenses.forEach(e => { cats[e.category] = (cats[e.category] || 0) + e.amount; });
-
-  const labels = Object.keys(cats);
-  const data   = labels.map(k => cats[k]);
-  const colors = labels.map(k => EXP_COLORS[k] || '#94a3b8');
-  const tot    = data.reduce((a, b) => a + b, 0);
-  const isDark = S.theme === 'dark';
-  const border = isDark ? '#1e293b' : '#ffffff';
-
-  legend.innerHTML = labels.map((lbl, i) => `
-    <div class="leg-item">
-      <span class="leg-swatch" style="background:${colors[i]}"></span>
-      <span class="leg-name">${tCat(lbl)}</span>
-      <span class="leg-pct">${((data[i] / tot) * 100).toFixed(1)}%</span>
-      <span class="leg-amt">${fmt(data[i])}</span>
-    </div>`).join('');
-
-  if (donut) {
-    donut.data.labels = labels;
-    donut.data.datasets[0].data   = data;
-    donut.data.datasets[0].backgroundColor = colors;
-    donut.data.datasets[0].borderColor = border;
-    donut.update('none');
-  } else {
-    donut = new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels,
-        datasets: [{
-          data, backgroundColor: colors,
-          borderWidth: 3, borderColor: border, hoverOffset: 10,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, cutout: '70%',
-        animation: { animateRotate: true, animateScale: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.label}: ${fmt(ctx.parsed)} (${((ctx.parsed/tot)*100).toFixed(1)}%)`
-            }
-          }
-        }
-      }
-    });
-  }
-}
-
-function renderSavings(inc, exp, net, rate) {
-  // Ring  2πr = 2 * π * 48 ≈ 301.59
-  const CIRC = 301.59;
-  const clamp = Math.max(0, Math.min(100, rate));
-  const ring  = $('savingsRing');
-  ring.style.strokeDashoffset = CIRC - (clamp / 100) * CIRC;
-  ring.style.stroke = rate >= 20 ? '#10b981' : rate >= 10 ? '#f59e0b' : rate > 0 ? '#ef4444' : 'var(--surface2)';
-  $('ringPct').textContent = Math.max(0, rate).toFixed(0) + '%';
-
-  $('sIncome').textContent   = fmt(inc);
-  $('sExpenses').textContent = fmt(exp);
-  $('sSavings').textContent  = fmtS(net);
-  $('sAnnual').textContent   = fmtS(net * 12);
-
-  const advice = $('ringAdvice');
-  if (inc === 0) {
-    advice.textContent = t('advice_no_income');
-  } else if (rate >= 20) {
-    advice.textContent = t('advice_great', { rate: rate.toFixed(1), annual: fmt(net * 12) });
-  } else if (rate >= 0) {
-    const gap = inc * 0.20 - net;
-    advice.textContent = t('advice_improve', { rate: rate.toFixed(1), gap: fmt(gap) });
-  } else {
-    advice.textContent = t('advice_over', { over: fmt(Math.abs(net)) });
-  }
-}
-
-// ─── Add Items (Budget tab removed — only wire up if DOM exists) ──
-function toggleForm(type, open) {
-  const isInc = type === 'income';
-  const form  = $(isInc ? 'incomeForm' : 'expenseForm');
-  if (!form) return;
-  form.classList.toggle('open', open);
-  if (open) $(isInc ? 'iName' : 'eName').focus();
-}
-
-if (document.getElementById('tab-budget')) {
-  $('addIncomeBtn').onclick  = () => toggleForm('income', true);
-  $('cancelIncome').onclick  = () => toggleForm('income', false);
-  $('addExpenseBtn').onclick = () => toggleForm('expense', true);
-  $('cancelExpense').onclick = () => toggleForm('expense', false);
-
-  $('submitIncome').onclick  = () => addItem('income');
-  $('submitExpense').onclick = () => addItem('expense');
-
-  // Enter key in forms
-  ['iName','iCat','iAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('income'); }));
-  ['eName','eCat','eAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('expense'); }));
-}
-
-function addItem(type) {
-  const isInc = type === 'income';
-  const name  = $(isInc ? 'iName' : 'eName').value.trim();
-  const cat   = $(isInc ? 'iCat'  : 'eCat').value;
-  const amt   = parseFloat($(isInc ? 'iAmt' : 'eAmt').value);
-
-  if (!name || isNaN(amt) || amt <= 0) {
-    showToast(t('toast_name_amount'), 'warn');
-    return;
-  }
-
-  S[type].unshift({ id: uid(), name, category: cat, amount: amt });
-  toggleForm(type, false);
-  $(isInc ? 'iName' : 'eName').value = '';
-  $(isInc ? 'iAmt'  : 'eAmt').value  = '';
-  render();
-  showToast(t('toast_added', { name }));
-}
-
-// ─── Delete ───────────────────────────────────────────────────
-document.addEventListener('click', e => {
-  const btn = e.target.closest('.del-btn');
-  if (!btn) return;
-  const { id, type } = btn.dataset;
-  S[type] = S[type].filter(x => x.id !== id);
-  render();
-  showToast(t('toast_removed'), 'info');
-});
-
 // ─── Theme ────────────────────────────────────────────────────
 $('themeBtn').onclick = () => {
   S.theme = S.theme === 'light' ? 'dark' : 'light';
   applyTheme();
-  if (donut) {
-    donut.data.datasets[0].borderColor = S.theme === 'dark' ? '#1e293b' : '#ffffff';
-    donut.update('none');
-  }
   persist();
 };
 
@@ -2027,13 +1822,14 @@ $('copyBtn').onclick = () => {
 
 function openShare() {
   const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab || 'event';
+  const base = location.origin + location.pathname;
   let url;
   if (activeTab === 'mahjong') {
-    url = location.origin + location.pathname + '?mj=' + shareEncode(MJ);
+    url = base + '#mj=' + shareEncode(MJ);
   } else if (activeTab === 'settle') {
-    url = location.origin + location.pathname + '?sx=' + shareEncode(SX);
+    url = base + '#sx=' + shareEncode(SX);
   } else {
-    url = location.origin + location.pathname + '?e=' + shareEncode(ES);
+    url = base + '#e=' + shareEncode(ES);
   }
   $('shareUrl').value = url;
   $('shareOverlay').classList.add('open');
@@ -2574,7 +2370,7 @@ function renderReceipt() {
 }
 
 $('evShareBtn').onclick = () => {
-  const url = location.origin + location.pathname + '?e=' + shareEncode(ES);
+  const url = location.origin + location.pathname + '#e=' + shareEncode(ES);
   navigator.clipboard.writeText(url)
     .then(() => showToast(t('toast_event_link')))
     .catch(() => { clipboardFallback(url); showToast(t('toast_event_link_short')); });
@@ -2660,7 +2456,7 @@ function persistES() {
 
 function loadES() {
   try {
-    const param = new URLSearchParams(location.search).get('e');
+    const param = readShareParam('e');
     if (param) {
       const d = shareDecode(param);
       ES.name   = d.name   || '';
@@ -2702,32 +2498,18 @@ function loadES() {
 }
 
 // ─── Persistence ──────────────────────────────────────────────
+// Only the theme lives here — Budget tab was removed. Legacy 'budgetcalc'
+// localStorage entries from older versions still hydrate the theme cleanly.
 function persist() {
   try {
-    localStorage.setItem('budgetcalc', JSON.stringify(S));
+    localStorage.setItem('budgetcalc', JSON.stringify({ theme: S.theme }));
   } catch (_) {}
 }
 
 function loadState() {
-  // 1. URL param takes priority
-  try {
-    const param = new URLSearchParams(location.search).get('b');
-    if (param) {
-      const d = shareDecode(param);
-      S.income   = d.income   || [];
-      S.expenses = d.expenses || [];
-      history.replaceState(null, '', location.pathname);
-      showToast(t('toast_budget_loaded'), 'info');
-      return;
-    }
-  } catch (_) {}
-
-  // 2. LocalStorage
   try {
     const saved = JSON.parse(localStorage.getItem('budgetcalc') || '{}');
-    S.income   = saved.income   || [];
-    S.expenses = saved.expenses || [];
-    S.theme    = saved.theme    || 'light';
+    S.theme = saved.theme || 'light';
   } catch (_) {}
 }
 
@@ -3000,12 +2782,12 @@ function mjPersist() {
   try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
 }
 function mjShareUrl() {
-  return location.origin + location.pathname + '?mj=' + shareEncode(MJ);
+  return location.origin + location.pathname + '#mj=' + shareEncode(MJ);
 }
 
 function mjLoad() {
   try {
-    const param = new URLSearchParams(location.search).get('mj');
+    const param = readShareParam('mj');
     if (param) {
       const d = shareDecode(param);
       if (d.players) MJ.players = d.players;
@@ -3587,7 +3369,7 @@ function persistSX() {
 
 function sxLoad() {
   try {
-    const param = new URLSearchParams(location.search).get('sx');
+    const param = readShareParam('sx');
     if (param) {
       const d = shareDecode(param);
       SX.name         = d.name         || '';
@@ -3627,7 +3409,7 @@ function sxLoad() {
 }
 
 $('sxShareBtn').onclick = () => {
-  const url = location.origin + location.pathname + '?sx=' + shareEncode(SX);
+  const url = location.origin + location.pathname + '#sx=' + shareEncode(SX);
   navigator.clipboard.writeText(url)
     .then(() => showToast(t('sx_link_copied')))
     .catch(() => { clipboardFallback(url); showToast(t('sx_link_copied')); });
@@ -3639,43 +3421,12 @@ let currentLang = localStorage.getItem('app-lang') || 'en';
 const I18N = {
   en: {
     // Tabs
-    tab_budget: 'Budget', tab_event: 'Event Splitter', tab_mahjong: 'Mahjong',
-    tab_budget_short: 'Budget', tab_event_short: 'Split', tab_mahjong_short: '麻將', tab_settle_short: 'Settle',
+    tab_event: 'Event Splitter', tab_mahjong: 'Mahjong',
+    tab_event_short: 'Split', tab_mahjong_short: '麻將', tab_settle_short: 'Settle',
     // Header
     share: 'Share', room_btn: 'Room',
-    // Hero
-    total_income: 'Total Income', total_expenses: 'Total Expenses',
-    net_savings: 'Net Savings', savings_rate: 'Savings Rate',
-    sources: 'sources', source: 'source',
-    categories_count: 'categories', category_count: 'category',
-    on_track: '✓ On track', over_budget: '⚠ Over budget',
-    badge_on_track: '🎯 On track', badge_could_improve: '⚠ Could improve', badge_below_target: '🔴 Below target',
-    // Budget cards
-    income_sources: 'Income Sources', expense_categories: 'Expense Categories',
-    spending_breakdown: 'Spending Breakdown', savings_overview: 'Savings Overview',
-    add_btn: '+ Add', add_income: 'Add Income', add_expense: 'Add Expense', cancel: 'Cancel',
-    // Income categories
-    cat_salary: 'Salary', cat_freelance: 'Freelance', cat_investment: 'Investment',
-    cat_business: 'Business', cat_rental: 'Rental', cat_side_hustle: 'Side Hustle', cat_other: 'Other',
-    // Expense categories
-    cat_housing: 'Housing', cat_food: 'Food', cat_transport: 'Transport',
-    cat_healthcare: 'Healthcare', cat_education: 'Education', cat_entertainment: 'Entertainment',
-    cat_shopping: 'Shopping', cat_utilities: 'Utilities', cat_insurance: 'Insurance',
-    cat_subscriptions: 'Subscriptions',
     // Placeholders
-    ph_income_name: 'e.g. Monthly Salary', ph_expense_name: 'e.g. Rent / Mortgage', ph_amount: 'Amount', ph_foreign_amt: 'Foreign amt',
-    // Empty states
-    no_income: 'No income sources yet.', click_add: 'Click <strong>+ Add</strong> to begin.',
-    no_expenses: 'No expenses yet.', click_add_expense: 'Click <strong>+ Add</strong> to track spending.',
-    add_expenses_chart: 'Add expenses to see<br>your spending breakdown.',
-    // Savings
-    saved: 'saved', monthly_income: 'Monthly Income', monthly_expenses: 'Monthly Expenses',
-    savings_month: 'Savings / Month', projected_annual: 'Projected Annual',
-    ring_tip: '💡 Experts recommend saving at least <strong>20%</strong> of your monthly income.',
-    advice_no_income: 'Add your income sources to unlock personalized savings insights.',
-    advice_great: "You're saving {rate}% of your income — great work! That's {annual} per year.",
-    advice_improve: "You're {rate}% of the way there. Reduce expenses by {gap}/mo to hit the 20% goal.",
-    advice_over: "You're spending {over}/mo more than you earn. Consider cutting expenses or growing income.",
+    ph_amount: 'Amount', ph_foreign_amt: 'Foreign amt',
     // Event Splitter
     event_details: 'Event Details', project: 'Project', new_btn: '+ New', delete: 'Delete',
     event_name: 'Event Name', num_people: 'Number of People',
@@ -3721,15 +3472,14 @@ const I18N = {
     mj_preview_self2: 'Each of {losers} pays {pay}',
     mj_preview_disc: '{winner} wins {pay} from {loser}',
     // Share modal
-    share_budget: 'Share Your Budget',
-    share_desc: 'All your budget data is encoded directly into this URL — no account or server needed. Share it with family or friends so they can view your breakdown.',
+    share_title: 'Share Link',
+    share_desc: 'Your data is encoded directly into this URL — no account or server needed. Share it with friends so they can view or continue on their side.',
     copy: 'Copy', close: 'Close',
     // Toast
     toast_done: 'Done!', toast_removed: 'Item removed.', toast_cleared: 'Cleared.',
     toast_link_copied: 'Link copied to clipboard!', toast_link_copied_short: 'Link copied!',
     toast_event_link: 'Event link copied to clipboard! 🔗',
     toast_event_link_short: 'Event link copied!',
-    toast_budget_loaded: 'Budget loaded from shared link! 🔗',
     toast_event_loaded: 'Event loaded from shared link! 🔗',
     toast_name_amount: 'Please enter a name and a valid amount.',
     toast_name_amount_short: 'Enter a name and valid amount.',
@@ -3767,35 +3517,10 @@ const I18N = {
     sx_subtotal: 'Subtotal',
   },
   zh: {
-    tab_budget: '預算', tab_event: '活動分帳', tab_mahjong: '麻將',
-    tab_budget_short: '預算', tab_event_short: '分帳', tab_mahjong_short: '麻將', tab_settle_short: '結算',
+    tab_event: '活動分帳', tab_mahjong: '麻將',
+    tab_event_short: '分帳', tab_mahjong_short: '麻將', tab_settle_short: '結算',
     share: '分享', room_btn: '房間',
-    total_income: '總收入', total_expenses: '總支出',
-    net_savings: '淨儲蓄', savings_rate: '儲蓄率',
-    sources: '筆收入', source: '筆收入',
-    categories_count: '筆支出', category_count: '筆支出',
-    on_track: '✓ 正常', over_budget: '⚠ 超支',
-    badge_on_track: '🎯 正常', badge_could_improve: '⚠ 可改善', badge_below_target: '🔴 低於目標',
-    income_sources: '收入來源', expense_categories: '支出分類',
-    spending_breakdown: '支出分佈', savings_overview: '儲蓄概覽',
-    add_btn: '+ 新增', add_income: '新增收入', add_expense: '新增支出', cancel: '取消',
-    cat_salary: '薪資', cat_freelance: '接案', cat_investment: '投資',
-    cat_business: '事業', cat_rental: '租金收入', cat_side_hustle: '副業', cat_other: '其他',
-    cat_housing: '住房', cat_food: '餐飲', cat_transport: '交通',
-    cat_healthcare: '醫療', cat_education: '教育', cat_entertainment: '娛樂',
-    cat_shopping: '購物', cat_utilities: '水電', cat_insurance: '保險',
-    cat_subscriptions: '訂閱',
-    ph_income_name: '例：月薪', ph_expense_name: '例：房租', ph_amount: '金額', ph_foreign_amt: '外幣金額',
-    no_income: '尚無收入來源', click_add: '點擊 <strong>+ 新增</strong> 開始',
-    no_expenses: '尚無支出', click_add_expense: '點擊 <strong>+ 新增</strong> 開始',
-    add_expenses_chart: '新增支出以查看分佈',
-    saved: '已存', monthly_income: '月收入', monthly_expenses: '月支出',
-    savings_month: '月儲蓄', projected_annual: '預估年度',
-    ring_tip: '💡 專家建議每月至少儲蓄收入的 <strong>20%</strong>。',
-    advice_no_income: '新增收入來源以獲得個人化儲蓄建議。',
-    advice_great: '你正在儲蓄收入的 {rate}%——做得好！每年可存 {annual}。',
-    advice_improve: '目前達到 {rate}%。每月減少支出 {gap} 即可達到 20% 目標。',
-    advice_over: '你每月超支 {over}。請考慮減少支出或增加收入。',
+    ph_amount: '金額', ph_foreign_amt: '外幣金額',
     event_details: '活動詳情', project: '專案', new_btn: '+ 新增', delete: '刪除',
     event_name: '活動名稱', num_people: '人數',
     expense_items: '費用項目', calculator: '🧮 計算機',
@@ -3837,14 +3562,13 @@ const I18N = {
     mj_preview_self: '{winner} 贏得 {total}',
     mj_preview_self2: '{losers} 各付 {pay}',
     mj_preview_disc: '{winner} 從 {loser} 贏得 {pay}',
-    share_budget: '分享你的預算',
-    share_desc: '所有預算資料都編碼在此網址中——不需帳號或伺服器。分享給家人或朋友即可查看你的預算明細。',
+    share_title: '分享連結',
+    share_desc: '資料都編碼在此網址中，不需帳號或伺服器。分享給朋友即可查看或在他們自己的裝置上繼續。',
     copy: '複製', close: '關閉',
     toast_done: '完成！', toast_removed: '項目已刪除', toast_cleared: '已清除',
     toast_link_copied: '連結已複製！', toast_link_copied_short: '連結已複製！',
     toast_event_link: '活動連結已複製！🔗',
     toast_event_link_short: '活動連結已複製！',
-    toast_budget_loaded: '已從分享連結載入預算！🔗',
     toast_event_loaded: '已從分享連結載入活動！🔗',
     toast_name_amount: '請輸入名稱和有效金額。',
     toast_name_amount_short: '請輸入名稱和有效金額。',
@@ -3889,16 +3613,6 @@ function t(key, params) {
   return s;
 }
 
-const CAT_KEY_MAP = {
-  'Salary':'cat_salary','Freelance':'cat_freelance','Investment':'cat_investment',
-  'Business':'cat_business','Rental':'cat_rental','Side Hustle':'cat_side_hustle',
-  'Housing':'cat_housing','Food':'cat_food','Transport':'cat_transport',
-  'Healthcare':'cat_healthcare','Education':'cat_education','Entertainment':'cat_entertainment',
-  'Shopping':'cat_shopping','Utilities':'cat_utilities','Insurance':'cat_insurance',
-  'Subscriptions':'cat_subscriptions','Other':'cat_other'
-};
-function tCat(cat) { return CAT_KEY_MAP[cat] ? t(CAT_KEY_MAP[cat]) : cat; }
-
 function updateStaticText() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -3924,7 +3638,6 @@ function setLang(lang) {
   });
   updateStaticText();
   updateMonthChip();
-  render();
   renderEvItems();
   renderReceipt();
   mjRenderAll();
@@ -3949,7 +3662,6 @@ document.querySelectorAll('.lang-btn').forEach(b => {
   b.classList.toggle('active', (currentLang === 'en' && b.textContent.trim() === 'EN') || (currentLang === 'zh' && b.textContent.trim() === '中文'));
 });
 updateStaticText();
-render();
 // Sync event splitter inputs with loaded state
 renderESProjectDropdown();
 $('evEventName').value = ES.name;
@@ -3990,11 +3702,32 @@ function genRoomCode() {
 
 function roomRef(path) { return fbDb.ref('rooms/' + activeRoom + '/' + path); }
 
-function fbWriteBudget() {
-  if (!activeRoom || !fbDb || _fbUpdating) return;
-  roomRef('budget').set({ income: S.income, expenses: S.expenses });
-  _fbTouchDebounced();
+// ── Known-rooms bookkeeping ───────────────────────────────────
+// The RTDB rules disallow reading the `rooms/` root, so we can no longer
+// enumerate every room to garbage-collect. Instead each browser tracks the
+// rooms it has touched in localStorage and only sweeps those.
+const KNOWN_ROOMS_KEY = 'sc-known-rooms';
+function getKnownRooms() {
+  try {
+    const raw = localStorage.getItem(KNOWN_ROOMS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(_) { return []; }
 }
+function rememberRoom(code) {
+  if (!code) return;
+  const set = new Set(getKnownRooms());
+  set.add(code);
+  const arr = Array.from(set).slice(-50); // cap at 50 to keep storage tiny
+  try { localStorage.setItem(KNOWN_ROOMS_KEY, JSON.stringify(arr)); } catch(_) {}
+}
+function forgetRoom(code) {
+  if (!code) return;
+  const arr = getKnownRooms().filter(c => c !== code);
+  try { localStorage.setItem(KNOWN_ROOMS_KEY, JSON.stringify(arr)); } catch(_) {}
+}
+
 function fbWriteMahjong() {
   if (!activeRoom || !fbDb || _fbUpdating) return;
   roomRef('mahjong').set({ players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds });
@@ -4024,26 +3757,29 @@ const _fbTouchDebounced = (function() {
 })();
 
 // ── Room cleanup: delete rooms inactive for 30+ days ──────────
-// Rooms with no lastActivityAt (created before this feature) are skipped — they
-// will get a timestamp naturally the next time someone uses them.
+// Rules disallow reading `rooms/` root, so we only sweep rooms this browser
+// has touched. Rooms with no lastActivityAt (created before this feature) are
+// skipped — they will get a timestamp naturally the next time someone uses them.
 const ROOM_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 function cleanupOldRooms() {
   if (!fbDb) return;
   const cutoff = Date.now() - ROOM_TTL_MS;
-  fbDb.ref('rooms').once('value', function(snap) {
-    const rooms = snap.val();
-    if (!rooms) return;
-    const deletions = [];
-    Object.keys(rooms).forEach(function(code) {
-      const meta = rooms[code] && rooms[code].meta;
-      if (!meta || !meta.lastActivityAt) return; // no timestamp → grace, skip
-      if (meta.lastActivityAt < cutoff) {
-        deletions.push(fbDb.ref('rooms/' + code).remove());
+  const known = getKnownRooms();
+  known.forEach(function(code) {
+    fbDb.ref('rooms/' + code + '/meta').once('value', function(snap) {
+      const meta = snap.val();
+      if (!meta) {
+        // Room no longer exists — drop it from our local list.
+        forgetRoom(code);
+        return;
       }
-    });
-    if (deletions.length) {
-      Promise.all(deletions).catch(function() {}); // best-effort, ignore errors
-    }
+      if (!meta.lastActivityAt) return; // grace period, skip
+      if (meta.lastActivityAt < cutoff) {
+        fbDb.ref('rooms/' + code).remove()
+          .then(function() { forgetRoom(code); })
+          .catch(function() {}); // best-effort
+      }
+    }, function() {}); // swallow permission errors
   });
 }
 
@@ -4075,23 +3811,12 @@ document.addEventListener('compositionstart', () => { _imeComposing = true;  });
 document.addEventListener('compositionend',   () => {
   _imeComposing = false;
   // Flush any pending debounced writes now that composition is done
-  if (activeRoom) { _fbWBD(); _fbWED(); _fbWMD(); _fbWSD(); }
+  if (activeRoom) { _fbWED(); _fbWMD(); _fbWSD(); }
 });
 
 function attachRoomListeners() {
   if (!activeRoom || !fbDb) return;
   detachRoomListeners();
-
-  const budgetCb = roomRef('budget').on('value', snap => {
-    const d = snap.val(); if (!d) return;
-    _fbUpdating = true;
-    S.income   = d.income   || [];
-    S.expenses = d.expenses || [];
-    try { localStorage.setItem('budgetcalc', JSON.stringify(S)); } catch(_) {}
-    _safeRender('tab-budget', render);
-    _fbUpdating = false;
-  });
-  fbListeners.budget = budgetCb;
 
   const mahjongCb = roomRef('mahjong').on('value', snap => {
     const d = snap.val(); if (!d) return;
@@ -4137,7 +3862,7 @@ function attachRoomListeners() {
 
 function detachRoomListeners() {
   if (!fbDb || !activeRoom) return;
-  ['budget','mahjong','event','settle'].forEach(key => {
+  ['mahjong','event','settle'].forEach(key => {
     if (fbListeners[key] !== undefined) {
       try { roomRef(key).off('value', fbListeners[key]); } catch(_) {}
       delete fbListeners[key];
@@ -4149,10 +3874,13 @@ function joinRoom(code) {
   activeRoom = code.toUpperCase().replace(/[^A-Z0-9]/g,'');
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
+  // legacy `?e=` support: also strip old-style payloads if present
   ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  url.hash = '';
   history.replaceState(null, '', url.toString());
   $('roomCodeLabel').textContent = activeRoom;
   $('roomBadge').classList.add('active');
+  rememberRoom(activeRoom);
   attachRoomListeners();
   cleanupOldRooms();
   showToast('🔴 ' + (currentLang === 'zh' ? '已加入房間 ' : 'Joined room ') + activeRoom, 'info');
@@ -4168,27 +3896,49 @@ function leaveRoom() {
   showToast(currentLang === 'zh' ? '已離開房間' : 'Left room', 'info');
 }
 
-function createAndJoinRoom() {
+// Generate a room code that isn't already in use. Retries a handful of times
+// before giving up so a full 32^6 space would still trip a warning eventually.
+function genUniqueRoomCode(cb, attemptsLeft) {
+  if (attemptsLeft == null) attemptsLeft = 5;
+  if (!fbDb) { cb(null); return; }
   const code = genRoomCode();
-  activeRoom = code;
-  const url = new URL(location.href);
-  url.searchParams.set('room', activeRoom);
-  ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
-  history.replaceState(null, '', url.toString());
-  $('roomCodeLabel').textContent = activeRoom;
-  $('roomBadge').classList.add('active');
-  // Push current local state as initial room data
-  if (fbDb) {
+  fbDb.ref('rooms/' + code + '/meta/createdAt').once('value')
+    .then(function(snap) {
+      if (!snap.exists()) { cb(code); return; }
+      if (attemptsLeft <= 0) { cb(null); return; }
+      genUniqueRoomCode(cb, attemptsLeft - 1);
+    })
+    .catch(function() { cb(code); }); // if we can't check, assume free
+}
+
+function createAndJoinRoom() {
+  if (!fbDb) {
+    showToast(currentLang === 'zh' ? '房間服務暫時無法使用' : 'Room service unavailable', 'warn');
+    return;
+  }
+  genUniqueRoomCode(function(code) {
+    if (!code) {
+      showToast(currentLang === 'zh' ? '無法建立房間，請重試' : 'Could not create room, try again', 'warn');
+      return;
+    }
+    activeRoom = code;
+    const url = new URL(location.href);
+    url.searchParams.set('room', activeRoom);
+    ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+    url.hash = '';
+    history.replaceState(null, '', url.toString());
+    $('roomCodeLabel').textContent = activeRoom;
+    $('roomBadge').classList.add('active');
+    rememberRoom(activeRoom);
     const now = Date.now();
     fbDb.ref('rooms/' + activeRoom).set({
       meta:    { createdAt: now, lastActivityAt: now },
-      budget:  { income: S.income, expenses: S.expenses },
       mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
       event:   { name: ES.name, people: ES.people, items: ES.items },
       settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
     }).then(() => { attachRoomListeners(); cleanupOldRooms(); });
-  }
-  showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+    showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+  });
 }
 
 function openRoomModal() {
@@ -4249,17 +3999,14 @@ function copyRoomLink() {
 }
 
 // Wrap persist functions to push changes to Firebase (debounced + IME-safe)
-const _origPersist   = persist;
 const _origPersistES = persistES;
 const _origMjPersist = mjPersist;
 const _origPersistSX = persistSX;
 // Debounced Firebase writers — 400ms groups rapid keystrokes into one write;
 // compositionend handler above flushes immediately after IME confirms a character.
-const _fbWBD = _fbDebounce(fbWriteBudget,  400);
 const _fbWED = _fbDebounce(fbWriteEvent,   400);
 const _fbWMD = _fbDebounce(fbWriteMahjong, 400);
 const _fbWSD = _fbDebounce(fbWriteSettle,  400);
-persist    = function() { _origPersist();   _fbWBD(); };
 persistES  = function() { _origPersistES(); _fbWED(); };
 mjPersist  = function() { _origMjPersist(); _fbWMD(); };
 persistSX  = function() { _origPersistSX(); _fbWSD(); };
