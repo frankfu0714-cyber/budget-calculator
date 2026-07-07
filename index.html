@@ -1196,6 +1196,29 @@
     }
     .share-ro-toggle input { margin: 0; cursor: pointer; }
     .share-ro-toggle-hint { color: var(--muted); font-size: .74rem; margin-top: 4px; padding: 0 4px; }
+
+    /* Snapshot-vs-live-collab hint below every Share button + at top of Share modal. */
+    .share-live-hint {
+      font-size: .74rem; color: var(--muted); line-height: 1.5;
+      margin-top: 4px; padding: 0 4px;
+    }
+    /* Inline text-button that opens the Live-collab modal and flashes the CTA. */
+    .live-collab-link {
+      display: inline; padding: 0;
+      background: transparent; border: 0;
+      color: var(--accent); font: inherit; font-weight: 700;
+      cursor: pointer; text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .live-collab-link:hover { color: var(--accent2); }
+    /* Brief flash on the header CTA when the user follows a share-hint link,
+       so their eyes land on the button they should press next. */
+    @keyframes room-cta-flash {
+      0%, 100% { box-shadow: var(--sh); transform: none; }
+      30%      { box-shadow: 0 0 0 8px rgba(99,102,241,.35); transform: translateY(-1px); }
+      60%      { box-shadow: 0 0 0 4px rgba(99,102,241,.20); transform: translateY(-1px); }
+    }
+    #createRoomBtn.room-cta.flash { animation: room-cta-flash 1.2s ease-out 2; }
     #roomModal {
       display: none;
       position: fixed; inset: 0;
@@ -1572,6 +1595,7 @@
           </svg>
         </button>
       </div>
+      <div class="share-live-hint" style="margin-top:8px" data-i18n="share_live_hint">This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.</div>
     </div><!-- /receipt -->
 
   </div><!-- /ev-wrap -->
@@ -1783,6 +1807,7 @@
         <div style="padding:0 18px 14px;font-size:.74rem;color:var(--muted);line-height:1.5" data-i18n="mj_share_hint">
           Share after each round so other players can verify scores on their own phone.
         </div>
+        <div style="padding:0 18px 14px" class="share-live-hint" data-i18n="share_live_hint">This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.</div>
       </div>
 
     </div><!-- /right -->
@@ -1935,6 +1960,7 @@
           </button>
         </div>
         <div style="padding:0 18px 14px;font-size:.74rem;color:var(--muted);line-height:1.5" data-i18n="sx_share_hint">Share this link so friends can view expenses and settlement.</div>
+        <div style="padding:0 18px 14px" class="share-live-hint" data-i18n="share_live_hint">This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.</div>
       </div>
 
     </div><!-- /sx-right -->
@@ -1962,6 +1988,7 @@
     <div class="modal-desc" data-i18n="share_desc">
       Your data is encoded directly into this URL — no account or server needed. Share it with friends so they can view or continue on their side.
     </div>
+    <div class="share-live-hint" style="margin: -4px 0 12px" data-i18n="share_live_hint">This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.</div>
     <div class="url-row">
       <input class="url-input" id="shareUrl" type="text" readonly />
       <button class="btn btn-primary" id="copyBtn" data-i18n="copy">Copy</button>
@@ -4011,6 +4038,7 @@ const I18N = {
     share_desc: 'Your data is encoded directly into this URL — no account or server needed. Share it with friends so they can view or continue on their side.',
     share_ro_label: 'Share as read-only',
     share_ro_hint: 'Recipients can view but not edit. They can still click "Copy to edit" to make their own copy.',
+    share_live_hint: 'This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.',
     // Read-only viewer + room CTA
     ro_banner_text: 'Read-only view — you\'re looking at a shared snapshot.',
     ro_copy_btn: 'Copy to edit',
@@ -4131,6 +4159,7 @@ const I18N = {
     share_desc: '資料都編碼在此網址中，不需帳號或伺服器。分享給朋友即可查看或在他們自己的裝置上繼續。',
     share_ro_label: '唯讀分享',
     share_ro_hint: '收到的人只能檢視，無法編輯。他們可以點「複製後編輯」建立自己的副本。',
+    share_live_hint: '此為快照連結。若要多人同時編輯，請改用<button type="button" class="live-collab-link" data-live-collab>「即時協作」</button>。',
     ro_banner_text: '唯讀檢視 — 你正在看別人分享的快照。',
     ro_copy_btn: '複製後編輯',
     ro_copied: '已複製到你的資料，可以開始編輯。',
@@ -4994,6 +5023,28 @@ persistSX  = function() { _origPersistSX(); _fbWSD(); if (currentUser) _fsWSD();
 $('createRoomBtn').onclick = openRoomModal;
 const _roomModalEl = $('roomModal');
 if (_roomModalEl) _roomModalEl.addEventListener('click', e => { if (e.target === _roomModalEl) closeRoomModal(); });
+
+// Inline "Live collab" links inside every share-hint block route here.
+// If the Share modal is open, close it first so the Room modal doesn't stack
+// on top; then flash the header CTA so the user's eyes land on where they are.
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('[data-live-collab]');
+  if (!link) return;
+  e.preventDefault();
+  if ($('shareOverlay').classList.contains('open')) closeShare();
+  // Persist the first-time hint dismissal so the header popover doesn't
+  // reappear on next load — the user has clearly discovered Live collab now.
+  try { localStorage.setItem('sc_room_hint_seen', '1'); } catch(_) {}
+  const cta = $('createRoomBtn');
+  if (cta) {
+    cta.classList.remove('flash');
+    // Force a reflow so the animation restarts if clicked twice in a row.
+    void cta.offsetWidth;
+    cta.classList.add('flash');
+    setTimeout(function() { cta.classList.remove('flash'); }, 2600);
+  }
+  openRoomModal();
+});
 
 // Auto-join room from URL on load. Skipped in read-only mode: a live-editable
 // room + a read-only viewer is contradictory, and the RO lock would just make
