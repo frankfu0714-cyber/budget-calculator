@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SplitCalc — Loading…</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    html, body { margin: 0; padding: 0; background: #f1f5f9; }
+    @media (prefers-color-scheme: dark) { html, body { background: #0f172a; } }
+  </style>
+  <script>
+    // ─── SPA-on-Pages redirect ────────────────────────────────
+    // GH Pages serves this file for any path that doesn't match a real file
+    // under the repo. That includes our SPA routes /event-splitter/,
+    // /mahjong/, /expense-settlement/. We stash the requested path in
+    // sessionStorage and reload at the base; the SPA in index.html reads
+    // the stash and restores the URL via history.replaceState so the user
+    // ends up on the URL they typed with no visible query-string mangling.
+    (function() {
+      var pathname = location.pathname;
+      var parts = pathname.split('/').filter(Boolean);
+      var KNOWN = { 'event-splitter': 1, 'mahjong': 1, 'expense-settlement': 1 };
+
+      // Compute base: if the last segment is a known SPA route, drop it —
+      // whatever's above is the app's base. Otherwise fall back to the first
+      // segment (works for GH Pages user-site pattern `/<repo>/`). Bare `/`
+      // is the last resort.
+      var base;
+      if (parts.length && KNOWN[parts[parts.length - 1]]) {
+        parts.pop();
+        base = '/' + parts.join('/') + (parts.length ? '/' : '');
+        if (base === '') base = '/';
+      } else {
+        base = parts.length ? '/' + parts[0] + '/' : '/';
+      }
+
+      try {
+        sessionStorage.setItem('sc-spa-redirect', pathname + location.search + location.hash);
+      } catch (_) { /* private mode etc — fall through to plain reload */ }
+
+      location.replace(base);
+    })();
+  </script>
+</head>
+<body></body>
+</html>
