@@ -1223,26 +1223,25 @@
     /* Modal-only tweak — the hint at the top of the share dialog gets a hair
        more breathing room than the tab-side variants. */
     .share-live-hint-modal { margin: -4px 0 14px; font-size: .82rem; }
-    /* "or" divider between the snapshot link block and the Live-collab CTA. */
-    .share-or-divider {
-      display: flex; align-items: center; gap: 10px;
-      margin: 14px 0;
-      font-size: .72rem; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 2px;
+    /* URL input on its own line (used to share a row with the Copy button;
+       now it's above the two-button primary action row). */
+    .share-url-solo { width: 100%; margin: 0 0 12px; }
+    /* Primary action row — Copy snapshot link | Start Live collab, side by
+       side. Peer buttons of equal weight, distinct colors. Wraps on narrow
+       modals so nothing overflows on mobile. */
+    .share-actions-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;
     }
-    .share-or-divider::before, .share-or-divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
-    /* Start Live collab button — green gradient matches the in-room CTA state
-       so users associate this button with the same feature. Full width, tall
-       enough to feel like a primary CTA. */
+    .share-actions-row > .btn { flex: 1 1 160px; justify-content: center; }
+    .share-copy-btn { padding: 10px 14px; font-size: .88rem; font-weight: 700; }
+    /* Start Live collab — green gradient matches the header CTA's in-room
+       state so users associate this button with the same feature. */
     .share-start-live-btn {
       display: flex; align-items: center; justify-content: center; gap: 8px;
-      width: 100%;
       padding: 10px 14px;
       background: linear-gradient(135deg,#10b981,#059669);
       color: #fff; border: 0; border-radius: 10px;
-      font: inherit; font-weight: 700; font-size: .9rem;
+      font: inherit; font-weight: 700; font-size: .88rem;
       cursor: pointer;
       transition: transform .12s, box-shadow .12s, opacity .12s;
     }
@@ -2031,24 +2030,28 @@
       </button>
     </div>
     <div class="share-live-hint share-live-hint-modal" data-i18n="share_live_hint">Snapshot = frozen. <button type="button" class="live-collab-link" data-live-collab>Live collab</button> = everyone can edit.</div>
-    <div class="url-row">
-      <input class="url-input" id="shareUrl" type="text" readonly />
-      <button class="btn btn-primary" id="copyBtn" data-i18n="share_copy_snapshot">Copy snapshot link</button>
-    </div>
+    <input class="url-input share-url-solo" id="shareUrl" type="text" readonly />
     <label class="share-ro-toggle" for="shareRoToggle">
       <input type="checkbox" id="shareRoToggle" />
       <span data-i18n="share_ro_label">Share as read-only</span>
     </label>
     <div class="share-ro-toggle-hint" data-i18n="share_ro_hint">Recipients can view but not edit. They can still click "Copy to edit" to make their own copy.</div>
-    <div class="share-or-divider"><span data-i18n="share_or_divider">or</span></div>
-    <button type="button" class="btn share-start-live-btn" id="startLiveBtn">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
-      </svg>
-      <span id="startLiveBtnLabel" data-i18n="share_start_live">Start Live collab</span>
-    </button>
+    <div class="share-actions-row">
+      <button class="btn btn-primary share-copy-btn" id="copyBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        <span data-i18n="share_copy_snapshot">Copy snapshot link</span>
+      </button>
+      <button type="button" class="btn share-start-live-btn" id="startLiveBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+        </svg>
+        <span id="startLiveBtnLabel" data-i18n="share_start_live">Start Live collab</span>
+      </button>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="closeModal2" data-i18n="close">Close</button>
     </div>
@@ -2207,9 +2210,11 @@ function _activeTabHasData() {
   if (activeTab === 'settle')  return (SX.expenses || []).length > 0 || (SX.participants || []).length > 0;
   return (ES.items || []).length > 0;
 }
-// Reconciles the Start Live collab button label + disabled state against
-// (a) whether the RTDB SDK loaded, (b) whether the user is already in a room,
-// (c) whether the active tab has anything shareable.
+// Reconciles the Start Live collab button label + disabled state against:
+//   (a) whether the RTDB SDK loaded,
+//   (b) whether the current view is a read-only snapshot (PR #7),
+//   (c) whether the user is already in a room,
+//   (d) whether the active tab has anything shareable.
 function updateStartLiveBtn() {
   const btn = $('startLiveBtn');
   const label = $('startLiveBtnLabel');
@@ -2217,6 +2222,13 @@ function updateStartLiveBtn() {
   // No Firebase → the whole feature is unavailable; hide rather than show a
   // dead button.
   if (!fbDb) {
+    btn.style.display = 'none';
+    return;
+  }
+  // Read-only viewer of someone else's snapshot — don't offer to spin up a
+  // room seeded with data they don't own. RO CSS already hides the header
+  // Share button, but the guard is cheap and covers any future entry points.
+  if (typeof SC_READ_ONLY !== 'undefined' && SC_READ_ONLY) {
     btn.style.display = 'none';
     return;
   }
@@ -2264,8 +2276,13 @@ function _onStartLiveBtnClick() {
   }
   // Fresh room → hand it to createAndJoinRoom, then swap the share modal for
   // the Room modal so the user immediately sees the code + Copy Link button.
+  // suppressToast so we can fire the share-flow-specific "Live collab
+  // started · code: XXX" message instead of the generic "Room created".
   closeShare();
-  createAndJoinRoom(function() { openRoomModal(); });
+  createAndJoinRoom(function(code) {
+    openRoomModal();
+    showToast(t('share_live_started', { code: code }), 'info');
+  }, { suppressToast: true });
 }
 // Live-update the URL when the RO checkbox flips so the visible link matches.
 document.addEventListener('change', e => {
@@ -4159,6 +4176,7 @@ const I18N = {
     share_already_in_live: 'Already in Live collab · {code}',
     share_empty_disabled_title: 'Add data first',
     share_room_code_copied: 'Room code copied! · {code}',
+    share_live_started: 'Live collab started · code: {code}',
     // Read-only viewer + room CTA
     ro_banner_text: 'Read-only view — you\'re looking at a shared snapshot.',
     ro_copy_btn: 'Copy to edit',
@@ -4286,6 +4304,7 @@ const I18N = {
     share_already_in_live: '已在即時協作中 · {code}',
     share_empty_disabled_title: '先加入資料',
     share_room_code_copied: '房間代碼已複製！ · {code}',
+    share_live_started: '即時協作已開啟 · 代碼：{code}',
     ro_banner_text: '唯讀檢視 — 你正在看別人分享的快照。',
     ro_copy_btn: '複製後編輯',
     ro_copied: '已複製到你的資料，可以開始編輯。',
@@ -4693,7 +4712,10 @@ function genUniqueRoomCode(cb, attemptsLeft) {
 // Optional `onReady` callback fires after the room's initial state has been
 // written and the local listeners attached — that's the earliest safe moment
 // to open the Room modal / hand the user the code.
-function createAndJoinRoom(onReady) {
+// `opts.suppressToast` skips the default "Room created" toast so a caller can
+// fire its own (share flow uses this to say "Live collab started · code: X").
+function createAndJoinRoom(onReady, opts) {
+  opts = opts || {};
   if (!fbDb) {
     showToast(currentLang === 'zh' ? '房間服務暫時無法使用' : 'Room service unavailable', 'warn');
     return;
@@ -4714,6 +4736,9 @@ function createAndJoinRoom(onReady) {
     dismissRoomHint(true);
     rememberRoom(activeRoom);
     const now = Date.now();
+    // Initial state is written synchronously (not via the 400ms-debounced
+    // room-write helpers) so any other user who joins in the first debounce
+    // window sees the seeded data immediately rather than an empty room.
     fbDb.ref('rooms/' + activeRoom).set({
       meta:    { createdAt: now, lastActivityAt: now },
       mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
@@ -4724,7 +4749,9 @@ function createAndJoinRoom(onReady) {
       cleanupOldRooms();
       if (typeof onReady === 'function') onReady(activeRoom);
     });
-    showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+    if (!opts.suppressToast) {
+      showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+    }
   });
 }
 
