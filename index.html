@@ -962,6 +962,22 @@
     }
     .sx-split-mode-btn.active { background: var(--accent); color: #fff; }
 
+    /* Tip: % / $ unit toggle sits inline with the input, mirrors the split-mode look. */
+    .sx-tip-row { display: flex; align-items: stretch; gap: 6px; }
+    .sx-tip-unit-toggle {
+      display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      flex-shrink: 0;
+    }
+    .sx-tip-unit-btn {
+      background: transparent; border: none; cursor: pointer;
+      font-family: inherit; font-size: .82rem; font-weight: 700;
+      padding: 0 10px; color: var(--muted);
+      transition: background .12s, color .12s; line-height: 1;
+      min-width: 30px;
+    }
+    .sx-tip-unit-btn.active { background: var(--accent); color: #fff; }
+    .sx-tip-unit-btn:hover:not(.active) { color: var(--text); }
+
     .sx-custom-amt-row {
       display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
     }
@@ -3104,21 +3120,44 @@ document.addEventListener('click', e => {
 
 // ── Add Expense Form (inline editable) ───────────────────────
 
+// Tip supports either percent-of-subtotal or a flat dollar amount. The unit
+// lives on `exp.tipUnit` ('percent' | 'flat'), the raw number on `exp.tip`.
+// Legacy rows persisted with `exp.tipPct` are read transparently as percent —
+// they're migrated to the new fields the next time the row is edited or
+// re-saved.
+function sxTipUnit(exp)  { return exp.tipUnit === 'flat' ? 'flat' : 'percent'; }
+function sxTipValue(exp) {
+  if (exp.tip !== undefined && exp.tip !== null) return Number(exp.tip) || 0;
+  if (exp.tipPct !== undefined && exp.tipPct !== null) return Number(exp.tipPct) || 0;
+  return 0;
+}
+function sxTipAmount(exp) {
+  const raw = sxTipValue(exp);
+  if (sxTipUnit(exp) === 'flat') return raw;
+  const sub = exp.amount || 0;
+  return sub * (raw / 100);
+}
+
 function sxExpTotal(exp) {
   const sub = exp.amount || 0;
-  return sub + sub * ((exp.taxPct || 0) / 100) + sub * ((exp.tipPct || 0) / 100) + (exp.serviceCharge || 0);
+  return sub + sub * ((exp.taxPct || 0) / 100) + sxTipAmount(exp) + (exp.serviceCharge || 0);
 }
 
 function sxBreakdownHtml(exp) {
   const sub = exp.amount || 0;
   const tax = sub * ((exp.taxPct || 0) / 100);
-  const tip = sub * ((exp.tipPct || 0) / 100);
+  const tip = sxTipAmount(exp);
   const svc = exp.serviceCharge || 0;
   const total = sub + tax + tip + svc;
   if ((tax + tip + svc) === 0 || sub === 0) return '';
   const parts = [t('sx_subtotal') + ': ' + fmt(sub)];
   if (tax > 0) parts.push('Tax ' + exp.taxPct + '%: +' + fmt(tax));
-  if (tip > 0) parts.push('Tip ' + exp.tipPct + '%: +' + fmt(tip));
+  if (tip > 0) {
+    const tipLabel = sxTipUnit(exp) === 'flat'
+      ? 'Tip: +' + fmt(tip)
+      : 'Tip ' + sxTipValue(exp) + '%: +' + fmt(tip);
+    parts.push(tipLabel);
+  }
   if (svc > 0) parts.push(t('sx_svc_charge') + ': +' + fmt(svc));
   return parts.join(' · ') + ' <strong>= ' + fmt(total) + '</strong>';
 }
@@ -3132,7 +3171,7 @@ function sxBreakdownHtml(exp) {
 function sxComputeCustomView(exp) {
   const sub      = exp.amount || 0;
   const taxAmt   = sub * ((exp.taxPct || 0) / 100);
-  const tipAmt   = sub * ((exp.tipPct || 0) / 100);
+  const tipAmt   = sxTipAmount(exp);
   const svcAmt   = exp.serviceCharge || 0;
   const feeTotal = taxAmt + tipAmt + svcAmt;
   const total    = sub + feeTotal;
@@ -3230,9 +3269,17 @@ function sxExpItemHtml(exp) {
                value="${exp.taxPct > 0 ? exp.taxPct : ''}" placeholder="%" min="0" step="any" style="margin:0" />
       </div>
       <div class="field-group" style="margin:0;flex:1">
-        <label class="field-label">${t('sx_tip_pct')}</label>
-        <input type="number" class="field-input sx-exp-tip"
-               value="${exp.tipPct > 0 ? exp.tipPct : ''}" placeholder="%" min="0" step="any" style="margin:0" />
+        <label class="field-label">${t('sx_tip')}</label>
+        <div class="sx-tip-row">
+          <input type="number" class="field-input sx-exp-tip"
+                 value="${sxTipValue(exp) > 0 ? sxTipValue(exp) : ''}"
+                 placeholder="${sxTipUnit(exp) === 'flat' ? '0' : '%'}"
+                 min="0" step="any" style="margin:0;flex:1;min-width:0" />
+          <div class="sx-tip-unit-toggle" role="group" aria-label="${t('sx_tip')}">
+            <button type="button" class="sx-tip-unit-btn${sxTipUnit(exp) === 'percent' ? ' active' : ''}" data-unit="percent" title="${t('sx_tip_unit_pct_title')}">%</button>
+            <button type="button" class="sx-tip-unit-btn${sxTipUnit(exp) === 'flat' ? ' active' : ''}" data-unit="flat" title="${t('sx_tip_unit_flat_title')}">$</button>
+          </div>
+        </div>
       </div>
       <div class="field-group" style="margin:0;flex:1">
         <label class="field-label">${t('sx_svc_charge')}</label>
@@ -3308,7 +3355,9 @@ $('sxExpensesList').addEventListener('input', e => {
     sxUpdateItemBreakdown(item, exp);
     if (exp.splitMode === 'custom') sxUpdateItemCustomSum(item, exp);
   } else if (cl.contains('sx-exp-tip')) {
-    exp.tipPct = parseFloat(e.target.value) || 0;
+    exp.tip = parseFloat(e.target.value) || 0;
+    if (!exp.tipUnit) exp.tipUnit = 'percent';
+    delete exp.tipPct;
     sxUpdateItemBreakdown(item, exp);
     if (exp.splitMode === 'custom') sxUpdateItemCustomSum(item, exp);
   } else if (cl.contains('sx-exp-svc')) {
@@ -3345,6 +3394,32 @@ $('sxExpensesList').addEventListener('change', e => {
 
 // Event delegation — split mode toggle + equal-split checkboxes
 $('sxExpensesList').addEventListener('click', e => {
+  const tipUnitBtn = e.target.closest('.sx-tip-unit-btn');
+  if (tipUnitBtn) {
+    const item = tipUnitBtn.closest('.sx-expense-item');
+    if (!item) return;
+    const exp = SX.expenses.find(x => x.id === item.dataset.id);
+    if (!exp) return;
+    const unit = tipUnitBtn.dataset.unit === 'flat' ? 'flat' : 'percent';
+    if (sxTipUnit(exp) === unit) return;
+    // Toggling reinterprets the same raw number under the new unit — same as
+    // how "10" flips from 10% to $10 in a receipt calculator. Doesn't
+    // destroy the user's input.
+    if (exp.tip === undefined && exp.tipPct !== undefined) exp.tip = exp.tipPct;
+    delete exp.tipPct;
+    exp.tipUnit = unit;
+    // Update the active-state on the buttons + placeholder without a full re-render.
+    item.querySelectorAll('.sx-tip-unit-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.unit === unit));
+    const tipInput = item.querySelector('.sx-exp-tip');
+    if (tipInput) tipInput.placeholder = (unit === 'flat') ? '0' : '%';
+    sxUpdateItemBreakdown(item, exp);
+    if (exp.splitMode === 'custom') sxUpdateItemCustomSum(item, exp);
+    persistSX();
+    renderSXSummary();
+    renderSXSettlement();
+    return;
+  }
   const scaleBtn = e.target.closest('.sx-scale-btn');
   if (scaleBtn && !scaleBtn.disabled) {
     const item = scaleBtn.closest('.sx-expense-item');
@@ -3774,6 +3849,9 @@ const I18N = {
     sx_with_fees: 'With fees', sx_scale_btn: 'Scale to total',
     sx_scaled: 'Fees applied — shares scaled to total.',
     sx_tax_pct: 'Tax %', sx_tip_pct: 'Tip %', sx_svc_charge: 'Service $',
+    sx_tip: 'Tip',
+    sx_tip_unit_pct_title: 'Percent of subtotal',
+    sx_tip_unit_flat_title: 'Fixed amount',
     sx_subtotal: 'Subtotal',
   },
   zh: {
@@ -3880,6 +3958,9 @@ const I18N = {
     sx_with_fees: '含稅費', sx_scale_btn: '套用稅費',
     sx_scaled: '已依比例套用稅費至各人金額。',
     sx_tax_pct: '稅 %', sx_tip_pct: '小費 %', sx_svc_charge: '服務費 $',
+    sx_tip: '小費',
+    sx_tip_unit_pct_title: '佔小計百分比',
+    sx_tip_unit_flat_title: '固定金額',
     sx_subtotal: '小計',
   }
 };
