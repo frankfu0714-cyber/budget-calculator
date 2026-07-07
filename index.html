@@ -978,6 +978,15 @@
     }
     .sx-custom-amt-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
     .sx-custom-amt-input.warn { border-color: var(--expense); }
+    .sx-custom-amt-preview {
+      flex-shrink: 0;
+      font-size: .74rem;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 74px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
     .sx-custom-sum-row {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: 6px; font-size: .8rem; padding: 6px 10px;
@@ -985,6 +994,30 @@
     }
     .sx-custom-sum-row.ok   { border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.06); }
     .sx-custom-sum-row.warn { border-color: rgba(239,68,68,.4);  background: rgba(239,68,68,.06); }
+    .sx-with-fees-row {
+      display: none;
+      justify-content: space-between; align-items: center;
+      margin-top: 4px; font-size: .8rem; padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(99,102,241,.08);
+      border: 1px solid rgba(99,102,241,.25);
+      color: var(--accent);
+      gap: 8px;
+    }
+    .sx-with-fees-row .sx-with-fees-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .sx-scale-btn {
+      display: none;
+      border: 1px solid rgba(99,102,241,.35);
+      background: transparent;
+      color: var(--accent);
+      font: inherit; font-size: .74rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .12s, opacity .12s;
+    }
+    .sx-scale-btn:hover:not([disabled]) { background: rgba(99,102,241,.14); }
+    .sx-scale-btn[disabled] { opacity: .45; cursor: not-allowed; }
     .sx-sum-warn {
       display: none; margin-top: 4px; font-size: .76rem; color: var(--expense);
       padding: 4px 8px; background: rgba(239,68,68,.08); border-radius: 6px;
@@ -3090,9 +3123,52 @@ function sxBreakdownHtml(exp) {
   return parts.join(' · ') + ' <strong>= ' + fmt(total) + '</strong>';
 }
 
+// Computes the fee-adjusted view for the Custom Amounts panel:
+//   - previews[i] = the per-person amount with tax/tip/service distributed
+//     proportionally, so previews sum exactly to `total` (rounding delta
+//     is absorbed into the last non-zero row).
+//   - showPreview / scaleEnabled tell the DOM whether to render the preview
+//     column and whether the "Scale to total" button is clickable.
+function sxComputeCustomView(exp) {
+  const sub      = exp.amount || 0;
+  const taxAmt   = sub * ((exp.taxPct || 0) / 100);
+  const tipAmt   = sub * ((exp.tipPct || 0) / 100);
+  const svcAmt   = exp.serviceCharge || 0;
+  const feeTotal = taxAmt + tipAmt + svcAmt;
+  const total    = sub + feeTotal;
+  const amts     = exp.customAmounts || {};
+  const idxs     = Object.keys(amts)
+                     .map(Number)
+                     .filter(i => Number(amts[i]) > 0)
+                     .sort((a, b) => a - b);
+  const customSum = idxs.reduce((s, i) => s + Number(amts[i]), 0);
+
+  const showPreview  = feeTotal > 0 && customSum > 0;
+  const scaleEnabled = feeTotal > 0 && sub > 0 && customSum > 0 && Math.abs(customSum - sub) < 0.01;
+
+  const previews = {};
+  if (showPreview) {
+    const scale = total / customSum;
+    let running = 0;
+    idxs.forEach((i, k) => {
+      let v;
+      if (k === idxs.length - 1) {
+        // Absorb rounding into the last non-zero row so previews sum to `total` exactly.
+        v = Math.round((total - running) * 100) / 100;
+      } else {
+        v = Math.round(Number(amts[i]) * scale * 100) / 100;
+        running += v;
+      }
+      previews[i] = v;
+    });
+  }
+  return { sub, feeTotal, total, customSum, previews, showPreview, scaleEnabled };
+}
+
 function sxExpItemHtml(exp) {
   const isCustom = exp.splitMode === 'custom';
   const total = sxExpTotal(exp);
+  const view  = sxComputeCustomView(exp);
 
   const payerOpts = SX.participants.map((n, i) =>
     `<option value="${i}"${i === exp.paidBy ? ' selected' : ''}>${esc(n)}</option>`).join('');
@@ -3106,17 +3182,22 @@ function sxExpItemHtml(exp) {
 
   const customInputsHtml = SX.participants.map((n, i) => {
     const v = (exp.customAmounts && exp.customAmounts[i] !== undefined) ? exp.customAmounts[i] : '';
+    const previewText = (view.showPreview && view.previews[i] !== undefined)
+      ? `<span class="sx-custom-amt-preview">≈ ${fmt(view.previews[i])}</span>`
+      : '';
     return `<div class="sx-custom-amt-row">
       <span class="sx-custom-amt-name">${esc(n)}</span>
       <input type="number" class="sx-custom-amt-input" data-idx="${i}"
              placeholder="0" min="0" step="any" value="${v}" />
+      ${previewText}
     </div>`;
   }).join('');
 
-  const customSum = exp.customAmounts
-    ? Object.values(exp.customAmounts).reduce((a, b) => a + Number(b), 0) : 0;
+  const customSum = view.customSum;
   const sumOk = total > 0 && Math.abs(customSum - total) < 0.01;
   const sumRowCls = total > 0 ? (sumOk ? 'sx-custom-sum-row ok' : 'sx-custom-sum-row warn') : 'sx-custom-sum-row';
+  const withFeesDisplay = view.showPreview ? '' : 'display:none';
+  const scaleBtnDisplay = view.feeTotal > 0 ? '' : 'display:none';
 
   return `
     <div class="sx-exp-header">
@@ -3179,6 +3260,11 @@ function sxExpItemHtml(exp) {
       <div class="${sumRowCls}">
         <span>${t('sx_custom_sum')}</span>
         <span style="font-weight:700">${fmt(customSum)}</span>
+      </div>
+      <div class="sx-with-fees-row" style="${withFeesDisplay}">
+        <span>${t('sx_with_fees')}</span>
+        <button type="button" class="sx-scale-btn" style="${scaleBtnDisplay}"${view.scaleEnabled ? '' : ' disabled'}>${t('sx_scale_btn')}</button>
+        <span class="sx-with-fees-val">${fmt(view.total)}</span>
       </div>
       <div class="sx-sum-warn" style="${total > 0 && !sumOk ? '' : 'display:none'}">${t('sx_sum_mismatch')}</div>
     </div>`;
@@ -3259,6 +3345,22 @@ $('sxExpensesList').addEventListener('change', e => {
 
 // Event delegation — split mode toggle + equal-split checkboxes
 $('sxExpensesList').addEventListener('click', e => {
+  const scaleBtn = e.target.closest('.sx-scale-btn');
+  if (scaleBtn && !scaleBtn.disabled) {
+    const item = scaleBtn.closest('.sx-expense-item');
+    if (!item) return;
+    const exp = SX.expenses.find(x => x.id === item.dataset.id);
+    if (!exp) return;
+    if (sxScaleCustomToTotal(exp)) {
+      sxSyncCustomInputsToState(item, exp);
+      sxUpdateItemCustomSum(item, exp);
+      persistSX();
+      renderSXSummary();
+      renderSXSettlement();
+      showToast(t('sx_scaled'), 'info');
+    }
+    return;
+  }
   const modeBtn = e.target.closest('.sx-split-mode-btn');
   if (modeBtn) {
     const item = modeBtn.closest('.sx-expense-item');
@@ -3302,8 +3404,8 @@ function sxUpdateItemBreakdown(item, exp) {
 
 function sxUpdateItemCustomSum(item, exp) {
   const total = sxExpTotal(exp);
-  const customSum = exp.customAmounts
-    ? Object.values(exp.customAmounts).reduce((a, b) => a + Number(b), 0) : 0;
+  const view  = sxComputeCustomView(exp);
+  const customSum = view.customSum;
   const sumOk = total > 0 && Math.abs(customSum - total) < 0.01;
   const sumRow = item.querySelector('.sx-custom-panel .sx-custom-sum-row');
   const sumWarn = item.querySelector('.sx-sum-warn');
@@ -3315,6 +3417,55 @@ function sxUpdateItemCustomSum(item, exp) {
   if (sumWarn) sumWarn.style.display = (total > 0 && !sumOk) ? '' : 'none';
   item.querySelectorAll('.sx-custom-amt-input').forEach(inp =>
     inp.classList.toggle('warn', !sumOk && total > 0));
+
+  // Per-row "with fees" preview. Update text only — don't touch the input.
+  item.querySelectorAll('.sx-custom-amt-row').forEach(row => {
+    const inp = row.querySelector('.sx-custom-amt-input');
+    if (!inp) return;
+    const idx = parseInt(inp.dataset.idx);
+    let prev = row.querySelector('.sx-custom-amt-preview');
+    if (view.showPreview && view.previews[idx] !== undefined) {
+      if (!prev) {
+        prev = document.createElement('span');
+        prev.className = 'sx-custom-amt-preview';
+        row.appendChild(prev);
+      }
+      prev.textContent = '≈ ' + fmt(view.previews[idx]);
+    } else if (prev) {
+      prev.remove();
+    }
+  });
+
+  // Summary strip: "With fees" line and Scale button state.
+  const wfRow  = item.querySelector('.sx-with-fees-row');
+  const wfVal  = item.querySelector('.sx-with-fees-val');
+  const scale  = item.querySelector('.sx-scale-btn');
+  if (wfRow) wfRow.style.display = view.showPreview ? '' : 'none';
+  if (wfVal) wfVal.textContent   = fmt(view.total);
+  if (scale) {
+    scale.style.display = view.feeTotal > 0 ? '' : 'none';
+    scale.disabled = !view.scaleEnabled;
+  }
+}
+
+// Multiplies each customAmount by (total / customSum) so the sum matches the
+// fee-inclusive total exactly. Rounding delta is absorbed into the last
+// non-zero row to guarantee `sum(after) === total`.
+function sxScaleCustomToTotal(exp) {
+  const view = sxComputeCustomView(exp);
+  if (!view.scaleEnabled) return false;
+  const amts = exp.customAmounts;
+  Object.keys(view.previews).forEach(k => { amts[k] = view.previews[k]; });
+  return true;
+}
+
+// Reflect programmatically-changed customAmounts back into the input DOM.
+function sxSyncCustomInputsToState(item, exp) {
+  item.querySelectorAll('.sx-custom-amt-input').forEach(inp => {
+    const idx = parseInt(inp.dataset.idx);
+    const v = exp.customAmounts && exp.customAmounts[idx];
+    inp.value = (v !== undefined && v > 0) ? v : '';
+  });
 }
 
 function renderSXExpenses() {
@@ -3620,6 +3771,8 @@ const I18N = {
     sx_split_equal: 'Split Equally', sx_split_custom: 'Custom Amounts',
     sx_custom_sum: 'Sum of shares', sx_sum_mismatch: '⚠ Sum does not equal total amount',
     sx_sum_mismatch_toast: 'Custom amounts must add up to the total.',
+    sx_with_fees: 'With fees', sx_scale_btn: 'Scale to total',
+    sx_scaled: 'Fees applied — shares scaled to total.',
     sx_tax_pct: 'Tax %', sx_tip_pct: 'Tip %', sx_svc_charge: 'Service $',
     sx_subtotal: 'Subtotal',
   },
@@ -3724,6 +3877,8 @@ const I18N = {
     sx_split_equal: '均分', sx_split_custom: '自訂金額',
     sx_custom_sum: '分攤總計', sx_sum_mismatch: '⚠ 分攤金額總和不等於費用總額',
     sx_sum_mismatch_toast: '自訂金額總和必須等於費用總額。',
+    sx_with_fees: '含稅費', sx_scale_btn: '套用稅費',
+    sx_scaled: '已依比例套用稅費至各人金額。',
     sx_tax_pct: '稅 %', sx_tip_pct: '小費 %', sx_svc_charge: '服務費 $',
     sx_subtotal: '小計',
   }
