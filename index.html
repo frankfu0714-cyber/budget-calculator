@@ -4477,6 +4477,9 @@ const I18N = {
     ai_paste_participants: 'Participants',
     ai_paste_expenses: 'Expenses',
     ai_paste_no_expenses: 'AI found no clearly-defined expenses in this text.',
+    ai_paste_no_expenses_title: 'No expenses found',
+    ai_paste_no_expenses_hint: 'AI couldn\'t find any clearly-defined expenses. Try rewording — e.g. "Alice paid $50 for dinner, split with Bob and Charlie" — or check that participant names in your text match your session.',
+    ai_paste_try_again: '↻ Try Again',
     ai_paste_apply_append: 'Add to my list',
     ai_paste_apply_replace: 'Replace my list',
     ai_paste_apply_btn: 'Apply',
@@ -4643,6 +4646,9 @@ const I18N = {
     ai_paste_participants: '參與者',
     ai_paste_expenses: '費用',
     ai_paste_no_expenses: 'AI 沒有從這段文字中找到明確的費用項目。',
+    ai_paste_no_expenses_title: '沒有找到費用',
+    ai_paste_no_expenses_hint: 'AI 沒有從這段文字中找到費用。試著換個寫法——例如「Alice 付了晚餐 $50，跟 Bob、Charlie 分帳」——或確認文字中的人名與目前參與者一致。',
+    ai_paste_try_again: '↻ 再試一次',
     ai_paste_apply_append: '加入現有清單',
     ai_paste_apply_replace: '取代現有清單',
     ai_paste_apply_btn: '套用',
@@ -5892,31 +5898,41 @@ function _aiRateCheck() {
 let _aiParsed = null;         // last parse result — {participants, expenses}
 let _aiSelected = null;       // array of booleans, per-expense-row inclusion
 let _aiExistingNames = null;  // Set of participant names present at parse time (for NEW badge)
+let _aiLastInput = null;      // {text, hint} — preserved across Edit-text so
+                              // the paste box refills when the user goes back.
 
 function openAiPasteModal() {
   $('aiPasteOverlay').classList.add('open');
+  _aiLastInput = null;
   showAiPasteInputStage();
 }
 function closeAiPasteModal() {
   $('aiPasteOverlay').classList.remove('open');
   _aiParsed = null;
   _aiSelected = null;
+  _aiLastInput = null;
 }
 
-function showAiPasteInputStage() {
+// `preserve` = true pulls the last input back into the fields so users returning
+// from a Review or Error stage don't have to retype what they just pasted.
+function showAiPasteInputStage(preserve) {
   const zh = currentLang === 'zh';
   const configured = _aiWorkerConfigured();
   const configWarn = configured ? '' :
     '<div class="ai-worker-config-box">⚠ ' + t('ai_worker_config_label') + '</div>';
+  const preText = (preserve && _aiLastInput && _aiLastInput.text) ? _aiLastInput.text : '';
+  const preHint = (preserve && _aiLastInput && _aiLastInput.hint) ? _aiLastInput.hint : '';
+  const escTa = String(preText).replace(/[<&]/g, c => ({'<':'&lt;','&':'&amp;'}[c]));
+  const escHi = String(preHint).replace(/[<&"]/g, c => ({'<':'&lt;','&':'&amp;','"':'&quot;'}[c]));
   $('aiPasteBody').innerHTML =
     configWarn +
     '<p class="modal-desc">' + t('ai_paste_desc') + '</p>' +
-    '<textarea id="aiPasteText" class="ai-paste-textarea" placeholder="' + t('ai_paste_ph').replace(/"/g, '&quot;') + '" maxlength="5000"></textarea>' +
+    '<textarea id="aiPasteText" class="ai-paste-textarea" placeholder="' + t('ai_paste_ph').replace(/"/g, '&quot;') + '" maxlength="5000">' + escTa + '</textarea>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px">' +
       '<label style="font-size:.8rem;font-weight:600;color:var(--muted)">' + t('ai_paste_hint_label') + '</label>' +
-      '<span id="aiPasteCharCount" style="font-size:.72rem;color:var(--muted)">0 / 5000</span>' +
+      '<span id="aiPasteCharCount" style="font-size:.72rem;color:var(--muted)">' + preText.length + ' / 5000</span>' +
     '</div>' +
-    '<input id="aiPasteHint" class="ai-paste-hint-input" type="text" placeholder="' + t('ai_paste_hint_ph').replace(/"/g, '&quot;') + '" maxlength="200" />' +
+    '<input id="aiPasteHint" class="ai-paste-hint-input" type="text" placeholder="' + t('ai_paste_hint_ph').replace(/"/g, '&quot;') + '" maxlength="200" value="' + escHi + '" />' +
     '<div class="modal-footer" style="gap:8px">' +
       '<button class="btn btn-ghost" onclick="closeAiPasteModal()">' + t('ai_paste_discard') + '</button>' +
       '<button class="btn btn-primary" id="aiPasteGoBtn" onclick="doAiParse()">' + t('ai_paste_go') + '</button>' +
@@ -5924,6 +5940,8 @@ function showAiPasteInputStage() {
   const ta = $('aiPasteText');
   if (ta) {
     ta.focus();
+    // Move caret to end when we preserved text so the user can keep typing.
+    if (preText) { try { ta.setSelectionRange(preText.length, preText.length); } catch(_) {} }
     ta.addEventListener('input', function() {
       const cc = $('aiPasteCharCount');
       if (cc) cc.textContent = ta.value.length + ' / 5000';
@@ -5945,32 +5963,52 @@ function showAiPasteErrorStage(errKey, detail) {
   const detailHtml = detail
     ? '<div style="margin-top:8px;font-size:.72rem;color:var(--muted);font-family:monospace;word-break:break-word;opacity:.7">' + String(detail).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>'
     : '';
+  const canRetry = _aiLastInput && _aiLastInput.text;
   $('aiPasteBody').innerHTML =
     '<div class="ai-error-box">' + msg + detailHtml + '</div>' +
     '<div class="modal-footer" style="gap:8px">' +
       '<button class="btn btn-ghost" onclick="closeAiPasteModal()">' + t('cancel') + '</button>' +
-      '<button class="btn btn-primary" onclick="showAiPasteInputStage()">' + t('ai_paste_back') + '</button>' +
+      '<button class="btn btn-ghost" onclick="showAiPasteInputStage(true)">' + t('ai_paste_back') + '</button>' +
+      (canRetry ? '<button class="btn btn-primary" onclick="retryAiParse()">' + t('ai_paste_try_again') + '</button>' : '') +
     '</div>';
 }
 
-async function doAiParse() {
+// Retries the last request with the same text/hint. Used from both the error
+// stage and the empty-review stage. No-ops if we never captured input yet.
+async function retryAiParse() {
+  if (!_aiLastInput || !_aiLastInput.text) { showAiPasteInputStage(true); return; }
+  await doAiParse(_aiLastInput.text, _aiLastInput.hint);
+}
+
+async function doAiParse(_replayText, _replayHint) {
   const zh = currentLang === 'zh';
+  const isReplay = typeof _replayText === 'string';
   const ta = $('aiPasteText');
   const hi = $('aiPasteHint');
-  const text = ta ? ta.value.trim() : '';
-  const hint = hi ? hi.value.trim() : '';
+  const text = isReplay ? _replayText : (ta ? ta.value.trim() : '');
+  const hint = isReplay ? (_replayHint || '') : (hi ? hi.value.trim() : '');
   if (!text) { showToast(t('ai_paste_err_empty'), 'warn'); return; }
   if (!_aiWorkerConfigured()) { showAiPasteErrorStage('ai_paste_err_worker_missing'); return; }
   if (!_aiRateCheck()) { showAiPasteErrorStage('ai_paste_err_rate_limit'); return; }
 
+  // Preserve for Edit-text / Try-again round trips.
+  _aiLastInput = { text, hint };
+
   showAiPasteLoadingStage();
+
+  // Existing participants become context for the model — critical when names
+  // are numeric strings ("1", "2") or single letters that the model would
+  // otherwise interpret as quantities.
+  const existingParticipants = Array.isArray(SX.participants)
+    ? SX.participants.map(x => String(x).trim()).filter(Boolean)
+    : [];
 
   let resp, body;
   try {
     resp = await fetch(getAiWorkerUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, hint })
+      body: JSON.stringify({ text, hint, existingParticipants })
     });
   } catch (err) {
     showAiPasteErrorStage('ai_paste_err_network', String(err));
@@ -6049,6 +6087,24 @@ function showAiPasteReviewStage() {
   const parts = _aiParsed.participants;
   const exps  = _aiParsed.expenses;
 
+  // Empty-result branch — the model returned no expenses. Show a friendly
+  // explanation with Try Again + Edit Text (input preserved) so the user can
+  // adjust wording or retry a transient issue without retyping.
+  if (exps.length === 0) {
+    $('aiPasteBody').innerHTML =
+      '<div class="ai-paste-preview-section" style="text-align:center;padding:22px 14px">' +
+        '<div style="font-size:2rem;margin-bottom:6px">🤔</div>' +
+        '<div style="font-weight:700;margin-bottom:4px">' + t('ai_paste_no_expenses_title') + '</div>' +
+        '<div style="color:var(--muted);font-size:.85rem;line-height:1.5">' + t('ai_paste_no_expenses_hint') + '</div>' +
+      '</div>' +
+      '<div class="modal-footer" style="gap:8px">' +
+        '<button class="btn btn-ghost" onclick="closeAiPasteModal()">' + t('ai_paste_discard') + '</button>' +
+        '<button class="btn btn-ghost" onclick="showAiPasteInputStage(true)">' + t('ai_paste_back') + '</button>' +
+        '<button class="btn btn-primary" onclick="retryAiParse()">' + t('ai_paste_try_again') + '</button>' +
+      '</div>';
+    return;
+  }
+
   const partsHtml = parts.length
     ? parts.map(function(p) {
         const isNew = !_aiExistingNames.has(p.name.toLowerCase());
@@ -6058,15 +6114,13 @@ function showAiPasteReviewStage() {
       }).join('')
     : '<span style="color:var(--muted);font-size:.8rem">—</span>';
 
-  const expsHtml = exps.length
-    ? exps.map(function(e, i) { return _aiRenderExpenseRow(e, i, parts); }).join('')
-    : '<div style="text-align:center;color:var(--muted);font-size:.85rem;padding:10px">' + t('ai_paste_no_expenses') + '</div>';
+  const expsHtml = exps.map(function(e, i) { return _aiRenderExpenseRow(e, i, parts); }).join('');
 
-  const modeGroup = exps.length ?
+  const modeGroup =
     '<div class="ai-apply-mode">' +
       '<label><input type="radio" name="aiApplyMode" value="append" checked /><span>' + t('ai_paste_apply_append') + '</span></label>' +
       '<label><input type="radio" name="aiApplyMode" value="replace" /><span>' + t('ai_paste_apply_replace') + '</span></label>' +
-    '</div>' : '';
+    '</div>';
 
   $('aiPasteBody').innerHTML =
     '<p class="modal-desc">' + t('ai_paste_review_desc') + '</p>' +
@@ -6080,8 +6134,8 @@ function showAiPasteReviewStage() {
     '</div>' +
     modeGroup +
     '<div class="modal-footer" style="gap:8px">' +
-      '<button class="btn btn-ghost" onclick="showAiPasteInputStage()">' + t('ai_paste_back') + '</button>' +
-      '<button class="btn btn-primary" onclick="applyAiPaste()"' + (exps.length ? '' : ' disabled') + '>' + t('ai_paste_apply_btn') + '</button>' +
+      '<button class="btn btn-ghost" onclick="showAiPasteInputStage(true)">' + t('ai_paste_back') + '</button>' +
+      '<button class="btn btn-primary" onclick="applyAiPaste()">' + t('ai_paste_apply_btn') + '</button>' +
     '</div>';
 }
 

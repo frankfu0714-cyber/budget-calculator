@@ -39,11 +39,14 @@ Output format (JSON only, no markdown code fences, no prose before/after):
 
 Extraction rules:
 - Every named person mentioned becomes a participant. If someone appears only in a "sharedBy" (e.g. "split with Bob") but is never a payer, still include them in participants.
+- **Participant names may be numeric strings ("1", "2", "3"), single letters ("A", "B"), emoji, or short tokens.** When you see such a token followed by a verb like "paid", "spent", "bought", "covered", "付了", "買了", treat it as a participant NAME, not a quantity. E.g. "1 paid 100 for dinner" means participant NAMED "1" paid amount 100 — the "1" before "paid" is the PAYER, not a count. Similarly "A and B split lunch" means participants A and B.
+- **Prefer matching against the "Current participants" list** (provided in the user prompt when available). When you see a token that matches an existing participant name exactly (case-insensitive), always treat it as that participant — even if the token also looks like a number, letter, or emoji.
 - "Alice and Bob split dinner \$80" → one expense, amount 80, payer = Alice (first named), sharedBy = ["Alice","Bob"], confidence "medium", note explaining the payer assumption.
-- "Everyone paid their share" / "we all split X" → sharedBy = all participants, confidence "medium", note = "no single payer specified".
+- **"Everyone joined" / "everyone paid" / "we all split X" / "全部人分" / "大家一起" / "all shared"** → sharedBy = ALL current participants if a "Current participants" list was provided; otherwise all participants that appear in the text. Confidence "high" if a Current participants list was provided (unambiguous), else "medium".
 - "Alice paid \$50 for dinner" → payer = "Alice", amount = 50, sharedBy defaults to all participants unless the text says otherwise. If it does not specify sharedBy at all, default to all participants and set confidence "medium".
 - Currency symbols (\$, NT\$, ¥, €, £) are stripped; keep only the numeric value.
 - Numbers with thousands separators ("1,200") become 1200.
+- The word "total" before an amount ("paid total 100", "共 100") is NOT the amount — the number that follows is.
 - If a row's amount is missing or unparseable, SKIP that row entirely — do not emit it.
 - Support English and Traditional/Simplified Chinese input equally.
 - Preserve original names (do not translate names or normalize case unless the text is clearly ALL CAPS).
@@ -51,7 +54,7 @@ Extraction rules:
 
 Ambiguity handling:
 - Prefer confidence "low" over hallucinating. If unsure, still emit the row but mark it low and explain in note.
-- Never invent participants. Only names that literally appear in the text.
+- Never invent participants. Only names that literally appear in the text OR appear in the "Current participants" list.
 - Never invent amounts. Only numbers that literally appear in the text.
 - If the entire input is not about expenses (e.g. random chat), return {"participants":[],"expenses":[]}.`;
 
@@ -97,9 +100,26 @@ export default {
     if (!text) return json({ error: 'text_required' }, 400, headers);
     if (text.length > 5000) return json({ error: 'text_too_long', max: 5000 }, 400, headers);
 
-    const userPrompt = hint
-      ? `Additional context: ${hint}\n\nText to parse:\n${text}`
-      : `Text to parse:\n${text}`;
+    // Optional context — the client passes the session's current participant
+    // list so the model can resolve tokens like "1" or "A" to a named
+    // participant instead of treating them as quantities.
+    const existingParticipants = Array.isArray(body?.existingParticipants)
+      ? body.existingParticipants
+          .filter(x => typeof x === 'string')
+          .map(x => x.trim())
+          .filter(Boolean)
+          .slice(0, 50)
+      : [];
+
+    const parts = [];
+    if (existingParticipants.length) {
+      parts.push(
+        `Current participants in this session (use these names verbatim when they appear in the text; treat them as valid names even if they look like numbers, single characters, or emoji): [${existingParticipants.map(n => JSON.stringify(n)).join(', ')}]`
+      );
+    }
+    if (hint) parts.push(`Additional context: ${hint}`);
+    parts.push(`Text to parse:\n${text}`);
+    const userPrompt = parts.join('\n\n');
 
     let geminiResp;
     try {
