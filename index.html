@@ -456,6 +456,112 @@
     }
     .modal-footer { margin-top: 14px; display: flex; justify-content: flex-end; }
 
+    /* ── AI Paste ────────────────────────────────────────── */
+    .ai-paste-modal { max-width: 640px; max-height: 90vh; display: flex; flex-direction: column; }
+    #aiPasteBody { overflow-y: auto; overflow-x: hidden; }
+    .ai-paste-textarea {
+      width: 100%; min-height: 140px; max-height: 300px;
+      padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--surface2); color: var(--text);
+      font-size: .9rem; font-family: inherit; line-height: 1.55;
+      resize: vertical; outline: none;
+    }
+    .ai-paste-textarea:focus { border-color: var(--accent); }
+    .ai-paste-hint-input {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 8px; background: var(--surface2); color: var(--text);
+      font-size: .85rem; outline: none;
+    }
+    .ai-paste-hint-input:focus { border-color: var(--accent); }
+    .ai-paste-spinner {
+      width: 40px; height: 40px; margin: 24px auto 12px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: ai-spin 0.8s linear infinite;
+    }
+    @keyframes ai-spin { to { transform: rotate(360deg); } }
+    .ai-paste-preview-section {
+      background: var(--surface2); border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 10px;
+    }
+    .ai-paste-preview-section h4 {
+      font-size: .78rem; font-weight: 700; margin-bottom: 8px;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+    }
+    .ai-participants-row {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .ai-participant-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 999px;
+      background: var(--bg); border: 1px solid var(--border);
+      font-size: .78rem; font-weight: 600;
+    }
+    .ai-participant-chip.new {
+      background: rgba(16,185,129,.12); border-color: var(--income); color: var(--income);
+    }
+    .ai-participant-chip.new::before { content: 'NEW '; font-size: .65rem; font-weight: 800; opacity: .9; }
+    .ai-participant-chip .rm {
+      cursor: pointer; opacity: .5; font-weight: 700; padding: 0 2px;
+    }
+    .ai-participant-chip .rm:hover { opacity: 1; color: var(--expense); }
+    .ai-expense-row {
+      display: grid; grid-template-columns: 24px 1.4fr 1fr 90px 1fr;
+      gap: 8px; align-items: center;
+      padding: 8px 10px; background: var(--surface); border-radius: 8px;
+      border: 1px solid var(--border); margin-bottom: 6px;
+      font-size: .82rem;
+    }
+    .ai-expense-row.disabled { opacity: .4; }
+    .ai-expense-row.low-conf { border-left: 3px solid var(--expense); }
+    .ai-expense-row input, .ai-expense-row select {
+      padding: 5px 7px; border: 1px solid transparent; border-radius: 5px;
+      background: transparent; color: var(--text);
+      font-size: .82rem; font-family: inherit; width: 100%; min-width: 0; outline: none;
+    }
+    .ai-expense-row input:focus, .ai-expense-row select:focus {
+      border-color: var(--accent); background: var(--surface2);
+    }
+    .ai-expense-row .ai-amount { text-align: right; font-weight: 700; }
+    .ai-expense-row .ai-toggle { cursor: pointer; text-align: center; user-select: none; }
+    .ai-expense-row .ai-toggle input { width: 14px; height: 14px; cursor: pointer; }
+    .ai-expense-note {
+      grid-column: 2 / -1; font-size: .7rem; color: var(--expense);
+      margin-top: 2px; font-style: italic;
+    }
+    .ai-conf-badge {
+      display: inline-block; font-size: .62rem; font-weight: 800;
+      padding: 1px 5px; border-radius: 4px; letter-spacing: .5px;
+      margin-left: 4px; vertical-align: middle;
+    }
+    .ai-conf-badge.low { background: rgba(239,68,68,.15); color: var(--expense); }
+    .ai-conf-badge.medium { background: rgba(245,158,11,.15); color: #d97706; }
+    .ai-error-box {
+      padding: 12px 14px; border-radius: 10px;
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25);
+      color: var(--expense); font-size: .85rem; line-height: 1.5;
+    }
+    .ai-worker-config-box {
+      padding: 12px 14px; border-radius: 10px;
+      background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.3);
+      color: #92400e; font-size: .82rem; line-height: 1.5; margin-bottom: 12px;
+    }
+    [data-theme="dark"] .ai-worker-config-box { color: #fbbf24; }
+    .ai-apply-mode {
+      display: flex; gap: 8px; margin-bottom: 10px;
+    }
+    .ai-apply-mode label {
+      flex: 1; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface2);
+      font-size: .78rem; cursor: pointer; text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .ai-apply-mode input[type="radio"] { margin: 0; }
+    .ai-apply-mode input:checked + span { color: var(--accent); font-weight: 700; }
+    @media (max-width: 600px) {
+      .ai-expense-row { grid-template-columns: 24px 1fr 1fr; }
+      .ai-expense-row .ai-amount, .ai-expense-row .ai-sharedby-cell { grid-column: 2 / -1; }
+    }
+
     /* ── Tab Nav ──────────────────────────────────────────── */
     .tab-nav {
       background: var(--surface);
@@ -1954,7 +2060,10 @@
             <span class="dot" style="background:var(--expense)"></span>
             <span data-i18n="expense_items">Expense Items</span>
           </div>
-          <button class="btn btn-expense btn-sm" id="sxAddExpBtn" data-i18n="sx_add_expense_btn">+ Add Expense</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" id="sxAiPasteBtn" title="Paste text; AI extracts expenses" style="white-space:nowrap"><span style="margin-right:4px">✨</span><span data-i18n="ai_paste_btn">AI Paste</span></button>
+            <button class="btn btn-expense btn-sm" id="sxAddExpBtn" data-i18n="sx_add_expense_btn">+ Add Expense</button>
+          </div>
         </div>
         <div class="card-body">
           <div class="items-list" id="sxExpensesList">
@@ -2087,6 +2196,17 @@
     <polyline points="20 6 9 17 4 12"/>
   </svg>
   <span id="toastMsg">Done!</span>
+</div>
+
+<!-- ── AI Paste Modal ──────────────────────────────────────── -->
+<div class="overlay" id="aiPasteOverlay">
+  <div class="modal ai-paste-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="aiPasteTitle"><span style="margin-right:4px">✨</span><span data-i18n="ai_paste_title">AI Paste</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="closeAiPasteModal()" title="Close">✕</button>
+    </div>
+    <div id="aiPasteBody"></div>
+  </div>
 </div>
 
 <div id="roomModal">
@@ -4129,6 +4249,36 @@ const I18N = {
     add_btn: '+ Add', cancel: 'Cancel', click_add: 'Click <strong>+ Add</strong> to begin.',
     no_expenses: 'No expenses yet.',
     sx_add_person_btn: '+ Add Participant', sx_add_expense_btn: '+ Add Expense',
+    // AI Paste
+    ai_paste_btn: 'AI Paste',
+    ai_paste_title: 'AI Paste',
+    ai_paste_desc: 'Paste a chat log, note, or bill and let AI extract participants and expenses. Works in English and 中文.',
+    ai_paste_ph: 'e.g. Alice paid $50 for dinner, Bob paid $30 for cab, they split both. Then Alice bought coffee $12 for everyone.',
+    ai_paste_hint_label: 'Hint (optional)',
+    ai_paste_hint_ph: 'e.g. currency: NT$; group of 4 friends',
+    ai_paste_go: '✨ Parse with AI',
+    ai_paste_loading: 'AI is reading your text…',
+    ai_paste_review_title: 'Review before applying',
+    ai_paste_review_desc: 'Uncheck rows you don\'t want. Edit any field inline. New participants are highlighted.',
+    ai_paste_participants: 'Participants',
+    ai_paste_expenses: 'Expenses',
+    ai_paste_no_expenses: 'AI found no clearly-defined expenses in this text.',
+    ai_paste_apply_append: 'Add to my list',
+    ai_paste_apply_replace: 'Replace my list',
+    ai_paste_apply_btn: 'Apply',
+    ai_paste_discard: 'Discard',
+    ai_paste_back: '← Edit text',
+    ai_paste_rate_limited: 'Please wait a moment — you\'ve made 5 AI requests in the last minute.',
+    ai_paste_err_empty: 'Please paste some text first.',
+    ai_paste_err_worker_missing: 'AI service isn\'t configured yet. Ask the app owner to deploy the Cloudflare Worker and set AI_WORKER_URL.',
+    ai_paste_err_network: 'Network error reaching the AI service. Check your connection and try again.',
+    ai_paste_err_rate_limit: 'The AI service is rate-limited. Wait a minute and try again.',
+    ai_paste_err_auth: 'The AI service returned an authentication error. The API key may be invalid or expired.',
+    ai_paste_err_bad_response: 'AI response was malformed. Try rephrasing your text.',
+    ai_paste_err_generic: 'AI request failed.',
+    ai_paste_applied: 'Applied {n} expense(s) from AI paste ✨',
+    ai_paste_no_participants_yet: 'AI Paste needs at least one existing participant, or the parsed text must name people. Add a participant first, then try again.',
+    ai_worker_config_label: 'AI Worker URL not set. Set localStorage["budgetcalc:aiWorkerUrl"] = "https://your-worker.workers.dev" and reload.',
     // Auth
     auth_sign_in: 'Sign in',
     auth_sign_out: 'Sign out',
@@ -4262,6 +4412,36 @@ const I18N = {
     add_btn: '+ 新增', cancel: '取消', click_add: '點擊 <strong>+ 新增</strong> 開始',
     no_expenses: '尚無支出',
     sx_add_person_btn: '+ 新增參與者', sx_add_expense_btn: '+ 新增費用',
+    // AI Paste
+    ai_paste_btn: 'AI 貼上',
+    ai_paste_title: 'AI 智慧貼上',
+    ai_paste_desc: '貼上聊天紀錄、便條或帳單，讓 AI 自動抓出參與者與費用。支援中英文輸入。',
+    ai_paste_ph: '例：Alice 付了晚餐 $50，Bob 付了計程車 $30，兩筆都平分。之後 Alice 買了咖啡 $12 請大家。',
+    ai_paste_hint_label: '提示（選填）',
+    ai_paste_hint_ph: '例：幣別 NT$；四人聚餐',
+    ai_paste_go: '✨ 交給 AI 解析',
+    ai_paste_loading: 'AI 正在讀取你的文字…',
+    ai_paste_review_title: '套用前先確認',
+    ai_paste_review_desc: '取消勾選你不想加入的項目。任何欄位皆可直接編輯。新的參與者會標示。',
+    ai_paste_participants: '參與者',
+    ai_paste_expenses: '費用',
+    ai_paste_no_expenses: 'AI 沒有從這段文字中找到明確的費用項目。',
+    ai_paste_apply_append: '加入現有清單',
+    ai_paste_apply_replace: '取代現有清單',
+    ai_paste_apply_btn: '套用',
+    ai_paste_discard: '捨棄',
+    ai_paste_back: '← 回去編輯',
+    ai_paste_rate_limited: '請稍候 — 你在一分鐘內已呼叫 AI 5 次。',
+    ai_paste_err_empty: '請先貼上文字。',
+    ai_paste_err_worker_missing: 'AI 服務尚未設定。請等待管理員部署 Cloudflare Worker 並填入 AI_WORKER_URL。',
+    ai_paste_err_network: '無法連線到 AI 服務，請檢查網路後再試。',
+    ai_paste_err_rate_limit: 'AI 服務目前限流中，請稍等一分鐘再試。',
+    ai_paste_err_auth: 'AI 服務回傳驗證錯誤，API 金鑰可能失效。',
+    ai_paste_err_bad_response: 'AI 回應格式異常，請嘗試改寫你的文字。',
+    ai_paste_err_generic: 'AI 呼叫失敗。',
+    ai_paste_applied: '已從 AI 貼上套用 {n} 筆費用 ✨',
+    ai_paste_no_participants_yet: 'AI 貼上需要至少一個參與者，或文字中要提到人名。請先新增參與者再試。',
+    ai_worker_config_label: 'AI Worker URL 尚未設定。請執行 localStorage["budgetcalc:aiWorkerUrl"] = "https://your-worker.workers.dev" 後重新載入。',
     // 帳號
     auth_sign_in: '登入',
     auth_sign_out: '登出',
@@ -5412,10 +5592,341 @@ persistES  = function() { _origPersistES(); _fbWED(); if (currentUser) _fsWED();
 mjPersist  = function() { _origMjPersist(); _fbWMD(); if (currentUser) _fsWMD(); };
 persistSX  = function() { _origPersistSX(); _fbWSD(); if (currentUser) _fsWSD(); };
 
+// ─── AI Paste (Cloudflare Worker proxy → Gemini) ──────────────
+// Worker URL is set via localStorage["budgetcalc:aiWorkerUrl"] so that
+// deploying the Worker doesn't require editing the source. Frank's Worker
+// URL (from Cloudflare dashboard) goes there.
+const AI_WORKER_URL_DEFAULT = 'https://REPLACE_ME.workers.dev';
+function getAiWorkerUrl() {
+  try {
+    const stored = localStorage.getItem('budgetcalc:aiWorkerUrl');
+    if (stored && /^https:\/\/[^/]+/i.test(stored)) return stored.replace(/\/+$/, '');
+  } catch(_) {}
+  return AI_WORKER_URL_DEFAULT;
+}
+function _aiWorkerConfigured() { return getAiWorkerUrl() !== AI_WORKER_URL_DEFAULT; }
+
+// Client-side rate limit: max 5 requests per rolling 60 seconds.
+// Stored in sessionStorage so a page reload doesn't drop the count.
+function _aiRateCheck() {
+  const now = Date.now();
+  let hits = [];
+  try { hits = JSON.parse(sessionStorage.getItem('budgetcalc:aiHits') || '[]'); } catch(_) {}
+  hits = hits.filter(t => now - t < 60000);
+  if (hits.length >= 5) return false;
+  hits.push(now);
+  try { sessionStorage.setItem('budgetcalc:aiHits', JSON.stringify(hits)); } catch(_) {}
+  return true;
+}
+
+let _aiParsed = null;         // last parse result — {participants, expenses}
+let _aiSelected = null;       // array of booleans, per-expense-row inclusion
+let _aiExistingNames = null;  // Set of participant names present at parse time (for NEW badge)
+
+function openAiPasteModal() {
+  $('aiPasteOverlay').classList.add('open');
+  showAiPasteInputStage();
+}
+function closeAiPasteModal() {
+  $('aiPasteOverlay').classList.remove('open');
+  _aiParsed = null;
+  _aiSelected = null;
+}
+
+function showAiPasteInputStage() {
+  const zh = currentLang === 'zh';
+  const configured = _aiWorkerConfigured();
+  const configWarn = configured ? '' :
+    '<div class="ai-worker-config-box">⚠ ' + t('ai_worker_config_label') + '</div>';
+  $('aiPasteBody').innerHTML =
+    configWarn +
+    '<p class="modal-desc">' + t('ai_paste_desc') + '</p>' +
+    '<textarea id="aiPasteText" class="ai-paste-textarea" placeholder="' + t('ai_paste_ph').replace(/"/g, '&quot;') + '" maxlength="5000"></textarea>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 12px">' +
+      '<label style="font-size:.8rem;font-weight:600;color:var(--muted)">' + t('ai_paste_hint_label') + '</label>' +
+      '<span id="aiPasteCharCount" style="font-size:.72rem;color:var(--muted)">0 / 5000</span>' +
+    '</div>' +
+    '<input id="aiPasteHint" class="ai-paste-hint-input" type="text" placeholder="' + t('ai_paste_hint_ph').replace(/"/g, '&quot;') + '" maxlength="200" />' +
+    '<div class="modal-footer" style="gap:8px">' +
+      '<button class="btn btn-ghost" onclick="closeAiPasteModal()">' + t('ai_paste_discard') + '</button>' +
+      '<button class="btn btn-primary" id="aiPasteGoBtn" onclick="doAiParse()">' + t('ai_paste_go') + '</button>' +
+    '</div>';
+  const ta = $('aiPasteText');
+  if (ta) {
+    ta.focus();
+    ta.addEventListener('input', function() {
+      const cc = $('aiPasteCharCount');
+      if (cc) cc.textContent = ta.value.length + ' / 5000';
+    });
+  }
+}
+
+function showAiPasteLoadingStage() {
+  $('aiPasteBody').innerHTML =
+    '<div style="text-align:center;padding:24px 12px">' +
+      '<div class="ai-paste-spinner"></div>' +
+      '<div style="color:var(--muted);font-size:.9rem">' + t('ai_paste_loading') + '</div>' +
+    '</div>';
+}
+
+function showAiPasteErrorStage(errKey, detail) {
+  const zh = currentLang === 'zh';
+  const msg = t(errKey) || t('ai_paste_err_generic');
+  const detailHtml = detail
+    ? '<div style="margin-top:8px;font-size:.72rem;color:var(--muted);font-family:monospace;word-break:break-word;opacity:.7">' + String(detail).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>'
+    : '';
+  $('aiPasteBody').innerHTML =
+    '<div class="ai-error-box">' + msg + detailHtml + '</div>' +
+    '<div class="modal-footer" style="gap:8px">' +
+      '<button class="btn btn-ghost" onclick="closeAiPasteModal()">' + t('cancel') + '</button>' +
+      '<button class="btn btn-primary" onclick="showAiPasteInputStage()">' + t('ai_paste_back') + '</button>' +
+    '</div>';
+}
+
+async function doAiParse() {
+  const zh = currentLang === 'zh';
+  const ta = $('aiPasteText');
+  const hi = $('aiPasteHint');
+  const text = ta ? ta.value.trim() : '';
+  const hint = hi ? hi.value.trim() : '';
+  if (!text) { showToast(t('ai_paste_err_empty'), 'warn'); return; }
+  if (!_aiWorkerConfigured()) { showAiPasteErrorStage('ai_paste_err_worker_missing'); return; }
+  if (!_aiRateCheck()) { showAiPasteErrorStage('ai_paste_err_rate_limit'); return; }
+
+  showAiPasteLoadingStage();
+
+  let resp, body;
+  try {
+    resp = await fetch(getAiWorkerUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, hint })
+    });
+  } catch (err) {
+    showAiPasteErrorStage('ai_paste_err_network', String(err));
+    return;
+  }
+
+  try { body = await resp.json(); }
+  catch { showAiPasteErrorStage('ai_paste_err_bad_response'); return; }
+
+  if (!resp.ok || body.error) {
+    const errKey =
+      body.error === 'gemini_rate_limit' ? 'ai_paste_err_rate_limit' :
+      body.error === 'gemini_auth_failed' || body.error === 'missing_api_key' ? 'ai_paste_err_auth' :
+      body.error === 'network_error' ? 'ai_paste_err_network' :
+      body.error === 'model_returned_non_json' || body.error === 'invalid_json_from_model' ? 'ai_paste_err_bad_response' :
+      'ai_paste_err_generic';
+    showAiPasteErrorStage(errKey, body.detail || body.error || ('HTTP ' + resp.status));
+    return;
+  }
+
+  // Normalize: dedupe names, ensure amounts are numbers, drop invalid rows.
+  const participants = Array.isArray(body.participants) ? body.participants : [];
+  const dedupedNames = [];
+  const seenNames = new Set();
+  for (const p of participants) {
+    const n = (p && typeof p.name === 'string') ? p.name.trim() : '';
+    if (n && !seenNames.has(n.toLowerCase())) {
+      seenNames.add(n.toLowerCase());
+      dedupedNames.push(n);
+    }
+  }
+
+  const rawExps = Array.isArray(body.expenses) ? body.expenses : [];
+  const expenses = [];
+  for (const e of rawExps) {
+    if (!e || typeof e !== 'object') continue;
+    const amount = Number(e.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const payer = typeof e.payer === 'string' ? e.payer.trim() : '';
+    if (!payer) continue;
+    const description = typeof e.description === 'string' ? e.description.trim().slice(0, 500) : '';
+    let sharedBy = Array.isArray(e.sharedBy) ? e.sharedBy.filter(x => typeof x === 'string' && x.trim()) : [];
+    // Ensure names in sharedBy exist in the dedupedNames list; if not, add them.
+    for (const nm of sharedBy) {
+      if (!seenNames.has(nm.toLowerCase())) {
+        seenNames.add(nm.toLowerCase());
+        dedupedNames.push(nm);
+      }
+    }
+    // Ensure payer is in participants.
+    if (!seenNames.has(payer.toLowerCase())) {
+      seenNames.add(payer.toLowerCase());
+      dedupedNames.push(payer);
+    }
+    // Default sharedBy to all participants if empty.
+    if (sharedBy.length === 0) sharedBy = dedupedNames.slice();
+    expenses.push({
+      payer,
+      amount,
+      description,
+      sharedBy,
+      confidence: (e.confidence === 'low' || e.confidence === 'medium') ? e.confidence : 'high',
+      note: typeof e.note === 'string' ? e.note.trim().slice(0, 300) : ''
+    });
+  }
+
+  _aiParsed = { participants: dedupedNames.map(name => ({ name })), expenses };
+  _aiSelected = expenses.map(() => true);
+  _aiExistingNames = new Set((SX.participants || []).map(x => String(x).toLowerCase()));
+  showAiPasteReviewStage();
+}
+
+function showAiPasteReviewStage() {
+  const zh = currentLang === 'zh';
+  if (!_aiParsed) return;
+  const parts = _aiParsed.participants;
+  const exps  = _aiParsed.expenses;
+
+  const partsHtml = parts.length
+    ? parts.map(function(p) {
+        const isNew = !_aiExistingNames.has(p.name.toLowerCase());
+        return '<span class="ai-participant-chip' + (isNew ? ' new' : '') + '">' +
+          String(p.name).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) +
+          '</span>';
+      }).join('')
+    : '<span style="color:var(--muted);font-size:.8rem">—</span>';
+
+  const expsHtml = exps.length
+    ? exps.map(function(e, i) { return _aiRenderExpenseRow(e, i, parts); }).join('')
+    : '<div style="text-align:center;color:var(--muted);font-size:.85rem;padding:10px">' + t('ai_paste_no_expenses') + '</div>';
+
+  const modeGroup = exps.length ?
+    '<div class="ai-apply-mode">' +
+      '<label><input type="radio" name="aiApplyMode" value="append" checked /><span>' + t('ai_paste_apply_append') + '</span></label>' +
+      '<label><input type="radio" name="aiApplyMode" value="replace" /><span>' + t('ai_paste_apply_replace') + '</span></label>' +
+    '</div>' : '';
+
+  $('aiPasteBody').innerHTML =
+    '<p class="modal-desc">' + t('ai_paste_review_desc') + '</p>' +
+    '<div class="ai-paste-preview-section">' +
+      '<h4>' + t('ai_paste_participants') + ' (' + parts.length + ')</h4>' +
+      '<div class="ai-participants-row">' + partsHtml + '</div>' +
+    '</div>' +
+    '<div class="ai-paste-preview-section">' +
+      '<h4>' + t('ai_paste_expenses') + ' (' + exps.length + ')</h4>' +
+      '<div id="aiExpensesList">' + expsHtml + '</div>' +
+    '</div>' +
+    modeGroup +
+    '<div class="modal-footer" style="gap:8px">' +
+      '<button class="btn btn-ghost" onclick="showAiPasteInputStage()">' + t('ai_paste_back') + '</button>' +
+      '<button class="btn btn-primary" onclick="applyAiPaste()"' + (exps.length ? '' : ' disabled') + '>' + t('ai_paste_apply_btn') + '</button>' +
+    '</div>';
+}
+
+function _aiRenderExpenseRow(e, i, participants) {
+  const zh = currentLang === 'zh';
+  const included = _aiSelected[i];
+  const confBadge = e.confidence === 'low'
+    ? '<span class="ai-conf-badge low">LOW</span>'
+    : e.confidence === 'medium'
+    ? '<span class="ai-conf-badge medium">?</span>'
+    : '';
+  const payerOpts = participants.map(function(p) {
+    const sel = p.name === e.payer ? ' selected' : '';
+    const nm = String(p.name).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    return '<option value="' + nm + '"' + sel + '>' + nm + '</option>';
+  }).join('');
+  const sharedByLabel = e.sharedBy.length === participants.length
+    ? (zh ? '全部' : 'All')
+    : e.sharedBy.length + (zh ? ' 人' : ' ppl');
+  const escDesc = String(e.description || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  const noteHtml = e.note
+    ? '<div class="ai-expense-note">' + String(e.note).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>'
+    : '';
+  return '<div class="ai-expense-row' + (included ? '' : ' disabled') + (e.confidence === 'low' ? ' low-conf' : '') + '" data-idx="' + i + '">' +
+    '<div class="ai-toggle"><input type="checkbox" ' + (included ? 'checked' : '') + ' onchange="toggleAiRow(' + i + ')" title="' + (zh ? '包含/排除' : 'Include/exclude') + '" /></div>' +
+    '<input class="ai-desc" type="text" value="' + escDesc + '" placeholder="' + (zh ? '說明' : 'Description') + '" onchange="editAiRow(' + i + ',\'description\',this.value)" />' +
+    '<select class="ai-payer" onchange="editAiRow(' + i + ',\'payer\',this.value)">' + payerOpts + '</select>' +
+    '<input class="ai-amount" type="number" step="0.01" min="0" value="' + e.amount + '" onchange="editAiRow(' + i + ',\'amount\',this.value)" />' +
+    '<div class="ai-sharedby-cell" title="' + e.sharedBy.join(', ').replace(/"/g,'&quot;') + '" style="font-size:.75rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + sharedByLabel + confBadge + '</div>' +
+    noteHtml +
+    '</div>';
+}
+
+function toggleAiRow(i) {
+  if (!_aiSelected) return;
+  _aiSelected[i] = !_aiSelected[i];
+  const row = document.querySelector('.ai-expense-row[data-idx="' + i + '"]');
+  if (row) row.classList.toggle('disabled', !_aiSelected[i]);
+}
+
+function editAiRow(i, field, val) {
+  if (!_aiParsed || !_aiParsed.expenses[i]) return;
+  if (field === 'amount') {
+    const n = Number(val);
+    if (!Number.isFinite(n) || n < 0) return;
+    _aiParsed.expenses[i].amount = n;
+  } else {
+    _aiParsed.expenses[i][field] = String(val).slice(0, 500);
+  }
+}
+
+function applyAiPaste() {
+  if (!_aiParsed) return;
+  const zh = currentLang === 'zh';
+  const modeInput = document.querySelector('input[name="aiApplyMode"]:checked');
+  const mode = modeInput ? modeInput.value : 'append';
+
+  const selectedExps = _aiParsed.expenses.filter((_, i) => _aiSelected[i]);
+  if (selectedExps.length === 0) { showToast(t('ai_paste_no_expenses'), 'warn'); return; }
+
+  // Merge participants: append any parsed name not already in SX.participants.
+  const existingLower = new Set((SX.participants || []).map(n => String(n).toLowerCase()));
+  const newParticipants = [];
+  for (const p of _aiParsed.participants) {
+    if (!existingLower.has(p.name.toLowerCase())) {
+      newParticipants.push(p.name);
+      existingLower.add(p.name.toLowerCase());
+    }
+  }
+  if (mode === 'replace') {
+    SX.participants = _aiParsed.participants.map(p => p.name);
+    SX.expenses = [];
+  } else {
+    SX.participants = (SX.participants || []).concat(newParticipants);
+  }
+
+  // Build a name → index lookup for paidBy.
+  const nameToIdx = new Map();
+  SX.participants.forEach((n, idx) => nameToIdx.set(String(n).toLowerCase(), idx));
+
+  // Convert AI expenses to SX-format expenses.
+  for (const e of selectedExps) {
+    const paidByIdx = nameToIdx.get(e.payer.toLowerCase());
+    if (paidByIdx === undefined) continue; // payer not resolvable
+    const splitAmong = e.sharedBy
+      .map(n => nameToIdx.get(String(n).toLowerCase()))
+      .filter(idx => idx !== undefined);
+    if (splitAmong.length === 0) continue;
+    // Prepend so it lands at the top of the list, matching other add flows.
+    SX.expenses = [{
+      id: uid(),
+      desc: e.description || (zh ? '未命名費用' : 'Untitled expense'),
+      amount: e.amount,
+      paidBy: paidByIdx,
+      splitAmong,
+      splitMode: 'equal'
+    }].concat(SX.expenses || []);
+  }
+
+  persistSX();
+  sxRenderAll();
+  showToast(t('ai_paste_applied', { n: selectedExps.length }), 'success');
+  closeAiPasteModal();
+}
+
 // Button wiring
 $('createRoomBtn').onclick = openRoomModal;
 const _roomModalEl = $('roomModal');
 if (_roomModalEl) _roomModalEl.addEventListener('click', e => { if (e.target === _roomModalEl) closeRoomModal(); });
+
+// AI Paste wiring
+const _aiPasteBtn = $('sxAiPasteBtn');
+if (_aiPasteBtn) _aiPasteBtn.onclick = openAiPasteModal;
+const _aiPasteOverlay = $('aiPasteOverlay');
+if (_aiPasteOverlay) _aiPasteOverlay.addEventListener('click', e => { if (e.target === _aiPasteOverlay) closeAiPasteModal(); });
 
 // Inline "Live collab" links inside every share-hint block route here.
 // If the Share modal is open, close it first so the Room modal doesn't stack
