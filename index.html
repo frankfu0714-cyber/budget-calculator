@@ -5273,10 +5273,17 @@ function showCreatedRoomScreen(code) {
     '<button class="btn btn-primary" id="copyCodeBtn" style="width:100%;justify-content:center;margin:6px 0 10px" onclick="copyCreatedCode()">' +
       (zh ? '📋 複製代碼' : '📋 Copy Code') +
     '</button>' +
-    '<div style="background:var(--bg);border-radius:8px;padding:9px 12px;font-size:.78rem;color:var(--muted);margin-bottom:16px;line-height:1.4">' +
-      '<span style="font-weight:600;color:var(--text)">' + (zh ? '✓ 目前的資料會一併帶入房間' : '✓ Your current data comes with you') + '</span><br>' +
-      (zh ? '你在此頁面已輸入的分帳、麻將、活動資料都會成為房間的初始狀態，你的夥伴加入後可以立即看到。' : 'Everything you\'ve already typed in this session (participants, expenses, mahjong rounds, event items) becomes the room\'s starting state, so anyone who joins sees it right away.') +
-    '</div>' +
+    '<label for="includeDataChk" style="display:flex;gap:9px;align-items:flex-start;background:var(--bg);border-radius:8px;padding:11px 12px;margin-bottom:14px;cursor:pointer;line-height:1.4">' +
+      '<input type="checkbox" id="includeDataChk" checked style="margin-top:2px;flex-shrink:0" onchange="_updateIncludeDataHint()" />' +
+      '<div style="flex:1;min-width:0">' +
+        '<div id="includeDataLabel" style="font-weight:600;color:var(--text);font-size:.83rem;margin-bottom:2px">' +
+          (zh ? '一併帶入目前的資料' : 'Include my current data') +
+        '</div>' +
+        '<div id="includeDataHint" style="font-size:.74rem;color:var(--muted)">' +
+          (zh ? '你目前分頁的資料會成為房間的初始狀態。' : 'Your current tab\'s data becomes the room\'s starting state.') +
+        '</div>' +
+      '</div>' +
+    '</label>' +
     '<label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">' + (zh ? '設定密碼（選填）' : 'Set password (optional)') + '</label>' +
     '<input type="password" id="newRoomPwInput" class="form-input" placeholder="' + (zh ? '選填 — 留空建立公開房間' : 'Optional — leave blank for a public room') + '" style="width:100%;margin-bottom:6px" />' +
     '<div class="room-pw-hint">' + (zh ? '最少 4 個字元。以雜湊儲存於資料庫。' : 'Minimum 4 characters. Stored hashed, never in plaintext.') + '</div>' +
@@ -5312,6 +5319,81 @@ function cancelCreate() {
   closeRoomModal();
 }
 
+// Swap the checkbox's label / hint text between the two states so users
+// immediately see what "unchecked" means without having to test it.
+function _updateIncludeDataHint() {
+  const zh = currentLang === 'zh';
+  const chk = $('includeDataChk');
+  const label = $('includeDataLabel');
+  const hint = $('includeDataHint');
+  if (!chk || !label || !hint) return;
+  if (chk.checked) {
+    label.textContent = zh ? '一併帶入目前的資料' : 'Include my current data';
+    hint.textContent = zh ? '你目前分頁的資料會成為房間的初始狀態。' : "Your current tab's data becomes the room's starting state.";
+  } else {
+    label.textContent = zh ? '建立空房間' : 'Start empty';
+    hint.textContent = zh ? '房間從全空開始。你目前的資料會保留為單獨的專案，不會被清除。' : 'Fresh empty room. Your current work stays as a separate project — nothing is deleted.';
+  }
+}
+
+// Return which tab is currently active. Same DOM-first pattern used by
+// copyToEdit / shareUrl builders elsewhere.
+function _activeTabName() {
+  const el = document.querySelector('.tab-btn.active');
+  return (el && el.dataset && el.dataset.tab) || (typeof DEFAULT_TAB === 'string' ? DEFAULT_TAB : 'event');
+}
+
+// Spin off a fresh empty project on the given tab so the user starts with a
+// blank canvas without touching their existing project. Their prior project
+// stays in the tab's project dropdown for later switching.
+function _startEmptyProjectOnTab(tab) {
+  const zh = currentLang === 'zh';
+  const base = zh ? '新房間' : 'New room';
+
+  if (tab === 'mahjong') {
+    const projects = getMJProjects();
+    const name = _uniqueName(base, n => Object.prototype.hasOwnProperty.call(projects, n));
+    const defaults = _mjDefaults();
+    projects[name] = Object.assign({}, defaults, { _lastActivityAt: Date.now() });
+    saveMJProjects(projects);
+    try { localStorage.setItem('mahjong-active-project', name); } catch(_) {}
+    currentMJProject = name;
+    MJ.players = defaults.players.slice();
+    MJ.base = defaults.base;
+    MJ.perTai = defaults.perTai;
+    MJ.rounds = [];
+    [0,1,2,3].forEach(i => { const el = $('mjP'+i); if (el) el.value = MJ.players[i]; });
+    if ($('mjBase')) $('mjBase').value = MJ.base;
+    if ($('mjPerTai')) $('mjPerTai').value = MJ.perTai;
+    renderMJSessionDropdown();
+    mjUpdateDropdowns(); mjRenderAll();
+  } else if (tab === 'event') {
+    const projects = getESProjects();
+    const name = _uniqueName(base, n => Object.prototype.hasOwnProperty.call(projects, n));
+    projects[name] = { name: '', people: 2, items: [], _lastActivityAt: Date.now() };
+    saveESProjects(projects);
+    try { localStorage.setItem('ev-active-project', name); } catch(_) {}
+    currentESProject = name;
+    ES.name = ''; ES.people = 2; ES.items = [];
+    if ($('evEventName')) $('evEventName').value = '';
+    if ($('evPeople')) $('evPeople').value = 2;
+    renderESProjectDropdown();
+    renderEvItems(); renderReceipt();
+  } else {
+    // settle (default)
+    const groups = getSXGroups();
+    const name = _uniqueName(base, n => Object.prototype.hasOwnProperty.call(groups, n));
+    groups[name] = { name, participants: [], expenses: [], _lastActivityAt: Date.now() };
+    saveSXGroups(groups);
+    try { localStorage.setItem('sx-active-group', name); } catch(_) {}
+    currentSXGroup = name;
+    SX.name = name; SX.participants = []; SX.expenses = [];
+    if ($('sxGroupName')) $('sxGroupName').value = name;
+    renderSXGroupDropdown();
+    sxRenderAll();
+  }
+}
+
 async function finalizeCreateRoom() {
   const zh = currentLang === 'zh';
   const code = _pendingCreateCode;
@@ -5322,9 +5404,24 @@ async function finalizeCreateRoom() {
     showToast(zh ? '密碼至少 4 個字元' : 'Password must be at least 4 characters', 'error');
     return;
   }
+  // Default true — if the checkbox isn't in the DOM for some reason, we fall
+  // back to the include-current behavior so we never accidentally wipe a user's
+  // data on a rendering hiccup.
+  const includeChk = $('includeDataChk');
+  const includeData = includeChk ? !!includeChk.checked : true;
+  const activeTab = _activeTabName();
+
   const enterBtn = $('enterRoomBtn');
   if (enterBtn) { enterBtn.disabled = true; enterBtn.textContent = zh ? '建立中…' : 'Creating…'; }
   const passwordHash = pw ? await hashPassword(pw) : null;
+
+  // "Start empty" — before we set activeRoom (which triggers writes), spin off
+  // a new empty local project on the current tab. Their old project stays in
+  // the dropdown; they can switch back any time.
+  if (!includeData) {
+    _startEmptyProjectOnTab(activeTab);
+  }
+
   activeRoom = code;
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
@@ -5339,12 +5436,17 @@ async function finalizeCreateRoom() {
     const now = Date.now();
     const meta = { createdAt: now, lastActivityAt: now };
     if (passwordHash) meta.passwordHash = passwordHash;
-    const roomData = {
-      meta:    meta,
-      mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
-      event:   { name: ES.name, people: ES.people, items: ES.items },
-      settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
-    };
+    // Seed only the currently-active tab. Other tabs' subpaths stay null so a
+    // joiner's local data on those tabs isn't wiped by the initial room state.
+    // Any later edit on those tabs writes through the normal room-write helpers.
+    const roomData = { meta: meta };
+    if (activeTab === 'mahjong') {
+      roomData.mahjong = { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds };
+    } else if (activeTab === 'event') {
+      roomData.event = { name: ES.name, people: ES.people, items: ES.items };
+    } else {
+      roomData.settle = { name: SX.name, participants: SX.participants, expenses: SX.expenses };
+    }
     fbDb.ref('rooms/' + activeRoom).set(roomData).then(() => { attachRoomListeners(); cleanupOldRooms(); });
   }
   _pendingCreateCode = null;
