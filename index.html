@@ -1781,6 +1781,26 @@
     <!-- Left: settings + round entry + history -->
     <div class="mj-left">
 
+      <!-- Session selector -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="dot" style="background:var(--accent2)"></span>
+            <span data-i18n="mj_session">Session</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label" data-i18n="mj_session">Session</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select class="field-input" id="mjSessionSel" style="flex:1;margin:0"></select>
+              <button class="btn btn-ghost btn-sm" id="mjNewSessionBtn" style="white-space:nowrap;flex-shrink:0" data-i18n="new_btn">+ New</button>
+              <button class="btn btn-ghost btn-sm" id="mjDeleteSessionBtn" title="Delete session" style="white-space:nowrap;flex-shrink:0"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Settings -->
       <div class="card">
         <div class="card-head">
@@ -3035,9 +3055,14 @@ function renderESProjectDropdown() {
   const sel = $('esProjectSel');
   const projects = getESProjects();
   const names = Object.keys(projects);
+  const now = Date.now();
   sel.innerHTML = names.length === 0
     ? '<option value="">—</option>'
-    : names.map(n => `<option value="${esc(n)}"${n === currentESProject ? ' selected' : ''}>${esc(n)}</option>`).join('');
+    : names.map(n => {
+        const ts = projects[n] && projects[n]._lastActivityAt;
+        const suffix = _projectExpirySuffix(ts, now);
+        return `<option value="${esc(n)}"${n === currentESProject ? ' selected' : ''}>${esc(n)}${suffix}</option>`;
+      }).join('');
 }
 
 function switchESProject(name) {
@@ -3424,10 +3449,96 @@ function mjRenderAll() {
   mjUpdatePreview();
 }
 
-function mjPersist() {
-  const payload = Object.assign({}, MJ, { _lastActivityAt: Date.now() });
-  try { localStorage.setItem('mahjong-calc', JSON.stringify(payload)); } catch(_) {}
+// ─── Mahjong multi-session (project) ──────────────────────────
+// Mirrors the ES/SX pattern: named sessions in a map, current tracked by name.
+// Legacy `mahjong-calc` singleton auto-migrates into "Migrated" on first load.
+let currentMJProject = null;
+
+function getMJProjects() {
+  try { return JSON.parse(localStorage.getItem('mahjong-projects') || '{}'); } catch(_) { return {}; }
 }
+function saveMJProjects(p) {
+  try { localStorage.setItem('mahjong-projects', JSON.stringify(p)); } catch(_) {}
+}
+
+function _mjDefaults() {
+  return { players: ['Player 1','Player 2','Player 3','Player 4'], base: 100, perTai: 50, rounds: [] };
+}
+
+// One-time migration from the legacy singleton key. Returns true if migration happened.
+function _mjMigrateLegacy() {
+  let done = false;
+  try {
+    const legacy = JSON.parse(localStorage.getItem('mahjong-calc') || 'null');
+    if (legacy && (legacy.players || legacy.rounds)) {
+      const projects = getMJProjects();
+      const zh = currentLang === 'zh';
+      const name = zh ? '已遷移' : 'Migrated';
+      // Skip if a project by this name already exists to avoid overwriting.
+      if (!projects[name]) {
+        projects[name] = {
+          players: legacy.players || _mjDefaults().players,
+          base:    legacy.base    != null ? legacy.base    : _mjDefaults().base,
+          perTai:  legacy.perTai  != null ? legacy.perTai  : _mjDefaults().perTai,
+          rounds:  legacy.rounds  || [],
+          _lastActivityAt: legacy._lastActivityAt || Date.now(),
+        };
+        saveMJProjects(projects);
+        try { localStorage.setItem('mahjong-active-project', name); } catch(_) {}
+        done = true;
+      }
+    }
+    // Clear the legacy key regardless so we don't try to migrate again.
+    localStorage.removeItem('mahjong-calc');
+  } catch(_) {}
+  return done;
+}
+
+function renderMJSessionDropdown() {
+  const sel = $('mjSessionSel');
+  if (!sel) return;
+  const projects = getMJProjects();
+  const names = Object.keys(projects);
+  const now = Date.now();
+  sel.innerHTML = names.length === 0
+    ? '<option value="">—</option>'
+    : names.map(n => {
+        const ts = projects[n] && projects[n]._lastActivityAt;
+        const suffix = _projectExpirySuffix(ts, now);
+        return `<option value="${esc(n)}"${n === currentMJProject ? ' selected' : ''}>${esc(n)}${suffix}</option>`;
+      }).join('');
+}
+
+function switchMJProject(name) {
+  if (!name) return;
+  const projects = getMJProjects();
+  const p = projects[name] || _mjDefaults();
+  currentMJProject = name;
+  MJ.players = Array.isArray(p.players) ? p.players.slice(0, 4) : _mjDefaults().players;
+  while (MJ.players.length < 4) MJ.players.push('Player ' + (MJ.players.length + 1));
+  MJ.base    = p.base    != null ? p.base    : _mjDefaults().base;
+  MJ.perTai  = p.perTai  != null ? p.perTai  : _mjDefaults().perTai;
+  MJ.rounds  = Array.isArray(p.rounds) ? p.rounds : [];
+  [0,1,2,3].forEach(i => { const el = $('mjP'+i); if (el) el.value = MJ.players[i]; });
+  const base = $('mjBase'); if (base) base.value = MJ.base;
+  const pt = $('mjPerTai'); if (pt) pt.value = MJ.perTai;
+  mjUpdateDropdowns(); mjRenderAll();
+  try { localStorage.setItem('mahjong-active-project', name); } catch(_) {}
+}
+
+function mjPersist() {
+  if (!currentMJProject) return;
+  const projects = getMJProjects();
+  projects[currentMJProject] = {
+    players: MJ.players,
+    base:    MJ.base,
+    perTai:  MJ.perTai,
+    rounds:  MJ.rounds,
+    _lastActivityAt: Date.now(),
+  };
+  saveMJProjects(projects);
+}
+
 function mjShareUrl() {
   return location.origin + location.pathname + '#mj=' + shareEncode(MJ);
 }
@@ -3448,24 +3559,119 @@ function mjLoad() {
       [0,1,2,3].forEach(i => $('mjP'+i).value = MJ.players[i]);
       $('mjBase').value = MJ.base;
       $('mjPerTai').value = MJ.perTai;
+      // A share-loaded state gets its own project so it doesn't overwrite an existing one.
+      const projects = getMJProjects();
+      const zh = currentLang === 'zh';
+      let name = zh ? '分享的遊戲' : 'Shared game';
+      let i = 2;
+      while (projects[name]) { name = (zh ? '分享的遊戲 ' : 'Shared game ') + i++; }
+      currentMJProject = name;
       mjUpdateDropdowns();
       mjRenderAll();
       mjPersist();
+      try { localStorage.setItem('mahjong-active-project', name); } catch(_) {}
+      renderMJSessionDropdown();
       return;
     }
   } catch(_) {}
-  try {
-    const saved = JSON.parse(localStorage.getItem('mahjong-calc') || '{}');
-    if (saved.players) MJ.players = saved.players;
-    if (saved.base !== undefined) MJ.base = saved.base;
-    if (saved.perTai !== undefined) MJ.perTai = saved.perTai;
-    if (saved.rounds) MJ.rounds = saved.rounds;
-  } catch(_) {}
+
+  // One-time migration of the legacy singleton.
+  _mjMigrateLegacy();
+
+  const projects = getMJProjects();
+  const names = Object.keys(projects);
+  if (names.length === 0) {
+    const zh = currentLang === 'zh';
+    const defaultName = zh ? '預設' : 'Default';
+    const d = _mjDefaults();
+    projects[defaultName] = Object.assign({}, d, { _lastActivityAt: Date.now() });
+    saveMJProjects(projects);
+    try { localStorage.setItem('mahjong-active-project', defaultName); } catch(_) {}
+  }
+
+  let active = null;
+  try { active = localStorage.getItem('mahjong-active-project'); } catch(_) {}
+  if (!active || !getMJProjects()[active]) {
+    active = Object.keys(getMJProjects())[0];
+    try { localStorage.setItem('mahjong-active-project', active); } catch(_) {}
+  }
+  currentMJProject = active;
+
+  const p = getMJProjects()[active] || _mjDefaults();
+  MJ.players = Array.isArray(p.players) ? p.players.slice(0, 4) : _mjDefaults().players;
+  while (MJ.players.length < 4) MJ.players.push('Player ' + (MJ.players.length + 1));
+  MJ.base    = p.base    != null ? p.base    : _mjDefaults().base;
+  MJ.perTai  = p.perTai  != null ? p.perTai  : _mjDefaults().perTai;
+  MJ.rounds  = Array.isArray(p.rounds) ? p.rounds : [];
+
   [0,1,2,3].forEach(i => $('mjP'+i).value = MJ.players[i]);
   $('mjBase').value = MJ.base;
   $('mjPerTai').value = MJ.perTai;
   mjUpdateDropdowns();
   mjRenderAll();
+  renderMJSessionDropdown();
+}
+
+// Session dropdown / new / delete wiring — parallels ES / SX.
+if ($('mjSessionSel')) {
+  $('mjSessionSel').addEventListener('change', () => switchMJProject($('mjSessionSel').value));
+}
+if ($('mjNewSessionBtn')) {
+  $('mjNewSessionBtn').onclick = () => {
+    const zh = currentLang === 'zh';
+    const name = prompt(zh ? '新場次名稱：' : 'Session name:');
+    if (!name || !name.trim()) return;
+    const n = name.trim();
+    const projects = getMJProjects();
+    if (projects[n]) { showToast(t('toast_project_exists'), 'warn'); return; }
+    projects[n] = Object.assign({}, _mjDefaults(), { _lastActivityAt: Date.now() });
+    saveMJProjects(projects);
+    currentMJProject = n;
+    try { localStorage.setItem('mahjong-active-project', n); } catch(_) {}
+    renderMJSessionDropdown();
+    switchMJProject(n);
+    showToast(t('toast_project_created', { name: n }));
+  };
+}
+if ($('mjDeleteSessionBtn')) {
+  $('mjDeleteSessionBtn').onclick = () => {
+    if (!currentMJProject) return;
+    const zh = currentLang === 'zh';
+    if (!confirm(zh ? `確定刪除場次「${currentMJProject}」？` : `Delete session "${currentMJProject}"?`)) return;
+    const projects = getMJProjects();
+    delete projects[currentMJProject];
+    saveMJProjects(projects);
+    const names = Object.keys(projects);
+    currentMJProject = names.length > 0 ? names[0] : null;
+    if (currentMJProject) {
+      try { localStorage.setItem('mahjong-active-project', currentMJProject); } catch(_) {}
+      renderMJSessionDropdown();
+      switchMJProject(currentMJProject);
+    } else {
+      const defaultName = zh ? '預設' : 'Default';
+      projects[defaultName] = Object.assign({}, _mjDefaults(), { _lastActivityAt: Date.now() });
+      saveMJProjects(projects);
+      currentMJProject = defaultName;
+      try { localStorage.setItem('mahjong-active-project', defaultName); } catch(_) {}
+      renderMJSessionDropdown();
+      switchMJProject(defaultName);
+    }
+    showToast(t('toast_project_deleted'), 'info');
+  };
+}
+
+// Helper used by every project dropdown — appends " (expires in Nd)" when a
+// project's last activity is close to the 30-day TTL cutoff. Returns '' when
+// there's no timestamp (grace period) or when > 3 days remain.
+function _projectExpirySuffix(lastActivityAt, now) {
+  if (!lastActivityAt) return '';
+  const ms = 24 * 60 * 60 * 1000;
+  const remaining = Math.floor((lastActivityAt + 30 * ms - now) / ms);
+  if (remaining > 3) return '';
+  if (remaining <= 0) return currentLang === 'zh' ? '  ⚠️ 即將刪除' : '  ⚠️ expiring';
+  return currentLang === 'zh'
+    ? `  ⚠️ ${remaining} 天內刪除`
+    : `  ⚠️ expires in ${remaining}d`;
 }
 
 $('mjShareBtn').onclick = () => {
@@ -3490,9 +3696,14 @@ function renderSXGroupDropdown() {
   const sel = $('sxGroupSel');
   const groups = getSXGroups();
   const names = Object.keys(groups);
+  const now = Date.now();
   sel.innerHTML = names.length === 0
     ? '<option value="">—</option>'
-    : names.map(n => `<option value="${esc(n)}"${n === currentSXGroup ? ' selected' : ''}>${esc(n)}</option>`).join('');
+    : names.map(n => {
+        const ts = groups[n] && groups[n]._lastActivityAt;
+        const suffix = _projectExpirySuffix(ts, now);
+        return `<option value="${esc(n)}"${n === currentSXGroup ? ' selected' : ''}>${esc(n)}${suffix}</option>`;
+      }).join('');
 }
 
 function switchSXGroup(name) {
@@ -4249,6 +4460,9 @@ const I18N = {
     add_btn: '+ Add', cancel: 'Cancel', click_add: 'Click <strong>+ Add</strong> to begin.',
     no_expenses: 'No expenses yet.',
     sx_add_person_btn: '+ Add Participant', sx_add_expense_btn: '+ Add Expense',
+    // Multi-project (Mahjong)
+    mj_session: 'Session',
+    projects_cleaned: '{n} old project(s) deleted (30-day auto-cleanup)',
     // AI Paste
     ai_paste_btn: 'AI Paste',
     ai_paste_title: 'AI Paste',
@@ -4412,6 +4626,9 @@ const I18N = {
     add_btn: '+ 新增', cancel: '取消', click_add: '點擊 <strong>+ 新增</strong> 開始',
     no_expenses: '尚無支出',
     sx_add_person_btn: '+ 新增參與者', sx_add_expense_btn: '+ 新增費用',
+    // Multi-project (Mahjong)
+    mj_session: '場次',
+    projects_cleaned: '已自動刪除 {n} 個 30 天未使用的專案',
     // AI Paste
     ai_paste_btn: 'AI 貼上',
     ai_paste_title: 'AI 智慧貼上',
@@ -4615,6 +4832,52 @@ updateMonthChip();
 // payload decoded and selected its target tab. When true, we skip the
 // path-based routing at the end of boot so the payload's implied tab wins.
 let _payloadHandled = false;
+
+// ── 30-day local sweep ────────────────────────────────────────
+// Deletes any project whose `_lastActivityAt` is older than 30 days across all
+// three tabs. Runs once per app load, before the tab-specific load functions,
+// so a stale project we're about to delete never becomes the active one.
+// Never deletes the currently-active project even if it's stale, so returning
+// after a long absence doesn't wipe someone's only project.
+const PROJECT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+function sweepLocalStaleProjects() {
+  const now = Date.now();
+  const cutoff = now - PROJECT_TTL_MS;
+  const tabs = [
+    { mapKey: 'ev-projects',      activeKey: 'ev-active-project' },
+    { mapKey: 'sx-groups',        activeKey: 'sx-active-group' },
+    { mapKey: 'mahjong-projects', activeKey: 'mahjong-active-project' },
+  ];
+  let deleted = 0;
+  for (const { mapKey, activeKey } of tabs) {
+    let map;
+    try { map = JSON.parse(localStorage.getItem(mapKey) || '{}'); } catch(_) { continue; }
+    if (!map || typeof map !== 'object') continue;
+    let activeName = null;
+    try { activeName = localStorage.getItem(activeKey); } catch(_) {}
+    let changed = false;
+    for (const name of Object.keys(map)) {
+      if (name === activeName) continue; // never delete the active project
+      const ts = map[name] && map[name]._lastActivityAt;
+      if (!ts) continue; // no timestamp = grace period, skip
+      if (ts < cutoff) {
+        delete map[name];
+        deleted++;
+        changed = true;
+      }
+    }
+    if (changed) {
+      try { localStorage.setItem(mapKey, JSON.stringify(map)); } catch(_) {}
+    }
+  }
+  if (deleted > 0) {
+    // t() may not be ready if called synchronously here; defer the toast a beat
+    // so we're behind the initial render.
+    setTimeout(() => showToast(t('projects_cleaned', { n: deleted }), 'info'), 600);
+  }
+}
+
+sweepLocalStaleProjects();
 loadState();
 loadES();
 mjLoad();
@@ -4894,7 +5157,7 @@ function attachRoomListeners() {
     _safeSet($('mjBase'),   MJ.base);
     _safeSet($('mjPerTai'), MJ.perTai);
     _safeRender('tab-mahjong', () => { mjUpdateDropdowns(); mjRenderAll(); });
-    try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
+    mjPersist(); // persist into the active session's project entry
     _fbUpdating = false;
   });
   fbListeners.mahjong = mahjongCb;
@@ -5256,11 +5519,11 @@ function cloudWriteES() {
     lastActivityAt: fsTs(),
   }, { merge: true }).catch(function(err) { console.warn('cloudWriteES failed', err); });
 }
-// Write the mahjong singleton doc.
+// Write the currently-active mahjong session doc.
 function cloudWriteMJ() {
-  if (!cloudActive()) return;
+  if (!cloudActive() || !currentMJProject) return;
   const root = fsUserRoot(); if (!root) return;
-  root.collection('mahjongGames').doc(MJ_DOC_ID).set({
+  root.collection('mahjongGames').doc(currentMJProject).set({
     players: MJ.players || [],
     base:    MJ.base    || 0,
     perTai:  MJ.perTai  || 0,
@@ -5354,52 +5617,48 @@ const _sxKeyMap = function(src, extra) {
     expenses:     Array.isArray(src.expenses)     ? src.expenses     : [],
   }, extra || {});
 };
+const _mjKeyMap = function(src, extra) {
+  return Object.assign({
+    players: Array.isArray(src.players) ? src.players : [],
+    base:    src.base    != null ? src.base    : 0,
+    perTai:  src.perTai  != null ? src.perTai  : 0,
+    rounds:  Array.isArray(src.rounds) ? src.rounds : [],
+  }, extra || {});
+};
+
+// One-time cleanup: the pre-multi-project Mahjong code stored a singleton doc at
+// mahjongGames/current. We rename it to "Migrated" (or drop it if a matching
+// local project already exists) before merging, so the singleton isn't left
+// dangling as a mystery entry named "current" in the dropdown.
+async function _mjMigrateCloudSingleton() {
+  const root = fsUserRoot(); if (!root) return;
+  try {
+    const legacyRef = root.collection('mahjongGames').doc(MJ_DOC_ID);
+    const legacyDoc = await legacyRef.get();
+    if (!legacyDoc.exists) return;
+    const data = legacyDoc.data();
+    if (!data || (!data.players && !data.rounds)) { await legacyRef.delete(); return; }
+    const zh = currentLang === 'zh';
+    let target = zh ? '已遷移' : 'Migrated';
+    // If Migrated already exists, keep the legacy one under a numbered suffix.
+    let n = 2;
+    while ((await root.collection('mahjongGames').doc(target).get()).exists) {
+      target = (zh ? '已遷移 ' : 'Migrated ') + n++;
+      if (n > 20) break;
+    }
+    await root.collection('mahjongGames').doc(target).set(data, { merge: false });
+    await legacyRef.delete();
+  } catch(err) { console.warn('mj legacy migration failed:', err); }
+}
 
 async function runCloudMigration() {
   if (!fbStore || !currentUser) return;
   _cloudHydrating = true;
   try {
+    await _mjMigrateCloudSingleton();
     await _mergeCollection('events', getESProjects, saveESProjects, _esKeyMap);
     await _mergeCollection('groups', getSXGroups, saveSXGroups, _sxKeyMap);
-
-    // Mahjong singleton
-    const root = fsUserRoot();
-    if (root) {
-      const mjDoc = await root.collection('mahjongGames').doc(MJ_DOC_ID).get();
-      const localMJ = (function() {
-        try { return JSON.parse(localStorage.getItem('mahjong-calc') || '{}'); } catch(_) { return {}; }
-      })();
-      if (!mjDoc.exists) {
-        if (localMJ && (localMJ.players || localMJ.rounds)) {
-          await root.collection('mahjongGames').doc(MJ_DOC_ID).set({
-            players: localMJ.players || MJ.players,
-            base:    localMJ.base    || 0,
-            perTai:  localMJ.perTai  || 0,
-            rounds:  localMJ.rounds  || [],
-            lastActivityAt: fsTs(),
-          }, { merge: true });
-        }
-      } else {
-        const c = mjDoc.data();
-        const cTs = _cloudMillis(c);
-        const lTs = localMJ && localMJ._lastActivityAt || 0;
-        if (cTs > lTs) {
-          MJ.players = c.players || MJ.players;
-          MJ.base    = c.base    != null ? c.base    : MJ.base;
-          MJ.perTai  = c.perTai  != null ? c.perTai  : MJ.perTai;
-          MJ.rounds  = c.rounds  || [];
-          try { localStorage.setItem('mahjong-calc', JSON.stringify(Object.assign({}, MJ, { _lastActivityAt: cTs }))); } catch(_) {}
-        } else if (localMJ && (localMJ.players || localMJ.rounds)) {
-          await root.collection('mahjongGames').doc(MJ_DOC_ID).set({
-            players: localMJ.players || MJ.players,
-            base:    localMJ.base    || 0,
-            perTai:  localMJ.perTai  || 0,
-            rounds:  localMJ.rounds  || [],
-            lastActivityAt: fsTs(),
-          }, { merge: true });
-        }
-      }
-    }
+    await _mergeCollection('mahjongGames', getMJProjects, saveMJProjects, _mjKeyMap);
 
     // Re-render in-memory state after migration (in case cloud overwrote local)
     _rehydrateFromLocal();
@@ -5435,10 +5694,21 @@ function _rehydrateFromLocal() {
   renderSXGroupDropdown();
   sxRenderAll();
 
-  // Mahjong
+  // Mahjong — pick up new / updated projects from the merge, and re-hydrate the
+  // in-memory MJ mirror from whichever session is currently active.
+  const mjProjects = getMJProjects();
+  if (currentMJProject && mjProjects[currentMJProject]) {
+    const m = mjProjects[currentMJProject];
+    if (Array.isArray(m.players)) MJ.players = m.players.slice(0, 4);
+    while (MJ.players.length < 4) MJ.players.push('Player ' + (MJ.players.length + 1));
+    if (m.base    != null) MJ.base    = m.base;
+    if (m.perTai  != null) MJ.perTai  = m.perTai;
+    if (Array.isArray(m.rounds)) MJ.rounds = m.rounds;
+  }
   [0,1,2,3].forEach(i => _safeSet($('mjP'+i), MJ.players[i]));
   _safeSet($('mjBase'),   MJ.base);
   _safeSet($('mjPerTai'), MJ.perTai);
+  renderMJSessionDropdown();
   mjUpdateDropdowns(); mjRenderAll();
 }
 
@@ -6042,12 +6312,19 @@ function copyToEdit() {
     SX.name = name;
     _safeSet($('sxGroupName'), name);
   } else if (activeTab === 'mahjong') {
-    // Mahjong is a singleton — no naming/renaming. Persist the shared state
-    // as-is over the local one (Frank's spec explicitly frames this feature
-    // around projects/groups; MJ just gets its localStorage overwritten).
-    try {
-      localStorage.setItem('mahjong-calc', JSON.stringify(Object.assign({}, MJ, { _lastActivityAt: Date.now() })));
-    } catch(_) {}
+    // Mahjong now has multi-session support too — spin off a copy under a
+    // unique name so the read-only shared game becomes an editable local one.
+    const projects = getMJProjects();
+    const base = currentLang === 'zh' ? '共享遊戲' : 'Shared game';
+    const name = _uniqueName(base, n => Object.prototype.hasOwnProperty.call(projects, n));
+    projects[name] = {
+      players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds,
+      _lastActivityAt: Date.now()
+    };
+    saveMJProjects(projects);
+    try { localStorage.setItem('mahjong-active-project', name); } catch(_) {}
+    currentMJProject = name;
+    renderMJSessionDropdown();
   } else {
     // Event Splitter
     const projects = getESProjects();
