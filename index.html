@@ -1282,20 +1282,43 @@
     }
     .room-modal-box h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
     .room-code-display {
-      font-size: 2rem;
+      font-size: 1.5rem;
       font-weight: 800;
-      letter-spacing: 6px;
+      letter-spacing: 2px;
       text-align: center;
-      padding: 16px;
+      padding: 18px 12px;
       background: var(--bg);
       border-radius: 10px;
       color: var(--accent);
       margin: 14px 0 6px;
       cursor: pointer;
       user-select: all;
+      overflow-wrap: break-word;
+      line-height: 1.25;
+    }
+    .room-code-display.big {
+      font-size: 1.8rem;
+      letter-spacing: 3px;
+      padding: 22px 14px;
+      border: 2px solid var(--accent);
     }
     .room-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
     .room-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
+    .room-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 20px 0 14px;
+      color: var(--muted); font-size: .75rem;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .room-divider::before, .room-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .room-pw-hint {
+      font-size: .72rem; color: var(--muted); margin-bottom: 14px;
+    }
+    .room-pw-error {
+      font-size: .78rem; color: var(--expense); margin-bottom: 12px; min-height: 16px;
+    }
 
     /* ── Auth ─────────────────────────────────────────────── */
     #authModal {
@@ -4484,16 +4507,82 @@ try {
 let activeRoom = null;
 let fbListeners = {};
 let _fbUpdating = false;
+let _pendingCreateCode = null;
 let currentUser = null;
 // Guards a suspend of user-Firestore writes while migration is hydrating local
 // state — otherwise the freshly-written local state would round-trip back up.
 let _cloudHydrating = false;
 
-function genRoomCode() {
+// Curated adjective+noun lists for memorable room codes.
+// Family-friendly, unambiguous, easy to read aloud. ~100×100×100 ≈ 1M combos.
+const ROOM_ADJECTIVES = [
+  'HAPPY','SUNNY','BRAVE','QUICK','LUCKY','QUIET','GENTLE','FUNNY','SILVER','GOLDEN',
+  'COSMIC','ROYAL','MIGHTY','WISE','CLEVER','SWIFT','BRIGHT','CALM','BOLD','KIND',
+  'JOLLY','MERRY','NOBLE','PROUD','SMART','WILD','ZANY','FANCY','FRESH','GRAND',
+  'LIVELY','MELLOW','PLUCKY','RUSTIC','SNAPPY','SUPER','TIDY','VIVID','AMBER','AZURE',
+  'CORAL','CRIMSON','EMERALD','IVORY','JADE','RUBY','TEAL','ALPINE','ARCTIC','CRYSTAL',
+  'ELECTRIC','FROSTY','FUZZY','GLOWING','LUNAR','SOLAR','AUTUMN','SUMMER','SPRING','WINTER',
+  'MORNING','SUNSET','MISTY','STORMY','BREEZY','CHEERY','COZY','DAPPER','EAGER','GLEAMING',
+  'HOPEFUL','JAZZY','KEEN','LOFTY','MAGICAL','NIMBLE','PEPPY','QUIRKY','RADIANT','SERENE',
+  'TROPIC','URBAN','VIBRANT','WITTY','YOUNG','ZESTY','ACTIVE','AMPLE','ARDENT','DASHING',
+  'DAINTY','ELATED','FEARLESS','GRACEFUL','HANDY','JOYFUL','LOVELY','MELODIC','PLAYFUL','SPARKLY'
+];
+
+const ROOM_NOUNS = [
+  'PANDA','TIGER','EAGLE','WOLF','BEAR','LION','FOX','DOLPHIN','KOALA','LLAMA',
+  'DRAGON','PHOENIX','FALCON','OTTER','RABBIT','TURTLE','WHALE','ZEBRA','LEMUR','MONKEY',
+  'MOUNTAIN','RIVER','FOREST','OCEAN','MEADOW','GARDEN','ISLAND','VALLEY','DESERT','CANYON',
+  'STAR','MOON','COMET','PLANET','GALAXY','NEBULA','ORBIT','COSMOS','METEOR','QUASAR',
+  'SUNRISE','BREEZE','STORM','THUNDER','RAINBOW','CLOUD','WAVE','TIDE','FROST','ECLIPSE',
+  'APPLE','MANGO','PEACH','BERRY','CHERRY','GRAPE','LEMON','MELON','KIWI','PLUM',
+  'ROBOT','ROCKET','WIZARD','KNIGHT','PIRATE','NINJA','SAMURAI','JESTER','SCOUT','RANGER',
+  'PIANO','GUITAR','DRUM','VIOLIN','HARP','FLUTE','TRUMPET','BANJO','FIDDLE','LYRE',
+  'DIAMOND','PEARL','QUARTZ','TOPAZ','OPAL','AGATE','ONYX','JASPER','AMETHYST','BEACON',
+  'CASTLE','BRIDGE','TOWER','TEMPLE','MUSEUM','MARKET','HARBOR','PLAZA','ORCHARD','LIGHTHOUSE'
+];
+
+function _genFriendlyCode() {
+  const adj = ROOM_ADJECTIVES[Math.floor(Math.random() * ROOM_ADJECTIVES.length)];
+  const noun = ROOM_NOUNS[Math.floor(Math.random() * ROOM_NOUNS.length)];
+  const num = Math.floor(Math.random() * 100);
+  return adj + '-' + noun + '-' + num;
+}
+
+function _genFallbackCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+async function _codeInUse(code) {
+  if (!fbDb) return false;
+  try {
+    const snap = await fbDb.ref('rooms/' + code + '/meta').once('value');
+    return snap.exists();
+  } catch(_) { return false; }
+}
+
+async function genUniqueRoomCode() {
+  for (let i = 0; i < 5; i++) {
+    const code = _genFriendlyCode();
+    if (!(await _codeInUse(code))) return code;
+  }
+  for (let i = 0; i < 5; i++) {
+    const code = _genFallbackCode();
+    if (!(await _codeInUse(code))) return code;
+  }
+  return _genFallbackCode();
+}
+
+function normalizeRoomCode(raw) {
+  return String(raw || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
+async function hashPassword(pw) {
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function roomRef(path) { return fbDb.ref('rooms/' + activeRoom + '/' + path); }
@@ -4667,7 +4756,7 @@ function detachRoomListeners() {
 }
 
 function joinRoom(code) {
-  activeRoom = code.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  activeRoom = normalizeRoomCode(code);
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
   // legacy `?e=` support: also strip old-style payloads if present
@@ -4683,6 +4772,27 @@ function joinRoom(code) {
   showToast('🔴 ' + (currentLang === 'zh' ? '已加入房間 ' : 'Joined room ') + activeRoom, 'info');
 }
 
+async function attemptJoinRoom(rawCode) {
+  const zh = currentLang === 'zh';
+  const code = normalizeRoomCode(rawCode);
+  if (code.length < 4) {
+    showToast(zh ? '請輸入有效的房間代碼' : 'Enter a valid room code', 'error');
+    return;
+  }
+  if (!fbDb) { joinRoom(code); closeRoomModal(); return; }
+  let meta = null;
+  try {
+    const snap = await fbDb.ref('rooms/' + code + '/meta').once('value');
+    meta = snap.val();
+  } catch(_) {}
+  if (meta && meta.passwordHash) {
+    showJoinPasswordPrompt(code, meta.passwordHash);
+    return;
+  }
+  joinRoom(code);
+  closeRoomModal();
+}
+
 function leaveRoom() {
   detachRoomListeners();
   activeRoom = null;
@@ -4694,83 +4804,207 @@ function leaveRoom() {
   showToast(currentLang === 'zh' ? '已離開房間' : 'Left room', 'info');
 }
 
-// Generate a room code that isn't already in use. Retries a handful of times
-// before giving up so a full 32^6 space would still trip a warning eventually.
-function genUniqueRoomCode(cb, attemptsLeft) {
-  if (attemptsLeft == null) attemptsLeft = 5;
-  if (!fbDb) { cb(null); return; }
-  const code = genRoomCode();
-  fbDb.ref('rooms/' + code + '/meta/createdAt').once('value')
-    .then(function(snap) {
-      if (!snap.exists()) { cb(code); return; }
-      if (attemptsLeft <= 0) { cb(null); return; }
-      genUniqueRoomCode(cb, attemptsLeft - 1);
-    })
-    .catch(function() { cb(code); }); // if we can't check, assume free
+async function startCreateFlow() {
+  const zh = currentLang === 'zh';
+  const btn = $('createRoomStartBtn');
+  if (btn) { btn.disabled = true; btn.textContent = zh ? '產生代碼中…' : 'Generating code…'; }
+  const code = await genUniqueRoomCode();
+  _pendingCreateCode = code;
+  showCreatedRoomScreen(code);
 }
 
-// Optional `onReady` callback fires after the room's initial state has been
-// written and the local listeners attached — that's the earliest safe moment
-// to open the Room modal / hand the user the code.
-// `opts.suppressToast` skips the default "Room created" toast so a caller can
-// fire its own (share flow uses this to say "Live collab started · code: X").
-function createAndJoinRoom(onReady, opts) {
+function showCreatedRoomScreen(code) {
+  const zh = currentLang === 'zh';
+  $('roomModalTitle').textContent = zh ? '🎉 房間已建立' : '🎉 Room Created';
+  $('roomModalContent').innerHTML =
+    '<p style="color:var(--muted);font-size:.88rem;margin-bottom:6px;text-align:center">' +
+      (zh ? '將此代碼分享給你的夥伴：' : 'Share this code with your group:') +
+    '</p>' +
+    '<div class="room-code-display big" id="createdCodeDisplay" onclick="copyCreatedCode()" title="' + (zh ? '點擊複製' : 'Click to copy') + '">' + code + '</div>' +
+    '<button class="btn btn-primary" id="copyCodeBtn" style="width:100%;justify-content:center;margin:6px 0 18px" onclick="copyCreatedCode()">' +
+      (zh ? '📋 複製代碼' : '📋 Copy Code') +
+    '</button>' +
+    '<label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">' + (zh ? '設定密碼（選填）' : 'Set password (optional)') + '</label>' +
+    '<input type="password" id="newRoomPwInput" class="form-input" placeholder="' + (zh ? '選填 — 留空建立公開房間' : 'Optional — leave blank for a public room') + '" style="width:100%;margin-bottom:6px" />' +
+    '<div class="room-pw-hint">' + (zh ? '最少 4 個字元。以雜湊儲存於資料庫。' : 'Minimum 4 characters. Stored hashed, never in plaintext.') + '</div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button class="btn btn-primary" id="enterRoomBtn" style="flex:1;justify-content:center" onclick="finalizeCreateRoom()">' + (zh ? '進入房間' : 'Enter Room') + '</button>' +
+      '<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="cancelCreate()">' + (zh ? '取消' : 'Cancel') + '</button>' +
+    '</div>';
+  setTimeout(() => {
+    const pwInp = $('newRoomPwInput');
+    if (pwInp) pwInp.addEventListener('keydown', e => { if (e.key === 'Enter') finalizeCreateRoom(); });
+  }, 50);
+}
+
+function copyCreatedCode() {
+  const code = _pendingCreateCode;
+  if (!code) return;
+  navigator.clipboard.writeText(code)
+    .then(() => showCopyFeedback())
+    .catch(() => { clipboardFallback(code); showCopyFeedback(); });
+}
+
+function showCopyFeedback() {
+  const btn = $('copyCodeBtn');
+  if (!btn) return;
+  const zh = currentLang === 'zh';
+  const original = btn.innerHTML;
+  btn.innerHTML = zh ? '✓ 已複製' : '✓ Copied';
+  setTimeout(() => { const b = $('copyCodeBtn'); if (b) b.innerHTML = original; }, 2000);
+}
+
+function cancelCreate() {
+  _pendingCreateCode = null;
+  closeRoomModal();
+}
+
+async function finalizeCreateRoom() {
+  const zh = currentLang === 'zh';
+  const code = _pendingCreateCode;
+  if (!code) return;
+  const pwInp = $('newRoomPwInput');
+  const pw = pwInp ? pwInp.value : '';
+  if (pw && pw.length < 4) {
+    showToast(zh ? '密碼至少 4 個字元' : 'Password must be at least 4 characters', 'error');
+    return;
+  }
+  const enterBtn = $('enterRoomBtn');
+  if (enterBtn) { enterBtn.disabled = true; enterBtn.textContent = zh ? '建立中…' : 'Creating…'; }
+  const passwordHash = pw ? await hashPassword(pw) : null;
+  activeRoom = code;
+  const url = new URL(location.href);
+  url.searchParams.set('room', activeRoom);
+  ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  url.hash = '';
+  history.replaceState(null, '', url.toString());
+  $('roomCodeLabel').textContent = activeRoom;
+  $('createRoomBtn').classList.add('in-room');
+  if (typeof dismissRoomHint === 'function') dismissRoomHint(true);
+  if (typeof rememberRoom === 'function') rememberRoom(activeRoom);
+  if (fbDb) {
+    const now = Date.now();
+    const meta = { createdAt: now, lastActivityAt: now };
+    if (passwordHash) meta.passwordHash = passwordHash;
+    const roomData = {
+      meta:    meta,
+      mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
+      event:   { name: ES.name, people: ES.people, items: ES.items },
+      settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
+    };
+    fbDb.ref('rooms/' + activeRoom).set(roomData).then(() => { attachRoomListeners(); cleanupOldRooms(); });
+  }
+  _pendingCreateCode = null;
+  showToast('🔴 ' + (zh ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+  closeRoomModal();
+}
+
+function showJoinPasswordPrompt(code, passwordHash) {
+  const zh = currentLang === 'zh';
+  $('roomModal').classList.add('open');
+  $('roomModalTitle').textContent = zh ? '🔒 需要密碼' : '🔒 Password Required';
+  const safeCode = String(code).replace(/[^A-Z0-9-]/g,'');
+  const safeHash = String(passwordHash).replace(/[^a-f0-9]/g,'');
+  $('roomModalContent').innerHTML =
+    '<p style="color:var(--muted);font-size:.88rem;margin-bottom:12px">' +
+      (zh ? '房間 ' : 'Room ') + '<strong style="color:var(--accent)">' + safeCode + '</strong>' + (zh ? ' 受密碼保護。' : ' is password-protected.') +
+    '</p>' +
+    '<input type="password" id="joinPwInput" class="form-input" placeholder="' + (zh ? '輸入密碼' : 'Enter password') + '" style="width:100%;margin-bottom:6px" autofocus />' +
+    '<div id="joinPwError" class="room-pw-error"></div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button class="btn btn-primary" style="flex:1;justify-content:center" onclick="verifyJoinPassword(\'' + safeCode + '\',\'' + safeHash + '\')">' + (zh ? '加入' : 'Join') + '</button>' +
+      '<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeRoomModal()">' + (zh ? '取消' : 'Cancel') + '</button>' +
+    '</div>';
+  setTimeout(() => {
+    const inp = $('joinPwInput');
+    if (inp) {
+      inp.focus();
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') verifyJoinPassword(safeCode, safeHash); });
+    }
+  }, 50);
+}
+
+async function verifyJoinPassword(code, expectedHash) {
+  const zh = currentLang === 'zh';
+  const inp = $('joinPwInput');
+  const pw = inp ? inp.value : '';
+  const err = $('joinPwError');
+  if (!pw) {
+    if (err) err.textContent = zh ? '請輸入密碼' : 'Please enter a password';
+    return;
+  }
+  const hash = await hashPassword(pw);
+  if (hash !== expectedHash) {
+    if (err) err.textContent = zh ? '密碼錯誤' : 'Incorrect password';
+    if (inp) { inp.value = ''; inp.focus(); }
+    return;
+  }
+  joinRoom(code);
+  closeRoomModal();
+}
+
+// Kept as a callable API for the "Start Live collab" share flow: creates a
+// room without opening the code-preview modal, so the caller can weave it
+// into its own confirmation UI. `opts.suppressToast` skips the default toast.
+async function createAndJoinRoom(onReady, opts) {
   opts = opts || {};
   if (!fbDb) {
     showToast(currentLang === 'zh' ? '房間服務暫時無法使用' : 'Room service unavailable', 'warn');
     return;
   }
-  genUniqueRoomCode(function(code) {
-    if (!code) {
-      showToast(currentLang === 'zh' ? '無法建立房間，請重試' : 'Could not create room, try again', 'warn');
-      return;
-    }
-    activeRoom = code;
-    const url = new URL(location.href);
-    url.searchParams.set('room', activeRoom);
-    ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
-    url.hash = '';
-    history.replaceState(null, '', url.toString());
-    $('roomCodeLabel').textContent = activeRoom;
-    $('createRoomBtn').classList.add('in-room');
-    dismissRoomHint(true);
-    rememberRoom(activeRoom);
-    const now = Date.now();
-    // Initial state is written synchronously (not via the 400ms-debounced
-    // room-write helpers) so any other user who joins in the first debounce
-    // window sees the seeded data immediately rather than an empty room.
-    fbDb.ref('rooms/' + activeRoom).set({
-      meta:    { createdAt: now, lastActivityAt: now },
-      mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
-      event:   { name: ES.name, people: ES.people, items: ES.items },
-      settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
-    }).then(() => {
-      attachRoomListeners();
-      cleanupOldRooms();
-      if (typeof onReady === 'function') onReady(activeRoom);
-    });
-    if (!opts.suppressToast) {
-      showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
-    }
+  const code = await genUniqueRoomCode();
+  if (!code) {
+    showToast(currentLang === 'zh' ? '無法建立房間，請重試' : 'Could not create room, try again', 'warn');
+    return;
+  }
+  activeRoom = code;
+  const url = new URL(location.href);
+  url.searchParams.set('room', activeRoom);
+  ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  url.hash = '';
+  history.replaceState(null, '', url.toString());
+  $('roomCodeLabel').textContent = activeRoom;
+  $('createRoomBtn').classList.add('in-room');
+  if (typeof dismissRoomHint === 'function') dismissRoomHint(true);
+  if (typeof rememberRoom === 'function') rememberRoom(activeRoom);
+  const now = Date.now();
+  fbDb.ref('rooms/' + activeRoom).set({
+    meta:    { createdAt: now, lastActivityAt: now },
+    mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
+    event:   { name: ES.name, people: ES.people, items: ES.items },
+    settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
+  }).then(() => {
+    attachRoomListeners();
+    cleanupOldRooms();
+    if (typeof onReady === 'function') onReady(activeRoom);
   });
+  if (!opts.suppressToast) {
+    showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+  }
 }
 
 function openRoomModal() {
   const zh = currentLang === 'zh';
+  _pendingCreateCode = null;
   if (!activeRoom) {
     $('roomModalTitle').textContent = zh ? '🔴 即時共享房間' : '🔴 Live Room';
     $('roomModalContent').innerHTML =
-      '<p style="color:var(--muted);font-size:.88rem;margin-bottom:16px">' +
-        (zh ? '建立新房間讓多人即時編輯，或輸入代碼加入現有房間。' : 'Create a room for live multi-user editing, or enter a code to join an existing room.') +
+      '<p style="color:var(--muted);font-size:.88rem;margin-bottom:16px;text-align:center">' +
+        (zh ? '建立新房間讓多人即時編輯，或輸入代碼加入現有房間。' : 'Live multi-user editing — create a room or join one your friend shared.') +
       '</p>' +
-      '<button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:12px" onclick="createAndJoinRoom();openRoomModal()">' +
+      '<button class="btn btn-primary" id="createRoomStartBtn" style="width:100%;justify-content:center;padding:14px;font-size:1rem" onclick="startCreateFlow()">' +
         (zh ? '➕ 建立新房間' : '➕ Create New Room') +
       '</button>' +
+      '<div class="room-divider"><span>' + (zh ? '或加入現有房間' : 'or join an existing room') + '</span></div>' +
       '<div style="display:flex;gap:8px;align-items:center">' +
-        '<input id="joinCodeInput" class="form-input" maxlength="6" placeholder="' + (zh ? '輸入代碼' : 'Room code') + '" style="flex:1;text-transform:uppercase;letter-spacing:3px;font-weight:700;font-size:1rem" />' +
+        '<input id="joinCodeInput" class="form-input" maxlength="30" placeholder="' + (zh ? '輸入代碼' : 'Room code') + '" style="flex:1;text-transform:uppercase;letter-spacing:2px;font-weight:700;font-size:.95rem" />' +
         '<button class="btn btn-primary" onclick="doJoinRoom()">' + (zh ? '加入' : 'Join') + '</button>' +
       '</div>' +
-      '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:10px" onclick="closeRoomModal()">' + (zh ? '取消' : 'Cancel') + '</button>';
+      '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:14px" onclick="closeRoomModal()">' + (zh ? '取消' : 'Cancel') + '</button>';
+    setTimeout(() => {
+      const inp = $('joinCodeInput');
+      if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') doJoinRoom(); });
+    }, 50);
   } else {
     const shareUrl = location.origin + location.pathname + '?room=' + activeRoom;
     $('roomModalTitle').textContent = (zh ? '🔴 房間：' : '🔴 Room: ') + activeRoom;
@@ -4796,13 +5030,8 @@ function closeRoomModal() { $('roomModal').classList.remove('open'); }
 
 function doJoinRoom() {
   const inp = $('joinCodeInput');
-  const code = (inp ? inp.value : '').trim().toUpperCase();
-  if (code.length < 4) {
-    showToast(currentLang === 'zh' ? '請輸入有效的房間代碼' : 'Enter a valid room code', 'error');
-    return;
-  }
-  joinRoom(code);
-  closeRoomModal();
+  const raw = inp ? inp.value : '';
+  attemptJoinRoom(raw);
 }
 
 function copyRoomLink() {
@@ -5214,7 +5443,7 @@ document.addEventListener('click', function(e) {
   if (roomCode && !SC_READ_ONLY) {
     // Retry until fbDb is ready (Firebase SDK may still be initializing on slow connections)
     function tryJoin(attempts) {
-      if (fbDb) { joinRoom(roomCode); }
+      if (fbDb) { attemptJoinRoom(roomCode); }
       else if (attempts > 0) { setTimeout(() => tryJoin(attempts - 1), 300); }
     }
     setTimeout(() => tryJoin(10), 200);
