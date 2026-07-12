@@ -5343,6 +5343,19 @@ function _activeTabName() {
   return (el && el.dataset && el.dataset.tab) || (typeof DEFAULT_TAB === 'string' ? DEFAULT_TAB : 'event');
 }
 
+// Local helper for the fresh-empty flow: numeric-suffix uniqueness (i.e.
+// "New room", "New room 2", "New room 3"…). We can't reuse _uniqueName here
+// because that one always appends " (Copy)" — it's tuned for the read-only
+// "make my own copy of a shared thing" flow, not for a blank new session.
+function _uniqueRoomName(base, existsFn) {
+  if (!existsFn(base)) return base;
+  for (let i = 2; i < 999; i++) {
+    const candidate = base + ' ' + i;
+    if (!existsFn(candidate)) return candidate;
+  }
+  return base + ' ' + Date.now();
+}
+
 // Spin off a fresh empty project on the given tab so the user starts with a
 // blank canvas without touching their existing project. Their prior project
 // stays in the tab's project dropdown for later switching.
@@ -5352,7 +5365,7 @@ function _startEmptyProjectOnTab(tab) {
 
   if (tab === 'mahjong') {
     const projects = getMJProjects();
-    const name = _uniqueName(base, n => Object.prototype.hasOwnProperty.call(projects, n));
+    const name = _uniqueRoomName(base, n => Object.prototype.hasOwnProperty.call(projects, n));
     const defaults = _mjDefaults();
     projects[name] = Object.assign({}, defaults, { _lastActivityAt: Date.now() });
     saveMJProjects(projects);
@@ -5369,7 +5382,7 @@ function _startEmptyProjectOnTab(tab) {
     mjUpdateDropdowns(); mjRenderAll();
   } else if (tab === 'event') {
     const projects = getESProjects();
-    const name = _uniqueName(base, n => Object.prototype.hasOwnProperty.call(projects, n));
+    const name = _uniqueRoomName(base, n => Object.prototype.hasOwnProperty.call(projects, n));
     projects[name] = { name: '', people: 2, items: [], _lastActivityAt: Date.now() };
     saveESProjects(projects);
     try { localStorage.setItem('ev-active-project', name); } catch(_) {}
@@ -5382,7 +5395,7 @@ function _startEmptyProjectOnTab(tab) {
   } else {
     // settle (default)
     const groups = getSXGroups();
-    const name = _uniqueName(base, n => Object.prototype.hasOwnProperty.call(groups, n));
+    const name = _uniqueRoomName(base, n => Object.prototype.hasOwnProperty.call(groups, n));
     groups[name] = { name, participants: [], expenses: [], _lastActivityAt: Date.now() };
     saveSXGroups(groups);
     try { localStorage.setItem('sx-active-group', name); } catch(_) {}
