@@ -1,0 +1,56 @@
+rules_version = '2';
+
+// Paste into Firebase Console → Firestore Database → Rules and Publish.
+//
+// Model: each signed-in user owns everything under users/{uid}. Nothing under a
+// user document is world-readable; only the owner's own auth uid can read or
+// write it. Docs come in three collections that mirror the client-side
+// localStorage keys: events (Event Splitter projects), groups (分帳結算 groups),
+// mahjongGames (singleton "current" doc per user).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Reject everything outside the owner tree.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // Event Splitter projects — one doc per project name.
+      match /events/{eventId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if request.auth != null
+                     && request.auth.uid == uid
+                     && eventId.size() <= 200
+                     && (!('name'   in request.resource.data) || (request.resource.data.name   is string  && request.resource.data.name.size()   <= 500))
+                     && (!('people' in request.resource.data) || (request.resource.data.people is number  && request.resource.data.people >= 1 && request.resource.data.people <= 9999))
+                     && (!('items'  in request.resource.data) || (request.resource.data.items  is list    && request.resource.data.items.size() <= 5000));
+      }
+
+      // Expense Settlement groups — one doc per group name.
+      match /groups/{groupId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if request.auth != null
+                     && request.auth.uid == uid
+                     && groupId.size() <= 200
+                     && (!('name'         in request.resource.data) || (request.resource.data.name         is string && request.resource.data.name.size()         <= 500))
+                     && (!('participants' in request.resource.data) || (request.resource.data.participants is list   && request.resource.data.participants.size() <= 500))
+                     && (!('expenses'     in request.resource.data) || (request.resource.data.expenses     is list   && request.resource.data.expenses.size()     <= 5000));
+      }
+
+      // Mahjong — singleton doc id "current".
+      match /mahjongGames/{gameId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if request.auth != null
+                     && request.auth.uid == uid
+                     && gameId.size() <= 40
+                     && (!('players' in request.resource.data) || (request.resource.data.players is list   && request.resource.data.players.size() <= 8))
+                     && (!('base'    in request.resource.data) || (request.resource.data.base    is number && request.resource.data.base    >= 0 && request.resource.data.base    <= 10000000))
+                     && (!('perTai'  in request.resource.data) || (request.resource.data.perTai  is number && request.resource.data.perTai  >= 0 && request.resource.data.perTai  <= 10000000))
+                     && (!('rounds'  in request.resource.data) || (request.resource.data.rounds  is list   && request.resource.data.rounds.size() <= 5000));
+      }
+    }
+  }
+}

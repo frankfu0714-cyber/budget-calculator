@@ -3,12 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Budget Calculator</title>
+  <title>SplitCalc — Event Splitter · 分帳 · 麻將 · 結算</title>
+  <meta name="description" content="Split event costs, tally mahjong scores, and settle group expenses. No account, works offline, share via link or live room." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#6366f1" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="SplitCalc" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="SplitCalc — Event Splitter · 分帳 · 麻將 · 結算" />
+  <meta property="og:description" content="Split event costs, tally mahjong scores, and settle group expenses. No account, works offline, share via link or live room." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://frankfu0714-cyber.github.io/budget-calculator/" />
+  <meta property="og:image" content="https://frankfu0714-cyber.github.io/budget-calculator/icon.svg" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SplitCalc — Event Splitter · 分帳 · 麻將 · 結算" />
+  <meta name="twitter:description" content="Split event costs, tally mahjong scores, and settle group expenses. No account, works offline, share via link or live room." />
+  <meta name="twitter:image" content="https://frankfu0714-cyber.github.io/budget-calculator/icon.svg" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <style>
     /* ── Tokens ───────────────────────────────────────────── */
     :root {
@@ -937,6 +962,22 @@
     }
     .sx-split-mode-btn.active { background: var(--accent); color: #fff; }
 
+    /* Tip: % / $ unit toggle sits inline with the input, mirrors the split-mode look. */
+    .sx-tip-row { display: flex; align-items: stretch; gap: 6px; }
+    .sx-tip-unit-toggle {
+      display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      flex-shrink: 0;
+    }
+    .sx-tip-unit-btn {
+      background: transparent; border: none; cursor: pointer;
+      font-family: inherit; font-size: .82rem; font-weight: 700;
+      padding: 0 10px; color: var(--muted);
+      transition: background .12s, color .12s; line-height: 1;
+      min-width: 30px;
+    }
+    .sx-tip-unit-btn.active { background: var(--accent); color: #fff; }
+    .sx-tip-unit-btn:hover:not(.active) { color: var(--text); }
+
     .sx-custom-amt-row {
       display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
     }
@@ -953,6 +994,15 @@
     }
     .sx-custom-amt-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
     .sx-custom-amt-input.warn { border-color: var(--expense); }
+    .sx-custom-amt-preview {
+      flex-shrink: 0;
+      font-size: .74rem;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 74px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
     .sx-custom-sum-row {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: 6px; font-size: .8rem; padding: 6px 10px;
@@ -960,6 +1010,30 @@
     }
     .sx-custom-sum-row.ok   { border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.06); }
     .sx-custom-sum-row.warn { border-color: rgba(239,68,68,.4);  background: rgba(239,68,68,.06); }
+    .sx-with-fees-row {
+      display: none;
+      justify-content: space-between; align-items: center;
+      margin-top: 4px; font-size: .8rem; padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(99,102,241,.08);
+      border: 1px solid rgba(99,102,241,.25);
+      color: var(--accent);
+      gap: 8px;
+    }
+    .sx-with-fees-row .sx-with-fees-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .sx-scale-btn {
+      display: none;
+      border: 1px solid rgba(99,102,241,.35);
+      background: transparent;
+      color: var(--accent);
+      font: inherit; font-size: .74rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .12s, opacity .12s;
+    }
+    .sx-scale-btn:hover:not([disabled]) { background: rgba(99,102,241,.14); }
+    .sx-scale-btn[disabled] { opacity: .45; cursor: not-allowed; }
     .sx-sum-warn {
       display: none; margin-top: 4px; font-size: .76rem; color: var(--expense);
       padding: 4px 8px; background: rgba(239,68,68,.08); border-radius: 6px;
@@ -991,31 +1065,203 @@
     .sx-expense-item { gap: 0; }
 
     /* ── Room Sync ─────────────────────────────────────────── */
-    #roomBadge {
-      display: none;
-      align-items: center;
-      gap: 6px;
-      background: linear-gradient(135deg,#10b981,#059669);
+    /* Legacy #roomBadge kept only as a fallback for older markup / tests.
+       Live-collab state is now surfaced on the #createRoomBtn itself. */
+    #roomBadge { display: none; }
+    #createRoomBtn.room-cta {
+      background: linear-gradient(135deg,#6366f1,#8b5cf6);
       color: #fff;
-      border-radius: 20px;
-      padding: 4px 12px;
-      font-size: .75rem;
+      border-color: transparent;
+      box-shadow: var(--sh);
       font-weight: 700;
-      letter-spacing: 1px;
-      cursor: pointer;
-      user-select: none;
-      flex-shrink: 0;
+      transition: transform .12s, box-shadow .12s;
     }
-    #roomBadge.active { display: flex; }
-    .room-dot {
-      width: 7px; height: 7px;
-      background: #fff;
+    #createRoomBtn.room-cta:hover { transform: translateY(-1px); box-shadow: var(--sh-md); }
+    #createRoomBtn.room-cta .room-cta-dot {
+      display: none;
+      width: 8px; height: 8px;
+      background: #34d399;
       border-radius: 50%;
       animation: pulse-dot 1.5s ease-in-out infinite;
+      flex-shrink: 0;
     }
+    #createRoomBtn.room-cta .room-cta-code { display: none; font-weight: 800; letter-spacing: 1px; }
+    #createRoomBtn.room-cta.in-room {
+      background: linear-gradient(135deg,#10b981,#059669);
+    }
+    #createRoomBtn.room-cta.in-room .room-cta-dot,
+    #createRoomBtn.room-cta.in-room .room-cta-code { display: inline-flex; }
+    #createRoomBtn.room-cta.in-room .room-cta-sep { display: inline; }
+    #createRoomBtn.room-cta .room-cta-sep { display: none; opacity: .6; margin: 0 2px; }
     @keyframes pulse-dot {
       0%,100% { opacity: 1; transform: scale(1); }
       50%      { opacity: .4; transform: scale(.7); }
+    }
+
+    /* First-time "Try Live collab" hint next to the Room button. */
+    .room-hint-wrap { position: relative; }
+    .room-hint-popover {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: var(--sh-md);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: .82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      z-index: 60;
+      cursor: pointer;
+      max-width: 260px;
+      white-space: normal;
+    }
+    .room-hint-popover.open { display: block; }
+    .room-hint-popover::before {
+      content: ''; position: absolute; top: -5px; right: 24px;
+      width: 10px; height: 10px; background: var(--surface);
+      border-left: 1px solid var(--border); border-top: 1px solid var(--border);
+      transform: rotate(45deg);
+    }
+    .room-hint-close {
+      display: inline-block; margin-left: 8px;
+      color: var(--muted); font-weight: 400;
+    }
+
+    /* ── Read-only view (share links with &ro=1) ───────────── */
+    body.readonly-mode .ro-banner { display: flex; }
+    .ro-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(139,92,246,.12));
+      border-bottom: 1px solid rgba(99,102,241,.35);
+      padding: 10px 20px;
+      font-size: .85rem;
+    }
+    .ro-banner-icon { font-size: 1.1rem; }
+    .ro-banner-text { flex: 1; font-weight: 700; color: var(--accent); }
+    .ro-banner .btn-sm { padding: 5px 12px; font-size: .78rem; }
+
+    body.readonly-mode input:not([type="checkbox"]):not([type="radio"]),
+    body.readonly-mode textarea,
+    body.readonly-mode select {
+      background: var(--surface2);
+      opacity: .8;
+      cursor: not-allowed;
+    }
+    /* Hide action buttons in read-only mode — allow only navigation / theme /
+       language / the RO banner button + tabs so the viewer can still browse. */
+    body.readonly-mode #shareBtn,
+    body.readonly-mode #createRoomBtn,
+    body.readonly-mode #authSignInBtn,
+    body.readonly-mode #authAvatarBtn,
+    body.readonly-mode #roomBadge,
+    body.readonly-mode #evShareBtn,
+    body.readonly-mode #evAddBtn,
+    body.readonly-mode #evCancelItem,
+    body.readonly-mode #evSubmitItem,
+    body.readonly-mode #esNewProjectBtn,
+    body.readonly-mode #esDeleteProjectBtn,
+    body.readonly-mode #sxShareBtn,
+    body.readonly-mode #sxAddExpBtn,
+    body.readonly-mode #sxAddPersonBtn,
+    body.readonly-mode #sxSubmitPerson,
+    body.readonly-mode #sxCancelPerson,
+    body.readonly-mode #sxNewGroupBtn,
+    body.readonly-mode #sxDeleteGroupBtn,
+    body.readonly-mode #mjAddRoundBtn,
+    body.readonly-mode #mjResetBtn,
+    body.readonly-mode #mjShareBtn,
+    body.readonly-mode .sx-del-exp,
+    body.readonly-mode .sx-chip-del,
+    body.readonly-mode .ev-del-btn,
+    body.readonly-mode .del-btn,
+    body.readonly-mode .sx-scale-btn { display: none !important; }
+    body.readonly-mode .sx-split-mode-btn,
+    body.readonly-mode .sx-tip-unit-btn,
+    body.readonly-mode .sx-split-cb-label { pointer-events: none; opacity: .6; }
+    body.readonly-mode .room-hint-popover { display: none !important; }
+
+    /* Share modal: read-only checkbox */
+    .share-ro-toggle {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; margin-top: 10px;
+      background: var(--surface2); border-radius: 8px;
+      font-size: .83rem; color: var(--text); cursor: pointer;
+      user-select: none;
+    }
+    .share-ro-toggle input { margin: 0; cursor: pointer; }
+    .share-ro-toggle-hint { color: var(--muted); font-size: .74rem; margin-top: 4px; padding: 0 4px; }
+
+    /* Snapshot-vs-live-collab hint below every Share button + at top of Share modal. */
+    .share-live-hint {
+      font-size: .74rem; color: var(--muted); line-height: 1.5;
+      margin-top: 4px; padding: 0 4px;
+    }
+    /* Inline text-button that opens the Live-collab modal and flashes the CTA. */
+    .live-collab-link {
+      display: inline; padding: 0;
+      background: transparent; border: 0;
+      color: var(--accent); font: inherit; font-weight: 700;
+      cursor: pointer; text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .live-collab-link:hover { color: var(--accent2); }
+    /* Brief flash on the header CTA when the user follows a share-hint link,
+       so their eyes land on the button they should press next. */
+    @keyframes room-cta-flash {
+      0%, 100% { box-shadow: var(--sh); transform: none; }
+      30%      { box-shadow: 0 0 0 8px rgba(99,102,241,.35); transform: translateY(-1px); }
+      60%      { box-shadow: 0 0 0 4px rgba(99,102,241,.20); transform: translateY(-1px); }
+    }
+    #createRoomBtn.room-cta.flash { animation: room-cta-flash 1.2s ease-out 2; }
+
+    /* Modal-only tweak — the hint at the top of the share dialog gets a hair
+       more breathing room than the tab-side variants. */
+    .share-live-hint-modal { margin: -4px 0 14px; font-size: .82rem; }
+    /* URL input on its own line (used to share a row with the Copy button;
+       now it's above the two-button primary action row). */
+    .share-url-solo { width: 100%; margin: 0 0 12px; }
+    /* Primary action row — Copy snapshot link | Start Live collab, side by
+       side. Peer buttons of equal weight, distinct colors. Wraps on narrow
+       modals so nothing overflows on mobile. */
+    .share-actions-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;
+    }
+    .share-actions-row > .btn { flex: 1 1 160px; justify-content: center; }
+    .share-copy-btn { padding: 10px 14px; font-size: .88rem; font-weight: 700; }
+    /* Start Live collab — green gradient matches the header CTA's in-room
+       state so users associate this button with the same feature. */
+    .share-start-live-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg,#10b981,#059669);
+      color: #fff; border: 0; border-radius: 10px;
+      font: inherit; font-weight: 700; font-size: .88rem;
+      cursor: pointer;
+      transition: transform .12s, box-shadow .12s, opacity .12s;
+    }
+    .share-start-live-btn:hover:not([disabled]) {
+      transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.35);
+    }
+    .share-start-live-btn[disabled] {
+      background: var(--surface2); color: var(--muted);
+      cursor: not-allowed; opacity: .8;
+    }
+    /* When already in a live room, the button is styled to look like a "chip"
+       — clicking copies the code instead of creating a new room. */
+    .share-start-live-btn.in-room {
+      background: rgba(16,185,129,.14);
+      color: #047857;
+      border: 1px solid rgba(16,185,129,.4);
+    }
+    .share-start-live-btn.in-room:hover {
+      background: rgba(16,185,129,.22);
+      transform: none; box-shadow: none;
     }
     #roomModal {
       display: none;
@@ -1073,6 +1319,73 @@
     .room-pw-error {
       font-size: .78rem; color: var(--expense); margin-bottom: 12px; min-height: 16px;
     }
+
+    /* ── Auth ─────────────────────────────────────────────── */
+    #authModal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #authModal.open { display: flex; }
+    .auth-btn { font-size: .82rem; }
+    .auth-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 4px 12px 4px 4px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: .82rem; font-weight: 600;
+      color: var(--text);
+      max-width: 200px;
+      transition: background .15s;
+    }
+    .auth-chip:hover { background: var(--surface2); }
+    .auth-chip img {
+      width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+    .auth-chip #authNameLabel {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px;
+    }
+    .auth-info {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: .82rem;
+      line-height: 1.5;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .auth-user-row {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 14px;
+    }
+    .auth-user-row img {
+      width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
+      background: var(--bg);
+    }
+    .auth-user-row .auth-user-name {
+      font-weight: 700; font-size: .95rem;
+    }
+    .auth-user-row .auth-user-email {
+      font-size: .78rem; color: var(--muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .auth-user-row .auth-user-meta { min-width: 0; }
+    .auth-cloud-tag {
+      display: inline-block;
+      font-size: .72rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(99,102,241,.12);
+      color: var(--accent);
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -1086,7 +1399,7 @@
         <path d="M12 6v6l4 2"/>
       </svg>
     </div>
-    <span class="logo-text">BudgetCalc</span>
+    <span class="logo-text">SplitCalc</span>
   </div>
   <div class="header-right">
     <div class="lang-toggle">
@@ -1103,15 +1416,38 @@
         <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
       </svg>
     </button>
-    <span id="roomBadge" title="Click to manage room"><span class="room-dot"></span><span id="roomCodeLabel"></span></span>
-    <button class="btn btn-ghost" id="createRoomBtn" style="gap:6px;padding:7px 12px;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+    <!-- Auth: swaps between a signed-out button and a signed-in avatar chip -->
+    <button class="btn btn-ghost auth-btn auth-signed-out" id="authSignInBtn" style="gap:6px;padding:7px 10px;">
+      <svg width="14" height="14" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
       </svg>
-      <span data-i18n="room_btn">Room</span>
+      <span data-i18n="auth_sign_in">Sign in</span>
     </button>
+    <button class="auth-chip auth-signed-in" id="authAvatarBtn" style="display:none" title="">
+      <img id="authAvatarImg" alt="" />
+      <span id="authNameLabel"></span>
+    </button>
+    <span id="roomBadge" style="display:none"></span>
+    <div class="room-hint-wrap">
+      <button class="btn room-cta" id="createRoomBtn" data-i18n-title="room_cta_title" style="gap:6px;padding:7px 12px;">
+        <span class="room-cta-dot" aria-hidden="true"></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+        </svg>
+        <span data-i18n="room_cta_label">Live collab</span>
+        <span class="room-cta-sep">·</span>
+        <span class="room-cta-code" id="roomCodeLabel"></span>
+      </button>
+      <div id="roomHintPopover" class="room-hint-popover" role="tooltip">
+        <span data-i18n="room_hint">New: real-time collab. Try it →</span>
+        <span class="room-hint-close" aria-hidden="true">✕</span>
+      </div>
+    </div>
     <button class="btn btn-primary" id="shareBtn">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -1121,6 +1457,13 @@
     </button>
   </div>
 </header>
+
+<!-- ── Read-only banner (shown when the URL includes &ro=1) ── -->
+<div class="ro-banner" id="roBanner" role="status">
+  <span class="ro-banner-icon" aria-hidden="true">🔒</span>
+  <span class="ro-banner-text" data-i18n="ro_banner_text">Read-only view — you're looking at a shared snapshot.</span>
+  <button class="btn btn-primary btn-sm" id="roCopyBtn" data-i18n="ro_copy_btn">Copy to edit</button>
+</div>
 
 <!-- ── Tab Nav ────────────────────────────────────────────── -->
 <nav class="tab-nav" aria-label="Sections">
@@ -1319,6 +1662,7 @@
           </svg>
         </button>
       </div>
+      <div class="share-live-hint" style="margin-top:8px" data-i18n="share_live_hint">This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.</div>
     </div><!-- /receipt -->
 
   </div><!-- /ev-wrap -->
@@ -1530,6 +1874,7 @@
         <div style="padding:0 18px 14px;font-size:.74rem;color:var(--muted);line-height:1.5" data-i18n="mj_share_hint">
           Share after each round so other players can verify scores on their own phone.
         </div>
+        <div style="padding:0 18px 14px" class="share-live-hint" data-i18n="share_live_hint">This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.</div>
       </div>
 
     </div><!-- /right -->
@@ -1575,7 +1920,7 @@
             <span class="dot" style="background:var(--accent)"></span>
             <span data-i18n="sx_participants">Participants</span>
           </div>
-          <button class="btn btn-primary btn-sm" id="sxAddPersonBtn" data-i18n="add_btn">+ Add</button>
+          <button class="btn btn-primary btn-sm" id="sxAddPersonBtn" data-i18n="sx_add_person_btn">+ Add Participant</button>
         </div>
         <div class="card-body">
           <div class="add-form" id="sxPersonForm">
@@ -1609,7 +1954,7 @@
             <span class="dot" style="background:var(--expense)"></span>
             <span data-i18n="expense_items">Expense Items</span>
           </div>
-          <button class="btn btn-expense btn-sm" id="sxAddExpBtn" data-i18n="add_btn">+ Add</button>
+          <button class="btn btn-expense btn-sm" id="sxAddExpBtn" data-i18n="sx_add_expense_btn">+ Add Expense</button>
         </div>
         <div class="card-body">
           <div class="items-list" id="sxExpensesList">
@@ -1682,6 +2027,7 @@
           </button>
         </div>
         <div style="padding:0 18px 14px;font-size:.74rem;color:var(--muted);line-height:1.5" data-i18n="sx_share_hint">Share this link so friends can view expenses and settlement.</div>
+        <div style="padding:0 18px 14px" class="share-live-hint" data-i18n="share_live_hint">This is a snapshot. For live sync where everyone edits together, use <button type="button" class="live-collab-link" data-live-collab>Live collab</button> instead.</div>
       </div>
 
     </div><!-- /sx-right -->
@@ -1698,7 +2044,7 @@
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
           <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
         </svg>
-        <span data-i18n="share_budget">Share Your Budget</span>
+        <span data-i18n="share_title">Share Link</span>
       </div>
       <button class="btn-icon" id="closeModal">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -1706,12 +2052,28 @@
         </svg>
       </button>
     </div>
-    <div class="modal-desc" data-i18n="share_desc">
-      All your budget data is encoded directly into this URL — no account or server needed. Share it with family or friends so they can view your breakdown.
-    </div>
-    <div class="url-row">
-      <input class="url-input" id="shareUrl" type="text" readonly />
-      <button class="btn btn-primary" id="copyBtn" data-i18n="copy">Copy</button>
+    <div class="share-live-hint share-live-hint-modal" data-i18n="share_live_hint">Snapshot = frozen. <button type="button" class="live-collab-link" data-live-collab>Live collab</button> = everyone can edit.</div>
+    <input class="url-input share-url-solo" id="shareUrl" type="text" readonly />
+    <label class="share-ro-toggle" for="shareRoToggle">
+      <input type="checkbox" id="shareRoToggle" />
+      <span data-i18n="share_ro_label">Share as read-only</span>
+    </label>
+    <div class="share-ro-toggle-hint" data-i18n="share_ro_hint">Recipients can view but not edit. They can still click "Copy to edit" to make their own copy.</div>
+    <div class="share-actions-row">
+      <button class="btn btn-primary share-copy-btn" id="copyBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        <span data-i18n="share_copy_snapshot">Copy snapshot link</span>
+      </button>
+      <button type="button" class="btn share-start-live-btn" id="startLiveBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+        </svg>
+        <span id="startLiveBtnLabel" data-i18n="share_start_live">Start Live collab</span>
+      </button>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="closeModal2" data-i18n="close">Close</button>
@@ -1727,8 +2089,6 @@
   <span id="toastMsg">Done!</span>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-
 <div id="roomModal">
   <div class="room-modal-box">
     <h2 id="roomModalTitle">🔴 Live Room</h2>
@@ -1736,22 +2096,35 @@
   </div>
 </div>
 
+<div id="authModal">
+  <div class="room-modal-box">
+    <h2 id="authModalTitle" data-i18n="auth_menu_title">Account</h2>
+    <div id="authModalContent"></div>
+  </div>
+</div>
+
 <script>
-// ─── Category Colors ──────────────────────────────────────────
-const INC_COLORS = {
-  'Salary':'#10b981','Freelance':'#34d399','Investment':'#059669',
-  'Business':'#0d9488','Rental':'#6ee7b7','Side Hustle':'#a7f3d0','Other':'#d1fae5',
-};
-const EXP_COLORS = {
-  'Housing':'#6366f1','Food':'#f59e0b','Transport':'#3b82f6',
-  'Healthcare':'#10b981','Education':'#8b5cf6','Entertainment':'#ec4899',
-  'Shopping':'#f97316','Utilities':'#06b6d4','Insurance':'#64748b',
-  'Subscriptions':'#a78bfa','Other':'#94a3b8',
-};
+// ─── SPA restore ──────────────────────────────────────────────
+// GH Pages serves 404.html for any unknown path under the repo. Our 404.html
+// stashes the requested path in sessionStorage and reloads at the base;
+// this snippet — running before anything else — restores the original URL
+// so the router below sees the path the user actually asked for. We only
+// restore known SPA routes; unknown deep paths (typos, dead links) fall
+// through so the router's fallback below can rewrite them to the default
+// tab from a clean base.
+(function() {
+  try {
+    var redirect = sessionStorage.getItem('sc-spa-redirect');
+    if (!redirect) return;
+    sessionStorage.removeItem('sc-spa-redirect');
+    if (redirect.charAt(0) !== '/') return;
+    if (!/\/(event-splitter|mahjong|expense-settlement)\/?($|\?|#)/.test(redirect)) return;
+    history.replaceState(null, '', redirect);
+  } catch(_) {}
+})();
 
 // ─── State ────────────────────────────────────────────────────
-let S = { income: [], expenses: [], theme: 'light' };
-let donut = null;
+let S = { theme: 'light' };
 
 // ─── Utils ────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -1774,6 +2147,18 @@ function shareDecode(param) {
   b64 += '=='.slice(0, (4 - b64.length % 4) % 4);
   return JSON.parse(decodeURIComponent(escape(atob(b64))));
 }
+// Read a share-link payload. New links put payloads in the hash (#e=...&mj=...);
+// legacy `?e=` support: fall back to the query string so old links still work.
+function readShareParam(key) {
+  const hash = location.hash.replace(/^#/, '');
+  if (hash) {
+    try {
+      const v = new URLSearchParams(hash).get(key);
+      if (v) return v;
+    } catch(_) {}
+  }
+  try { return new URLSearchParams(location.search).get(key); } catch(_) { return null; }
+}
 // Off-screen clipboard fallback for browsers without navigator.clipboard
 function clipboardFallback(text) {
   const el = document.createElement('textarea');
@@ -1785,235 +2170,10 @@ function clipboardFallback(text) {
   document.body.removeChild(el);
 }
 
-function total(arr) { return arr.reduce((s, x) => s + x.amount, 0); }
-
-// ─── Compute & Render ─────────────────────────────────────────
-function render() {
-  // Budget tab removed — bail out if the DOM isn't present.
-  if (!document.getElementById('tab-budget')) return;
-  const inc  = total(S.income);
-  const exp  = total(S.expenses);
-  const net  = inc - exp;
-  const rate = inc > 0 ? (net / inc) * 100 : 0;
-
-  // Hero
-  $('hIncome').textContent    = fmt(inc);
-  $('hExpenses').textContent  = fmt(exp);
-  $('hNet').textContent       = fmtS(net);
-  $('hIncomeCount').textContent = `${S.income.length} ${S.income.length !== 1 ? t('sources') : t('source')}`;
-  $('hExpCount').textContent  = `${S.expenses.length} ${S.expenses.length !== 1 ? t('categories_count') : t('category_count')}`;
-  $('hNetSub').textContent    = net >= 0 ? t('on_track') : t('over_budget');
-
-  const ratePct = Math.max(0, Math.min(100, rate));
-  $('hRate').textContent = (rate > 0 ? rate : 0).toFixed(1) + '%';
-  $('hProgress').style.width = ratePct + '%';
-
-  const badge = $('hBadge');
-  if (inc === 0) {
-    badge.textContent = '—'; badge.className = 'hero-badge badge-neu';
-  } else if (rate >= 20) {
-    badge.textContent = t('badge_on_track'); badge.className = 'hero-badge badge-good';
-  } else if (rate >= 10) {
-    badge.textContent = t('badge_could_improve'); badge.className = 'hero-badge badge-warn';
-  } else {
-    badge.textContent = t('badge_below_target'); badge.className = 'hero-badge badge-bad';
-  }
-
-  renderList('income');
-  renderList('expenses');
-  renderChart();
-  renderSavings(inc, exp, net, rate);
-  persist();
-}
-
-function renderList(type) {
-  const isInc = type === 'income';
-  const list  = $(isInc ? 'incomeList'  : 'expenseList');
-  const empty = $(isInc ? 'incomeEmpty' : 'expenseEmpty');
-  const items = S[type];
-  const colors = isInc ? INC_COLORS : EXP_COLORS;
-
-  list.querySelectorAll('.item').forEach(el => el.remove());
-
-  if (items.length === 0) { empty.style.display = ''; return; }
-  empty.style.display = 'none';
-
-  items.forEach(item => {
-    const el = document.createElement('div');
-    el.className = 'item';
-    el.dataset.id   = item.id;
-    el.dataset.type = type;
-    el.innerHTML = `
-      <span class="item-dot" style="background:${colors[item.category] || '#94a3b8'}"></span>
-      <span class="item-name">${esc(item.name)}</span>
-      <span class="item-cat">${esc(tCat(item.category))}</span>
-      <span class="item-amt ${isInc ? 'amt-income' : 'amt-expense'}">${fmt(item.amount)}</span>
-      <button class="btn-icon del-btn" data-id="${item.id}" data-type="${type}" title="Remove">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6l-1 14H6L5 6"/>
-          <path d="M10 11v6M14 11v6"/>
-          <path d="M9 6V4h6v2"/>
-        </svg>
-      </button>`;
-    list.appendChild(el);
-  });
-}
-
-function renderChart() {
-  const canvas = $('donutChart');
-  const empty  = $('chartEmpty');
-  const legend = $('chartLegend');
-
-  if (S.expenses.length === 0) {
-    canvas.style.display = 'none';
-    empty.style.display = '';
-    legend.innerHTML = '';
-    if (donut) { donut.destroy(); donut = null; }
-    return;
-  }
-
-  canvas.style.display = '';
-  empty.style.display = 'none';
-
-  // Aggregate by category
-  const cats = {};
-  S.expenses.forEach(e => { cats[e.category] = (cats[e.category] || 0) + e.amount; });
-
-  const labels = Object.keys(cats);
-  const data   = labels.map(k => cats[k]);
-  const colors = labels.map(k => EXP_COLORS[k] || '#94a3b8');
-  const tot    = data.reduce((a, b) => a + b, 0);
-  const isDark = S.theme === 'dark';
-  const border = isDark ? '#1e293b' : '#ffffff';
-
-  legend.innerHTML = labels.map((lbl, i) => `
-    <div class="leg-item">
-      <span class="leg-swatch" style="background:${colors[i]}"></span>
-      <span class="leg-name">${tCat(lbl)}</span>
-      <span class="leg-pct">${((data[i] / tot) * 100).toFixed(1)}%</span>
-      <span class="leg-amt">${fmt(data[i])}</span>
-    </div>`).join('');
-
-  if (donut) {
-    donut.data.labels = labels;
-    donut.data.datasets[0].data   = data;
-    donut.data.datasets[0].backgroundColor = colors;
-    donut.data.datasets[0].borderColor = border;
-    donut.update('none');
-  } else {
-    donut = new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels,
-        datasets: [{
-          data, backgroundColor: colors,
-          borderWidth: 3, borderColor: border, hoverOffset: 10,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, cutout: '70%',
-        animation: { animateRotate: true, animateScale: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.label}: ${fmt(ctx.parsed)} (${((ctx.parsed/tot)*100).toFixed(1)}%)`
-            }
-          }
-        }
-      }
-    });
-  }
-}
-
-function renderSavings(inc, exp, net, rate) {
-  // Ring  2πr = 2 * π * 48 ≈ 301.59
-  const CIRC = 301.59;
-  const clamp = Math.max(0, Math.min(100, rate));
-  const ring  = $('savingsRing');
-  ring.style.strokeDashoffset = CIRC - (clamp / 100) * CIRC;
-  ring.style.stroke = rate >= 20 ? '#10b981' : rate >= 10 ? '#f59e0b' : rate > 0 ? '#ef4444' : 'var(--surface2)';
-  $('ringPct').textContent = Math.max(0, rate).toFixed(0) + '%';
-
-  $('sIncome').textContent   = fmt(inc);
-  $('sExpenses').textContent = fmt(exp);
-  $('sSavings').textContent  = fmtS(net);
-  $('sAnnual').textContent   = fmtS(net * 12);
-
-  const advice = $('ringAdvice');
-  if (inc === 0) {
-    advice.textContent = t('advice_no_income');
-  } else if (rate >= 20) {
-    advice.textContent = t('advice_great', { rate: rate.toFixed(1), annual: fmt(net * 12) });
-  } else if (rate >= 0) {
-    const gap = inc * 0.20 - net;
-    advice.textContent = t('advice_improve', { rate: rate.toFixed(1), gap: fmt(gap) });
-  } else {
-    advice.textContent = t('advice_over', { over: fmt(Math.abs(net)) });
-  }
-}
-
-// ─── Add Items (Budget tab removed — only wire up if DOM exists) ──
-function toggleForm(type, open) {
-  const isInc = type === 'income';
-  const form  = $(isInc ? 'incomeForm' : 'expenseForm');
-  if (!form) return;
-  form.classList.toggle('open', open);
-  if (open) $(isInc ? 'iName' : 'eName').focus();
-}
-
-if (document.getElementById('tab-budget')) {
-  $('addIncomeBtn').onclick  = () => toggleForm('income', true);
-  $('cancelIncome').onclick  = () => toggleForm('income', false);
-  $('addExpenseBtn').onclick = () => toggleForm('expense', true);
-  $('cancelExpense').onclick = () => toggleForm('expense', false);
-
-  $('submitIncome').onclick  = () => addItem('income');
-  $('submitExpense').onclick = () => addItem('expense');
-
-  // Enter key in forms
-  ['iName','iCat','iAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('income'); }));
-  ['eName','eCat','eAmt'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') addItem('expense'); }));
-}
-
-function addItem(type) {
-  const isInc = type === 'income';
-  const name  = $(isInc ? 'iName' : 'eName').value.trim();
-  const cat   = $(isInc ? 'iCat'  : 'eCat').value;
-  const amt   = parseFloat($(isInc ? 'iAmt' : 'eAmt').value);
-
-  if (!name || isNaN(amt) || amt <= 0) {
-    showToast(t('toast_name_amount'), 'warn');
-    return;
-  }
-
-  S[type].unshift({ id: uid(), name, category: cat, amount: amt });
-  toggleForm(type, false);
-  $(isInc ? 'iName' : 'eName').value = '';
-  $(isInc ? 'iAmt'  : 'eAmt').value  = '';
-  render();
-  showToast(t('toast_added', { name }));
-}
-
-// ─── Delete ───────────────────────────────────────────────────
-document.addEventListener('click', e => {
-  const btn = e.target.closest('.del-btn');
-  if (!btn) return;
-  const { id, type } = btn.dataset;
-  S[type] = S[type].filter(x => x.id !== id);
-  render();
-  showToast(t('toast_removed'), 'info');
-});
-
 // ─── Theme ────────────────────────────────────────────────────
 $('themeBtn').onclick = () => {
   S.theme = S.theme === 'light' ? 'dark' : 'light';
   applyTheme();
-  if (donut) {
-    donut.data.datasets[0].borderColor = S.theme === 'dark' ? '#1e293b' : '#ffffff';
-    donut.update('none');
-  }
   persist();
 };
 
@@ -2035,6 +2195,7 @@ function applyTheme() {
 $('shareBtn').onclick   = openShare;
 $('closeModal').onclick = closeShare;
 $('closeModal2').onclick = closeShare;
+$('startLiveBtn').onclick = _onStartLiveBtnClick;
 $('shareOverlay').onclick = e => { if (e.target === $('shareOverlay')) closeShare(); };
 
 $('copyBtn').onclick = () => {
@@ -2048,20 +2209,112 @@ $('copyBtn').onclick = () => {
     });
 };
 
-function openShare() {
+// Suffix appended by the tab-specific share buttons and the header Share
+// modal when the "Share as read-only" checkbox is checked. Kept as a helper
+// so every share-URL builder in the app produces the same shape.
+function readOnlySuffix() {
+  const cb = $('shareRoToggle');
+  return cb && cb.checked ? '&ro=1' : '';
+}
+function _rebuildShareUrl() {
   const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab || 'event';
-  let url;
-  if (activeTab === 'mahjong') {
-    url = location.origin + location.pathname + '?mj=' + shareEncode(MJ);
-  } else if (activeTab === 'settle') {
-    url = location.origin + location.pathname + '?sx=' + shareEncode(SX);
-  } else {
-    url = location.origin + location.pathname + '?e=' + shareEncode(ES);
+  const base = location.origin + location.pathname;
+  const ro = readOnlySuffix();
+  if (activeTab === 'mahjong') return base + '#mj=' + shareEncode(MJ) + ro;
+  if (activeTab === 'settle')  return base + '#sx=' + shareEncode(SX) + ro;
+  return base + '#e=' + shareEncode(ES) + ro;
+}
+// Does the currently-active tab have anything worth spinning up a live room
+// for? Empty state → the Start Live collab button gets disabled so we don't
+// litter the RTDB with zero-data rooms.
+function _activeTabHasData() {
+  const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab || 'event';
+  if (activeTab === 'mahjong') return (MJ.rounds || []).length > 0;
+  if (activeTab === 'settle')  return (SX.expenses || []).length > 0 || (SX.participants || []).length > 0;
+  return (ES.items || []).length > 0;
+}
+// Reconciles the Start Live collab button label + disabled state against:
+//   (a) whether the RTDB SDK loaded,
+//   (b) whether the current view is a read-only snapshot (PR #7),
+//   (c) whether the user is already in a room,
+//   (d) whether the active tab has anything shareable.
+function updateStartLiveBtn() {
+  const btn = $('startLiveBtn');
+  const label = $('startLiveBtnLabel');
+  if (!btn || !label) return;
+  // No Firebase → the whole feature is unavailable; hide rather than show a
+  // dead button.
+  if (!fbDb) {
+    btn.style.display = 'none';
+    return;
   }
-  $('shareUrl').value = url;
+  // Read-only viewer of someone else's snapshot — don't offer to spin up a
+  // room seeded with data they don't own. RO CSS already hides the header
+  // Share button, but the guard is cheap and covers any future entry points.
+  if (typeof SC_READ_ONLY !== 'undefined' && SC_READ_ONLY) {
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  btn.classList.remove('in-room');
+  btn.removeAttribute('disabled');
+  btn.title = '';
+  if (activeRoom) {
+    btn.classList.add('in-room');
+    label.textContent = t('share_already_in_live', { code: activeRoom });
+    return;
+  }
+  if (!_activeTabHasData()) {
+    btn.disabled = true;
+    btn.title = t('share_empty_disabled_title');
+    label.textContent = t('share_start_live');
+    return;
+  }
+  label.textContent = t('share_start_live');
+}
+
+function openShare() {
+  const cb = $('shareRoToggle');
+  if (cb) cb.checked = false; // fresh dialog defaults to editable
+  $('shareUrl').value = _rebuildShareUrl();
+  updateStartLiveBtn();
   $('shareOverlay').classList.add('open');
 }
 function closeShare() { $('shareOverlay').classList.remove('open'); }
+
+// Start Live collab CTA — three paths depending on state.
+function _onStartLiveBtnClick() {
+  const btn = $('startLiveBtn');
+  if (!btn || btn.disabled) return;
+  // Already in a room → copy the code so the user can hand it off.
+  if (activeRoom) {
+    const code = activeRoom;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).catch(() => clipboardFallback(code));
+    } else {
+      clipboardFallback(code);
+    }
+    showToast(t('share_room_code_copied', { code: code }), 'info');
+    return;
+  }
+  // Fresh room → hand it to createAndJoinRoom, then swap the share modal for
+  // the Room modal so the user immediately sees the code + Copy Link button.
+  // suppressToast so we can fire the share-flow-specific "Live collab
+  // started · code: XXX" message instead of the generic "Room created".
+  closeShare();
+  createAndJoinRoom(function(code) {
+    openRoomModal();
+    showToast(t('share_live_started', { code: code }), 'info');
+  }, { suppressToast: true });
+}
+// Live-update the URL when the RO checkbox flips so the visible link matches.
+document.addEventListener('change', e => {
+  if (e.target && e.target.id === 'shareRoToggle') {
+    if ($('shareOverlay').classList.contains('open')) {
+      $('shareUrl').value = _rebuildShareUrl();
+    }
+  }
+});
 
 // ─── Toast ────────────────────────────────────────────────────
 let toastTimer;
@@ -2079,14 +2332,59 @@ function showToast(msg, type = 'success') {
   toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+// ─── Path routing ─────────────────────────────────────────────
+// Each tab has its own bookmarkable URL (`/event-splitter/`, `/mahjong/`,
+// `/expense-settlement/`). Base path is detected dynamically so this works
+// under GH Pages `/budget-calculator/`, a custom domain at `/`, or localhost.
+const TAB_TO_SLUG = { event: 'event-splitter', mahjong: 'mahjong', settle: 'expense-settlement' };
+const SLUG_TO_TAB = { 'event-splitter': 'event', 'mahjong': 'mahjong', 'expense-settlement': 'settle' };
+const _TAB_SLUG_RE = /\/(event-splitter|mahjong|expense-settlement)\/?$/;
+const DEFAULT_TAB = 'event';
+
+function _computeBase(p) {
+  let base = p.replace(_TAB_SLUG_RE, '/').replace(/\/index\.html$/i, '/');
+  if (!base) base = '/';
+  if (base.charAt(base.length - 1) !== '/') base += '/';
+  return base;
+}
+const ROUTER_BASE = _computeBase(location.pathname);
+
+function tabFromPath() {
+  const m = location.pathname.match(_TAB_SLUG_RE);
+  return m ? SLUG_TO_TAB[m[1]] : null;
+}
+function pathForTab(tab) {
+  const slug = TAB_TO_SLUG[tab] || TAB_TO_SLUG[DEFAULT_TAB];
+  return ROUTER_BASE + slug + '/';
+}
+
+// Central tab switcher. opts.pushHistory / opts.replaceHistory update the URL;
+// opts.keepHash keeps any existing hash payload (used on load so decoded
+// payloads still get consumed by their target tab's boot code). `?room=…`
+// and any other search params are always preserved so tab switching never
+// drops the live-room autojoin.
+function switchToTab(tab, opts) {
+  if (!TAB_TO_SLUG[tab]) tab = DEFAULT_TAB;
+  opts = opts || {};
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector('[data-tab="' + tab + '"]');
+  if (btn) btn.classList.add('active');
+  const panel = $('tab-' + tab);
+  if (panel) panel.classList.add('active');
+  if (opts.pushHistory || opts.replaceHistory) {
+    const url = pathForTab(tab) + location.search + (opts.keepHash ? location.hash : '');
+    try { history[opts.replaceHistory ? 'replaceState' : 'pushState'](null, '', url); } catch(_) {}
+  }
+}
+
 // ─── Tab Switching ────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    $('tab-' + btn.dataset.tab).classList.add('active');
-  };
+  btn.onclick = () => switchToTab(btn.dataset.tab, { pushHistory: true });
+});
+// Browser back/forward should follow the URL's tab.
+window.addEventListener('popstate', function() {
+  switchToTab(tabFromPath() || DEFAULT_TAB, { pushHistory: false });
 });
 
 // ─── Event Splitter State ─────────────────────────────────────
@@ -2597,7 +2895,7 @@ function renderReceipt() {
 }
 
 $('evShareBtn').onclick = () => {
-  const url = location.origin + location.pathname + '?e=' + shareEncode(ES);
+  const url = location.origin + location.pathname + '#e=' + shareEncode(ES);
   navigator.clipboard.writeText(url)
     .then(() => showToast(t('toast_event_link')))
     .catch(() => { clipboardFallback(url); showToast(t('toast_event_link_short')); });
@@ -2677,25 +2975,26 @@ $('esDeleteProjectBtn').onclick = () => {
 function persistES() {
   if (!currentESProject) return;
   const projects = getESProjects();
-  projects[currentESProject] = { name: ES.name, people: ES.people, items: ES.items };
+  projects[currentESProject] = { name: ES.name, people: ES.people, items: ES.items, _lastActivityAt: Date.now() };
   saveESProjects(projects);
 }
 
 function loadES() {
   try {
-    const param = new URLSearchParams(location.search).get('e');
+    const param = readShareParam('e');
     if (param) {
       const d = shareDecode(param);
       ES.name   = d.name   || '';
       ES.people = d.people || 2;
       ES.items  = d.items  || [];
-      history.replaceState(null, '', location.pathname);
-      // Switch to event tab
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelector('[data-tab="event"]').classList.add('active');
-      $('tab-event').classList.add('active');
-      showToast(t('toast_event_loaded'), 'info');
+      // Hash payload takes precedence over path: land on the tab it targets
+      // and rewrite the URL to that tab's path (clears the payload from view).
+      // In read-only mode we keep the hash so a refresh preserves the RO view;
+      // Copy-to-edit is what strips the payload.
+      const isRO = readShareParam('ro') === '1';
+      switchToTab('event', { replaceHistory: true, keepHash: isRO });
+      _payloadHandled = true;
+      showToast(t(isRO ? 'ro_loaded_toast' : 'toast_event_loaded'), 'info');
       return;
     }
   } catch (_) {}
@@ -2725,32 +3024,18 @@ function loadES() {
 }
 
 // ─── Persistence ──────────────────────────────────────────────
+// Only the theme lives here — Budget tab was removed. Legacy 'budgetcalc'
+// localStorage entries from older versions still hydrate the theme cleanly.
 function persist() {
   try {
-    localStorage.setItem('budgetcalc', JSON.stringify(S));
+    localStorage.setItem('budgetcalc', JSON.stringify({ theme: S.theme }));
   } catch (_) {}
 }
 
 function loadState() {
-  // 1. URL param takes priority
-  try {
-    const param = new URLSearchParams(location.search).get('b');
-    if (param) {
-      const d = shareDecode(param);
-      S.income   = d.income   || [];
-      S.expenses = d.expenses || [];
-      history.replaceState(null, '', location.pathname);
-      showToast(t('toast_budget_loaded'), 'info');
-      return;
-    }
-  } catch (_) {}
-
-  // 2. LocalStorage
   try {
     const saved = JSON.parse(localStorage.getItem('budgetcalc') || '{}');
-    S.income   = saved.income   || [];
-    S.expenses = saved.expenses || [];
-    S.theme    = saved.theme    || 'light';
+    S.theme = saved.theme || 'light';
   } catch (_) {}
 }
 
@@ -3020,27 +3305,26 @@ function mjRenderAll() {
 }
 
 function mjPersist() {
-  try { localStorage.setItem('mahjong-calc', JSON.stringify(MJ)); } catch(_) {}
+  const payload = Object.assign({}, MJ, { _lastActivityAt: Date.now() });
+  try { localStorage.setItem('mahjong-calc', JSON.stringify(payload)); } catch(_) {}
 }
 function mjShareUrl() {
-  return location.origin + location.pathname + '?mj=' + shareEncode(MJ);
+  return location.origin + location.pathname + '#mj=' + shareEncode(MJ);
 }
 
 function mjLoad() {
   try {
-    const param = new URLSearchParams(location.search).get('mj');
+    const param = readShareParam('mj');
     if (param) {
       const d = shareDecode(param);
       if (d.players) MJ.players = d.players;
       if (d.base !== undefined) MJ.base = d.base;
       if (d.perTai !== undefined) MJ.perTai = d.perTai;
       if (d.rounds) MJ.rounds = d.rounds;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelector('[data-tab="mahjong"]').classList.add('active');
-      $('tab-mahjong').classList.add('active');
-      history.replaceState(null, '', location.pathname);
-      setTimeout(() => showToast(t('mj_loaded_link'), 'info'), 300);
+      const isRO = readShareParam('ro') === '1';
+      switchToTab('mahjong', { replaceHistory: true, keepHash: isRO });
+      _payloadHandled = true;
+      setTimeout(() => showToast(t(isRO ? 'ro_loaded_toast' : 'mj_loaded_link'), 'info'), 300);
       [0,1,2,3].forEach(i => $('mjP'+i).value = MJ.players[i]);
       $('mjBase').value = MJ.base;
       $('mjPerTai').value = MJ.perTai;
@@ -3221,28 +3505,94 @@ document.addEventListener('click', e => {
 
 // ── Add Expense Form (inline editable) ───────────────────────
 
+// Tip supports either percent-of-subtotal or a flat dollar amount. The unit
+// lives on `exp.tipUnit` ('percent' | 'flat'), the raw number on `exp.tip`.
+// Legacy rows persisted with `exp.tipPct` are read transparently as percent —
+// they're migrated to the new fields the next time the row is edited or
+// re-saved.
+function sxTipUnit(exp)  { return exp.tipUnit === 'flat' ? 'flat' : 'percent'; }
+function sxTipValue(exp) {
+  if (exp.tip !== undefined && exp.tip !== null) return Number(exp.tip) || 0;
+  if (exp.tipPct !== undefined && exp.tipPct !== null) return Number(exp.tipPct) || 0;
+  return 0;
+}
+function sxTipAmount(exp) {
+  const raw = sxTipValue(exp);
+  if (sxTipUnit(exp) === 'flat') return raw;
+  const sub = exp.amount || 0;
+  return sub * (raw / 100);
+}
+
 function sxExpTotal(exp) {
   const sub = exp.amount || 0;
-  return sub + sub * ((exp.taxPct || 0) / 100) + sub * ((exp.tipPct || 0) / 100) + (exp.serviceCharge || 0);
+  return sub + sub * ((exp.taxPct || 0) / 100) + sxTipAmount(exp) + (exp.serviceCharge || 0);
 }
 
 function sxBreakdownHtml(exp) {
   const sub = exp.amount || 0;
   const tax = sub * ((exp.taxPct || 0) / 100);
-  const tip = sub * ((exp.tipPct || 0) / 100);
+  const tip = sxTipAmount(exp);
   const svc = exp.serviceCharge || 0;
   const total = sub + tax + tip + svc;
   if ((tax + tip + svc) === 0 || sub === 0) return '';
   const parts = [t('sx_subtotal') + ': ' + fmt(sub)];
   if (tax > 0) parts.push('Tax ' + exp.taxPct + '%: +' + fmt(tax));
-  if (tip > 0) parts.push('Tip ' + exp.tipPct + '%: +' + fmt(tip));
+  if (tip > 0) {
+    const tipLabel = sxTipUnit(exp) === 'flat'
+      ? 'Tip: +' + fmt(tip)
+      : 'Tip ' + sxTipValue(exp) + '%: +' + fmt(tip);
+    parts.push(tipLabel);
+  }
   if (svc > 0) parts.push(t('sx_svc_charge') + ': +' + fmt(svc));
   return parts.join(' · ') + ' <strong>= ' + fmt(total) + '</strong>';
+}
+
+// Computes the fee-adjusted view for the Custom Amounts panel:
+//   - previews[i] = the per-person amount with tax/tip/service distributed
+//     proportionally, so previews sum exactly to `total` (rounding delta
+//     is absorbed into the last non-zero row).
+//   - showPreview / scaleEnabled tell the DOM whether to render the preview
+//     column and whether the "Scale to total" button is clickable.
+function sxComputeCustomView(exp) {
+  const sub      = exp.amount || 0;
+  const taxAmt   = sub * ((exp.taxPct || 0) / 100);
+  const tipAmt   = sxTipAmount(exp);
+  const svcAmt   = exp.serviceCharge || 0;
+  const feeTotal = taxAmt + tipAmt + svcAmt;
+  const total    = sub + feeTotal;
+  const amts     = exp.customAmounts || {};
+  const idxs     = Object.keys(amts)
+                     .map(Number)
+                     .filter(i => Number(amts[i]) > 0)
+                     .sort((a, b) => a - b);
+  const customSum = idxs.reduce((s, i) => s + Number(amts[i]), 0);
+
+  const showPreview  = feeTotal > 0 && customSum > 0;
+  const scaleEnabled = feeTotal > 0 && sub > 0 && customSum > 0 && Math.abs(customSum - sub) < 0.01;
+
+  const previews = {};
+  if (showPreview) {
+    const scale = total / customSum;
+    let running = 0;
+    idxs.forEach((i, k) => {
+      let v;
+      if (k === idxs.length - 1) {
+        // Absorb rounding into the last non-zero row so previews sum to `total` exactly.
+        v = Math.round((total - running) * 100) / 100;
+      } else {
+        v = Math.round(Number(amts[i]) * scale * 100) / 100;
+        running += v;
+      }
+      previews[i] = v;
+    });
+  }
+  return { sub, feeTotal, total, customSum, previews, showPreview, scaleEnabled };
 }
 
 function sxExpItemHtml(exp) {
   const isCustom = exp.splitMode === 'custom';
   const total = sxExpTotal(exp);
+  const view  = sxComputeCustomView(exp);
 
   const payerOpts = SX.participants.map((n, i) =>
     `<option value="${i}"${i === exp.paidBy ? ' selected' : ''}>${esc(n)}</option>`).join('');
@@ -3256,17 +3606,22 @@ function sxExpItemHtml(exp) {
 
   const customInputsHtml = SX.participants.map((n, i) => {
     const v = (exp.customAmounts && exp.customAmounts[i] !== undefined) ? exp.customAmounts[i] : '';
+    const previewText = (view.showPreview && view.previews[i] !== undefined)
+      ? `<span class="sx-custom-amt-preview">≈ ${fmt(view.previews[i])}</span>`
+      : '';
     return `<div class="sx-custom-amt-row">
       <span class="sx-custom-amt-name">${esc(n)}</span>
       <input type="number" class="sx-custom-amt-input" data-idx="${i}"
              placeholder="0" min="0" step="any" value="${v}" />
+      ${previewText}
     </div>`;
   }).join('');
 
-  const customSum = exp.customAmounts
-    ? Object.values(exp.customAmounts).reduce((a, b) => a + Number(b), 0) : 0;
+  const customSum = view.customSum;
   const sumOk = total > 0 && Math.abs(customSum - total) < 0.01;
   const sumRowCls = total > 0 ? (sumOk ? 'sx-custom-sum-row ok' : 'sx-custom-sum-row warn') : 'sx-custom-sum-row';
+  const withFeesDisplay = view.showPreview ? '' : 'display:none';
+  const scaleBtnDisplay = view.feeTotal > 0 ? '' : 'display:none';
 
   return `
     <div class="sx-exp-header">
@@ -3299,9 +3654,17 @@ function sxExpItemHtml(exp) {
                value="${exp.taxPct > 0 ? exp.taxPct : ''}" placeholder="%" min="0" step="any" style="margin:0" />
       </div>
       <div class="field-group" style="margin:0;flex:1">
-        <label class="field-label">${t('sx_tip_pct')}</label>
-        <input type="number" class="field-input sx-exp-tip"
-               value="${exp.tipPct > 0 ? exp.tipPct : ''}" placeholder="%" min="0" step="any" style="margin:0" />
+        <label class="field-label">${t('sx_tip')}</label>
+        <div class="sx-tip-row">
+          <input type="number" class="field-input sx-exp-tip"
+                 value="${sxTipValue(exp) > 0 ? sxTipValue(exp) : ''}"
+                 placeholder="${sxTipUnit(exp) === 'flat' ? '0' : '%'}"
+                 min="0" step="any" style="margin:0;flex:1;min-width:0" />
+          <div class="sx-tip-unit-toggle" role="group" aria-label="${t('sx_tip')}">
+            <button type="button" class="sx-tip-unit-btn${sxTipUnit(exp) === 'percent' ? ' active' : ''}" data-unit="percent" title="${t('sx_tip_unit_pct_title')}">%</button>
+            <button type="button" class="sx-tip-unit-btn${sxTipUnit(exp) === 'flat' ? ' active' : ''}" data-unit="flat" title="${t('sx_tip_unit_flat_title')}">$</button>
+          </div>
+        </div>
       </div>
       <div class="field-group" style="margin:0;flex:1">
         <label class="field-label">${t('sx_svc_charge')}</label>
@@ -3329,6 +3692,11 @@ function sxExpItemHtml(exp) {
       <div class="${sumRowCls}">
         <span>${t('sx_custom_sum')}</span>
         <span style="font-weight:700">${fmt(customSum)}</span>
+      </div>
+      <div class="sx-with-fees-row" style="${withFeesDisplay}">
+        <span>${t('sx_with_fees')}</span>
+        <button type="button" class="sx-scale-btn" style="${scaleBtnDisplay}"${view.scaleEnabled ? '' : ' disabled'}>${t('sx_scale_btn')}</button>
+        <span class="sx-with-fees-val">${fmt(view.total)}</span>
       </div>
       <div class="sx-sum-warn" style="${total > 0 && !sumOk ? '' : 'display:none'}">${t('sx_sum_mismatch')}</div>
     </div>`;
@@ -3372,7 +3740,9 @@ $('sxExpensesList').addEventListener('input', e => {
     sxUpdateItemBreakdown(item, exp);
     if (exp.splitMode === 'custom') sxUpdateItemCustomSum(item, exp);
   } else if (cl.contains('sx-exp-tip')) {
-    exp.tipPct = parseFloat(e.target.value) || 0;
+    exp.tip = parseFloat(e.target.value) || 0;
+    if (!exp.tipUnit) exp.tipUnit = 'percent';
+    delete exp.tipPct;
     sxUpdateItemBreakdown(item, exp);
     if (exp.splitMode === 'custom') sxUpdateItemCustomSum(item, exp);
   } else if (cl.contains('sx-exp-svc')) {
@@ -3409,6 +3779,48 @@ $('sxExpensesList').addEventListener('change', e => {
 
 // Event delegation — split mode toggle + equal-split checkboxes
 $('sxExpensesList').addEventListener('click', e => {
+  const tipUnitBtn = e.target.closest('.sx-tip-unit-btn');
+  if (tipUnitBtn) {
+    const item = tipUnitBtn.closest('.sx-expense-item');
+    if (!item) return;
+    const exp = SX.expenses.find(x => x.id === item.dataset.id);
+    if (!exp) return;
+    const unit = tipUnitBtn.dataset.unit === 'flat' ? 'flat' : 'percent';
+    if (sxTipUnit(exp) === unit) return;
+    // Toggling reinterprets the same raw number under the new unit — same as
+    // how "10" flips from 10% to $10 in a receipt calculator. Doesn't
+    // destroy the user's input.
+    if (exp.tip === undefined && exp.tipPct !== undefined) exp.tip = exp.tipPct;
+    delete exp.tipPct;
+    exp.tipUnit = unit;
+    // Update the active-state on the buttons + placeholder without a full re-render.
+    item.querySelectorAll('.sx-tip-unit-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.unit === unit));
+    const tipInput = item.querySelector('.sx-exp-tip');
+    if (tipInput) tipInput.placeholder = (unit === 'flat') ? '0' : '%';
+    sxUpdateItemBreakdown(item, exp);
+    if (exp.splitMode === 'custom') sxUpdateItemCustomSum(item, exp);
+    persistSX();
+    renderSXSummary();
+    renderSXSettlement();
+    return;
+  }
+  const scaleBtn = e.target.closest('.sx-scale-btn');
+  if (scaleBtn && !scaleBtn.disabled) {
+    const item = scaleBtn.closest('.sx-expense-item');
+    if (!item) return;
+    const exp = SX.expenses.find(x => x.id === item.dataset.id);
+    if (!exp) return;
+    if (sxScaleCustomToTotal(exp)) {
+      sxSyncCustomInputsToState(item, exp);
+      sxUpdateItemCustomSum(item, exp);
+      persistSX();
+      renderSXSummary();
+      renderSXSettlement();
+      showToast(t('sx_scaled'), 'info');
+    }
+    return;
+  }
   const modeBtn = e.target.closest('.sx-split-mode-btn');
   if (modeBtn) {
     const item = modeBtn.closest('.sx-expense-item');
@@ -3452,8 +3864,8 @@ function sxUpdateItemBreakdown(item, exp) {
 
 function sxUpdateItemCustomSum(item, exp) {
   const total = sxExpTotal(exp);
-  const customSum = exp.customAmounts
-    ? Object.values(exp.customAmounts).reduce((a, b) => a + Number(b), 0) : 0;
+  const view  = sxComputeCustomView(exp);
+  const customSum = view.customSum;
   const sumOk = total > 0 && Math.abs(customSum - total) < 0.01;
   const sumRow = item.querySelector('.sx-custom-panel .sx-custom-sum-row');
   const sumWarn = item.querySelector('.sx-sum-warn');
@@ -3465,6 +3877,55 @@ function sxUpdateItemCustomSum(item, exp) {
   if (sumWarn) sumWarn.style.display = (total > 0 && !sumOk) ? '' : 'none';
   item.querySelectorAll('.sx-custom-amt-input').forEach(inp =>
     inp.classList.toggle('warn', !sumOk && total > 0));
+
+  // Per-row "with fees" preview. Update text only — don't touch the input.
+  item.querySelectorAll('.sx-custom-amt-row').forEach(row => {
+    const inp = row.querySelector('.sx-custom-amt-input');
+    if (!inp) return;
+    const idx = parseInt(inp.dataset.idx);
+    let prev = row.querySelector('.sx-custom-amt-preview');
+    if (view.showPreview && view.previews[idx] !== undefined) {
+      if (!prev) {
+        prev = document.createElement('span');
+        prev.className = 'sx-custom-amt-preview';
+        row.appendChild(prev);
+      }
+      prev.textContent = '≈ ' + fmt(view.previews[idx]);
+    } else if (prev) {
+      prev.remove();
+    }
+  });
+
+  // Summary strip: "With fees" line and Scale button state.
+  const wfRow  = item.querySelector('.sx-with-fees-row');
+  const wfVal  = item.querySelector('.sx-with-fees-val');
+  const scale  = item.querySelector('.sx-scale-btn');
+  if (wfRow) wfRow.style.display = view.showPreview ? '' : 'none';
+  if (wfVal) wfVal.textContent   = fmt(view.total);
+  if (scale) {
+    scale.style.display = view.feeTotal > 0 ? '' : 'none';
+    scale.disabled = !view.scaleEnabled;
+  }
+}
+
+// Multiplies each customAmount by (total / customSum) so the sum matches the
+// fee-inclusive total exactly. Rounding delta is absorbed into the last
+// non-zero row to guarantee `sum(after) === total`.
+function sxScaleCustomToTotal(exp) {
+  const view = sxComputeCustomView(exp);
+  if (!view.scaleEnabled) return false;
+  const amts = exp.customAmounts;
+  Object.keys(view.previews).forEach(k => { amts[k] = view.previews[k]; });
+  return true;
+}
+
+// Reflect programmatically-changed customAmounts back into the input DOM.
+function sxSyncCustomInputsToState(item, exp) {
+  item.querySelectorAll('.sx-custom-amt-input').forEach(inp => {
+    const idx = parseInt(inp.dataset.idx);
+    const v = exp.customAmounts && exp.customAmounts[idx];
+    inp.value = (v !== undefined && v > 0) ? v : '';
+  });
 }
 
 function renderSXExpenses() {
@@ -3604,25 +4065,23 @@ function sxRenderAll() {
 function persistSX() {
   if (!currentSXGroup) return;
   const groups = getSXGroups();
-  groups[currentSXGroup] = { name: SX.name, participants: SX.participants, expenses: SX.expenses };
+  groups[currentSXGroup] = { name: SX.name, participants: SX.participants, expenses: SX.expenses, _lastActivityAt: Date.now() };
   saveSXGroups(groups);
 }
 
 function sxLoad() {
   try {
-    const param = new URLSearchParams(location.search).get('sx');
+    const param = readShareParam('sx');
     if (param) {
       const d = shareDecode(param);
       SX.name         = d.name         || '';
       SX.participants = d.participants || [];
       SX.expenses     = d.expenses     || [];
       $('sxGroupName').value = SX.name;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelector('[data-tab="settle"]').classList.add('active');
-      $('tab-settle').classList.add('active');
-      history.replaceState(null, '', location.pathname);
-      setTimeout(() => showToast(t('sx_loaded_link'), 'info'), 300);
+      const isRO = readShareParam('ro') === '1';
+      switchToTab('settle', { replaceHistory: true, keepHash: isRO });
+      _payloadHandled = true;
+      setTimeout(() => showToast(t(isRO ? 'ro_loaded_toast' : 'sx_loaded_link'), 'info'), 300);
       sxRenderAll();
       return;
     }
@@ -3650,7 +4109,7 @@ function sxLoad() {
 }
 
 $('sxShareBtn').onclick = () => {
-  const url = location.origin + location.pathname + '?sx=' + shareEncode(SX);
+  const url = location.origin + location.pathname + '#sx=' + shareEncode(SX);
   navigator.clipboard.writeText(url)
     .then(() => showToast(t('sx_link_copied')))
     .catch(() => { clipboardFallback(url); showToast(t('sx_link_copied')); });
@@ -3662,43 +4121,28 @@ let currentLang = localStorage.getItem('app-lang') || 'en';
 const I18N = {
   en: {
     // Tabs
-    tab_budget: 'Budget', tab_event: 'Event Splitter', tab_mahjong: 'Mahjong',
-    tab_budget_short: 'Budget', tab_event_short: 'Split', tab_mahjong_short: '麻將', tab_settle_short: 'Settle',
+    tab_event: 'Event Splitter', tab_mahjong: 'Mahjong',
+    tab_event_short: 'Split', tab_mahjong_short: '麻將', tab_settle_short: 'Settle',
     // Header
     share: 'Share', room_btn: 'Room',
-    // Hero
-    total_income: 'Total Income', total_expenses: 'Total Expenses',
-    net_savings: 'Net Savings', savings_rate: 'Savings Rate',
-    sources: 'sources', source: 'source',
-    categories_count: 'categories', category_count: 'category',
-    on_track: '✓ On track', over_budget: '⚠ Over budget',
-    badge_on_track: '🎯 On track', badge_could_improve: '⚠ Could improve', badge_below_target: '🔴 Below target',
-    // Budget cards
-    income_sources: 'Income Sources', expense_categories: 'Expense Categories',
-    spending_breakdown: 'Spending Breakdown', savings_overview: 'Savings Overview',
-    add_btn: '+ Add', add_income: 'Add Income', add_expense: 'Add Expense', cancel: 'Cancel',
-    // Income categories
-    cat_salary: 'Salary', cat_freelance: 'Freelance', cat_investment: 'Investment',
-    cat_business: 'Business', cat_rental: 'Rental', cat_side_hustle: 'Side Hustle', cat_other: 'Other',
-    // Expense categories
-    cat_housing: 'Housing', cat_food: 'Food', cat_transport: 'Transport',
-    cat_healthcare: 'Healthcare', cat_education: 'Education', cat_entertainment: 'Entertainment',
-    cat_shopping: 'Shopping', cat_utilities: 'Utilities', cat_insurance: 'Insurance',
-    cat_subscriptions: 'Subscriptions',
+    // Shared actions
+    add_btn: '+ Add', cancel: 'Cancel', click_add: 'Click <strong>+ Add</strong> to begin.',
+    no_expenses: 'No expenses yet.',
+    sx_add_person_btn: '+ Add Participant', sx_add_expense_btn: '+ Add Expense',
+    // Auth
+    auth_sign_in: 'Sign in',
+    auth_sign_out: 'Sign out',
+    auth_menu_title: 'Account',
+    auth_sign_in_hint: 'Sign in with Google to sync your groups, events, and mahjong games across devices. Data auto-expires 30 days after last activity.',
+    auth_cloud_synced: 'Cloud sync on',
+    auth_signed_in: 'Signed in as {name}',
+    auth_sign_in_failed: 'Sign-in failed. Please try again.',
+    auth_signing_in: 'Opening Google sign-in…',
+    auth_data_expired: 'Cleared {n} items older than 30 days',
+    auth_signed_out: 'Signed out',
+    auth_synced: '☁ Synced',
     // Placeholders
-    ph_income_name: 'e.g. Monthly Salary', ph_expense_name: 'e.g. Rent / Mortgage', ph_amount: 'Amount', ph_foreign_amt: 'Foreign amt',
-    // Empty states
-    no_income: 'No income sources yet.', click_add: 'Click <strong>+ Add</strong> to begin.',
-    no_expenses: 'No expenses yet.', click_add_expense: 'Click <strong>+ Add</strong> to track spending.',
-    add_expenses_chart: 'Add expenses to see<br>your spending breakdown.',
-    // Savings
-    saved: 'saved', monthly_income: 'Monthly Income', monthly_expenses: 'Monthly Expenses',
-    savings_month: 'Savings / Month', projected_annual: 'Projected Annual',
-    ring_tip: '💡 Experts recommend saving at least <strong>20%</strong> of your monthly income.',
-    advice_no_income: 'Add your income sources to unlock personalized savings insights.',
-    advice_great: "You're saving {rate}% of your income — great work! That's {annual} per year.",
-    advice_improve: "You're {rate}% of the way there. Reduce expenses by {gap}/mo to hit the 20% goal.",
-    advice_over: "You're spending {over}/mo more than you earn. Consider cutting expenses or growing income.",
+    ph_amount: 'Amount', ph_foreign_amt: 'Foreign amt',
     // Event Splitter
     event_details: 'Event Details', project: 'Project', new_btn: '+ New', delete: 'Delete',
     event_name: 'Event Name', num_people: 'Number of People',
@@ -3744,15 +4188,32 @@ const I18N = {
     mj_preview_self2: 'Each of {losers} pays {pay}',
     mj_preview_disc: '{winner} wins {pay} from {loser}',
     // Share modal
-    share_budget: 'Share Your Budget',
-    share_desc: 'All your budget data is encoded directly into this URL — no account or server needed. Share it with family or friends so they can view your breakdown.',
+    share_title: 'Share Link',
+    share_desc: 'Your data is encoded directly into this URL — no account or server needed. Share it with friends so they can view or continue on their side.',
+    share_ro_label: 'Share as read-only',
+    share_ro_hint: 'Recipients can view but not edit. They can still click "Copy to edit" to make their own copy.',
+    share_live_hint: 'Snapshot = frozen. <button type="button" class="live-collab-link" data-live-collab>Live collab</button> = everyone can edit.',
+    share_copy_snapshot: 'Copy snapshot link',
+    share_start_live: 'Start Live collab',
+    share_or_divider: 'or',
+    share_already_in_live: 'Already in Live collab · {code}',
+    share_empty_disabled_title: 'Add data first',
+    share_room_code_copied: 'Room code copied! · {code}',
+    share_live_started: 'Live collab started · code: {code}',
+    // Read-only viewer + room CTA
+    ro_banner_text: 'Read-only view — you\'re looking at a shared snapshot.',
+    ro_copy_btn: 'Copy to edit',
+    ro_copied: 'Copied to your data — you can edit now.',
+    ro_loaded_toast: 'Read-only view loaded 🔒',
+    room_cta_label: 'Live collab',
+    room_cta_title: 'Multiple people can edit at once — share the code.',
+    room_hint: 'New: real-time collab. Try it →',
     copy: 'Copy', close: 'Close',
     // Toast
     toast_done: 'Done!', toast_removed: 'Item removed.', toast_cleared: 'Cleared.',
     toast_link_copied: 'Link copied to clipboard!', toast_link_copied_short: 'Link copied!',
     toast_event_link: 'Event link copied to clipboard! 🔗',
     toast_event_link_short: 'Event link copied!',
-    toast_budget_loaded: 'Budget loaded from shared link! 🔗',
     toast_event_loaded: 'Event loaded from shared link! 🔗',
     toast_name_amount: 'Please enter a name and a valid amount.',
     toast_name_amount_short: 'Enter a name and valid amount.',
@@ -3786,39 +4247,34 @@ const I18N = {
     sx_split_equal: 'Split Equally', sx_split_custom: 'Custom Amounts',
     sx_custom_sum: 'Sum of shares', sx_sum_mismatch: '⚠ Sum does not equal total amount',
     sx_sum_mismatch_toast: 'Custom amounts must add up to the total.',
+    sx_with_fees: 'With fees', sx_scale_btn: 'Scale to total',
+    sx_scaled: 'Fees applied — shares scaled to total.',
     sx_tax_pct: 'Tax %', sx_tip_pct: 'Tip %', sx_svc_charge: 'Service $',
+    sx_tip: 'Tip',
+    sx_tip_unit_pct_title: 'Percent of subtotal',
+    sx_tip_unit_flat_title: 'Fixed amount',
     sx_subtotal: 'Subtotal',
   },
   zh: {
-    tab_budget: '預算', tab_event: '活動分帳', tab_mahjong: '麻將',
-    tab_budget_short: '預算', tab_event_short: '分帳', tab_mahjong_short: '麻將', tab_settle_short: '結算',
+    tab_event: '活動分帳', tab_mahjong: '麻將',
+    tab_event_short: '分帳', tab_mahjong_short: '麻將', tab_settle_short: '結算',
     share: '分享', room_btn: '房間',
-    total_income: '總收入', total_expenses: '總支出',
-    net_savings: '淨儲蓄', savings_rate: '儲蓄率',
-    sources: '筆收入', source: '筆收入',
-    categories_count: '筆支出', category_count: '筆支出',
-    on_track: '✓ 正常', over_budget: '⚠ 超支',
-    badge_on_track: '🎯 正常', badge_could_improve: '⚠ 可改善', badge_below_target: '🔴 低於目標',
-    income_sources: '收入來源', expense_categories: '支出分類',
-    spending_breakdown: '支出分佈', savings_overview: '儲蓄概覽',
-    add_btn: '+ 新增', add_income: '新增收入', add_expense: '新增支出', cancel: '取消',
-    cat_salary: '薪資', cat_freelance: '接案', cat_investment: '投資',
-    cat_business: '事業', cat_rental: '租金收入', cat_side_hustle: '副業', cat_other: '其他',
-    cat_housing: '住房', cat_food: '餐飲', cat_transport: '交通',
-    cat_healthcare: '醫療', cat_education: '教育', cat_entertainment: '娛樂',
-    cat_shopping: '購物', cat_utilities: '水電', cat_insurance: '保險',
-    cat_subscriptions: '訂閱',
-    ph_income_name: '例：月薪', ph_expense_name: '例：房租', ph_amount: '金額', ph_foreign_amt: '外幣金額',
-    no_income: '尚無收入來源', click_add: '點擊 <strong>+ 新增</strong> 開始',
-    no_expenses: '尚無支出', click_add_expense: '點擊 <strong>+ 新增</strong> 開始',
-    add_expenses_chart: '新增支出以查看分佈',
-    saved: '已存', monthly_income: '月收入', monthly_expenses: '月支出',
-    savings_month: '月儲蓄', projected_annual: '預估年度',
-    ring_tip: '💡 專家建議每月至少儲蓄收入的 <strong>20%</strong>。',
-    advice_no_income: '新增收入來源以獲得個人化儲蓄建議。',
-    advice_great: '你正在儲蓄收入的 {rate}%——做得好！每年可存 {annual}。',
-    advice_improve: '目前達到 {rate}%。每月減少支出 {gap} 即可達到 20% 目標。',
-    advice_over: '你每月超支 {over}。請考慮減少支出或增加收入。',
+    add_btn: '+ 新增', cancel: '取消', click_add: '點擊 <strong>+ 新增</strong> 開始',
+    no_expenses: '尚無支出',
+    sx_add_person_btn: '+ 新增參與者', sx_add_expense_btn: '+ 新增費用',
+    // 帳號
+    auth_sign_in: '登入',
+    auth_sign_out: '登出',
+    auth_menu_title: '帳戶',
+    auth_sign_in_hint: '使用 Google 登入即可跨裝置同步群組、活動與麻將資料，最後活動 30 天後自動刪除。',
+    auth_cloud_synced: '已開啟雲端同步',
+    auth_signed_in: '已登入 {name}',
+    auth_sign_in_failed: '登入失敗，請重試。',
+    auth_signing_in: '開啟 Google 登入…',
+    auth_data_expired: '已清除 {n} 筆超過 30 天的資料',
+    auth_signed_out: '已登出',
+    auth_synced: '☁ 已同步',
+    ph_amount: '金額', ph_foreign_amt: '外幣金額',
     event_details: '活動詳情', project: '專案', new_btn: '+ 新增', delete: '刪除',
     event_name: '活動名稱', num_people: '人數',
     expense_items: '費用項目', calculator: '🧮 計算機',
@@ -3860,14 +4316,30 @@ const I18N = {
     mj_preview_self: '{winner} 贏得 {total}',
     mj_preview_self2: '{losers} 各付 {pay}',
     mj_preview_disc: '{winner} 從 {loser} 贏得 {pay}',
-    share_budget: '分享你的預算',
-    share_desc: '所有預算資料都編碼在此網址中——不需帳號或伺服器。分享給家人或朋友即可查看你的預算明細。',
+    share_title: '分享連結',
+    share_desc: '資料都編碼在此網址中，不需帳號或伺服器。分享給朋友即可查看或在他們自己的裝置上繼續。',
+    share_ro_label: '唯讀分享',
+    share_ro_hint: '收到的人只能檢視，無法編輯。他們可以點「複製後編輯」建立自己的副本。',
+    share_live_hint: '快照連結＝靜態。<button type="button" class="live-collab-link" data-live-collab>「即時協作」</button>＝多人同編。',
+    share_copy_snapshot: '複製快照連結',
+    share_start_live: '開始即時協作',
+    share_or_divider: '或',
+    share_already_in_live: '已在即時協作中 · {code}',
+    share_empty_disabled_title: '先加入資料',
+    share_room_code_copied: '房間代碼已複製！ · {code}',
+    share_live_started: '即時協作已開啟 · 代碼：{code}',
+    ro_banner_text: '唯讀檢視 — 你正在看別人分享的快照。',
+    ro_copy_btn: '複製後編輯',
+    ro_copied: '已複製到你的資料，可以開始編輯。',
+    ro_loaded_toast: '已載入唯讀檢視 🔒',
+    room_cta_label: '即時協作',
+    room_cta_title: '多人同時編輯 — 分享房間代碼即可加入。',
+    room_hint: '新功能：即時協作，來試試 →',
     copy: '複製', close: '關閉',
     toast_done: '完成！', toast_removed: '項目已刪除', toast_cleared: '已清除',
     toast_link_copied: '連結已複製！', toast_link_copied_short: '連結已複製！',
     toast_event_link: '活動連結已複製！🔗',
     toast_event_link_short: '活動連結已複製！',
-    toast_budget_loaded: '已從分享連結載入預算！🔗',
     toast_event_loaded: '已從分享連結載入活動！🔗',
     toast_name_amount: '請輸入名稱和有效金額。',
     toast_name_amount_short: '請輸入名稱和有效金額。',
@@ -3901,7 +4373,12 @@ const I18N = {
     sx_split_equal: '均分', sx_split_custom: '自訂金額',
     sx_custom_sum: '分攤總計', sx_sum_mismatch: '⚠ 分攤金額總和不等於費用總額',
     sx_sum_mismatch_toast: '自訂金額總和必須等於費用總額。',
+    sx_with_fees: '含稅費', sx_scale_btn: '套用稅費',
+    sx_scaled: '已依比例套用稅費至各人金額。',
     sx_tax_pct: '稅 %', sx_tip_pct: '小費 %', sx_svc_charge: '服務費 $',
+    sx_tip: '小費',
+    sx_tip_unit_pct_title: '佔小計百分比',
+    sx_tip_unit_flat_title: '固定金額',
     sx_subtotal: '小計',
   }
 };
@@ -3911,16 +4388,6 @@ function t(key, params) {
   if (params) Object.keys(params).forEach(k => { s = s.replace('{' + k + '}', params[k]); });
   return s;
 }
-
-const CAT_KEY_MAP = {
-  'Salary':'cat_salary','Freelance':'cat_freelance','Investment':'cat_investment',
-  'Business':'cat_business','Rental':'cat_rental','Side Hustle':'cat_side_hustle',
-  'Housing':'cat_housing','Food':'cat_food','Transport':'cat_transport',
-  'Healthcare':'cat_healthcare','Education':'cat_education','Entertainment':'cat_entertainment',
-  'Shopping':'cat_shopping','Utilities':'cat_utilities','Insurance':'cat_insurance',
-  'Subscriptions':'cat_subscriptions','Other':'cat_other'
-};
-function tCat(cat) { return CAT_KEY_MAP[cat] ? t(CAT_KEY_MAP[cat]) : cat; }
 
 function updateStaticText() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -3937,6 +4404,9 @@ function updateStaticText() {
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
     el.placeholder = t(el.getAttribute('data-i18n-ph'));
   });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = t(el.getAttribute('data-i18n-title'));
+  });
 }
 
 function setLang(lang) {
@@ -3947,7 +4417,6 @@ function setLang(lang) {
   });
   updateStaticText();
   updateMonthChip();
-  render();
   renderEvItems();
   renderReceipt();
   mjRenderAll();
@@ -3962,6 +4431,10 @@ function updateMonthChip() {
 updateMonthChip();
 
 // ─── Boot ─────────────────────────────────────────────────────
+// Set by loadES / mjLoad / sxLoad when a `#e=` / `#mj=` / `#sx=` share
+// payload decoded and selected its target tab. When true, we skip the
+// path-based routing at the end of boot so the payload's implied tab wins.
+let _payloadHandled = false;
 loadState();
 loadES();
 mjLoad();
@@ -3972,7 +4445,6 @@ document.querySelectorAll('.lang-btn').forEach(b => {
   b.classList.toggle('active', (currentLang === 'en' && b.textContent.trim() === 'EN') || (currentLang === 'zh' && b.textContent.trim() === '中文'));
 });
 updateStaticText();
-render();
 // Sync event splitter inputs with loaded state
 renderESProjectDropdown();
 $('evEventName').value = ES.name;
@@ -3982,6 +4454,24 @@ renderReceipt();
 // Sync settlement tab
 renderSXGroupDropdown();
 sxRenderAll();
+
+// Apply the URL path to select a tab. If a hash payload already picked a
+// tab above, _payloadHandled is true and we let that stand. Otherwise:
+//  - Known slug (`/mahjong/`, `/event-splitter/`, `/expense-settlement/`) →
+//    switch to that tab, no history push (URL already matches).
+//  - Unknown deep path (`/foo/`) → land on the default tab and rewrite the
+//    URL to the default tab's path so the user isn't stuck on a bad URL.
+//  - Base path (`/` or `/budget-calculator/`) → land on default tab AND
+//    rewrite the URL to the default tab's canonical path so back/forward
+//    behavior is predictable.
+if (!_payloadHandled) {
+  const tabFromUrl = tabFromPath();
+  if (tabFromUrl) {
+    switchToTab(tabFromUrl, { pushHistory: false });
+  } else {
+    switchToTab(DEFAULT_TAB, { replaceHistory: true, keepHash: true });
+  }
+}
 
 // ─── Firebase Realtime Sync ───────────────────────────────────
 const firebaseConfig = {
@@ -3995,15 +4485,33 @@ const firebaseConfig = {
 };
 
 let fbDb;
+let fbAuth = null;
+let fbStore = null;
+let googleAuthProvider = null;
 try {
   firebase.initializeApp(firebaseConfig);
   fbDb = firebase.database();
 } catch(e) { console.warn('Firebase init failed:', e); }
+// Auth + Firestore are optional — if the SDK didn't load or the console hasn't
+// enabled the product, these silently no-op and the anonymous UX is preserved.
+try {
+  if (typeof firebase.auth === 'function') {
+    fbAuth = firebase.auth();
+    googleAuthProvider = new firebase.auth.GoogleAuthProvider();
+  }
+} catch(e) { console.warn('Firebase Auth init failed:', e); fbAuth = null; }
+try {
+  if (typeof firebase.firestore === 'function') fbStore = firebase.firestore();
+} catch(e) { console.warn('Firestore init failed:', e); fbStore = null; }
 
 let activeRoom = null;
 let fbListeners = {};
 let _fbUpdating = false;
 let _pendingCreateCode = null;
+let currentUser = null;
+// Guards a suspend of user-Firestore writes while migration is hydrating local
+// state — otherwise the freshly-written local state would round-trip back up.
+let _cloudHydrating = false;
 
 // Curated adjective+noun lists for memorable room codes.
 // Family-friendly, unambiguous, easy to read aloud. ~100×100×100 ≈ 1M combos.
@@ -4079,11 +4587,32 @@ async function hashPassword(pw) {
 
 function roomRef(path) { return fbDb.ref('rooms/' + activeRoom + '/' + path); }
 
-function fbWriteBudget() {
-  if (!activeRoom || !fbDb || _fbUpdating) return;
-  roomRef('budget').set({ income: S.income, expenses: S.expenses });
-  _fbTouchDebounced();
+// ── Known-rooms bookkeeping ───────────────────────────────────
+// The RTDB rules disallow reading the `rooms/` root, so we can no longer
+// enumerate every room to garbage-collect. Instead each browser tracks the
+// rooms it has touched in localStorage and only sweeps those.
+const KNOWN_ROOMS_KEY = 'sc-known-rooms';
+function getKnownRooms() {
+  try {
+    const raw = localStorage.getItem(KNOWN_ROOMS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(_) { return []; }
 }
+function rememberRoom(code) {
+  if (!code) return;
+  const set = new Set(getKnownRooms());
+  set.add(code);
+  const arr = Array.from(set).slice(-50); // cap at 50 to keep storage tiny
+  try { localStorage.setItem(KNOWN_ROOMS_KEY, JSON.stringify(arr)); } catch(_) {}
+}
+function forgetRoom(code) {
+  if (!code) return;
+  const arr = getKnownRooms().filter(c => c !== code);
+  try { localStorage.setItem(KNOWN_ROOMS_KEY, JSON.stringify(arr)); } catch(_) {}
+}
+
 function fbWriteMahjong() {
   if (!activeRoom || !fbDb || _fbUpdating) return;
   roomRef('mahjong').set({ players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds });
@@ -4113,26 +4642,29 @@ const _fbTouchDebounced = (function() {
 })();
 
 // ── Room cleanup: delete rooms inactive for 30+ days ──────────
-// Rooms with no lastActivityAt (created before this feature) are skipped — they
-// will get a timestamp naturally the next time someone uses them.
+// Rules disallow reading `rooms/` root, so we only sweep rooms this browser
+// has touched. Rooms with no lastActivityAt (created before this feature) are
+// skipped — they will get a timestamp naturally the next time someone uses them.
 const ROOM_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 function cleanupOldRooms() {
   if (!fbDb) return;
   const cutoff = Date.now() - ROOM_TTL_MS;
-  fbDb.ref('rooms').once('value', function(snap) {
-    const rooms = snap.val();
-    if (!rooms) return;
-    const deletions = [];
-    Object.keys(rooms).forEach(function(code) {
-      const meta = rooms[code] && rooms[code].meta;
-      if (!meta || !meta.lastActivityAt) return; // no timestamp → grace, skip
-      if (meta.lastActivityAt < cutoff) {
-        deletions.push(fbDb.ref('rooms/' + code).remove());
+  const known = getKnownRooms();
+  known.forEach(function(code) {
+    fbDb.ref('rooms/' + code + '/meta').once('value', function(snap) {
+      const meta = snap.val();
+      if (!meta) {
+        // Room no longer exists — drop it from our local list.
+        forgetRoom(code);
+        return;
       }
-    });
-    if (deletions.length) {
-      Promise.all(deletions).catch(function() {}); // best-effort, ignore errors
-    }
+      if (!meta.lastActivityAt) return; // grace period, skip
+      if (meta.lastActivityAt < cutoff) {
+        fbDb.ref('rooms/' + code).remove()
+          .then(function() { forgetRoom(code); })
+          .catch(function() {}); // best-effort
+      }
+    }, function() {}); // swallow permission errors
   });
 }
 
@@ -4164,23 +4696,12 @@ document.addEventListener('compositionstart', () => { _imeComposing = true;  });
 document.addEventListener('compositionend',   () => {
   _imeComposing = false;
   // Flush any pending debounced writes now that composition is done
-  if (activeRoom) { _fbWBD(); _fbWED(); _fbWMD(); _fbWSD(); }
+  if (activeRoom) { _fbWED(); _fbWMD(); _fbWSD(); }
 });
 
 function attachRoomListeners() {
   if (!activeRoom || !fbDb) return;
   detachRoomListeners();
-
-  const budgetCb = roomRef('budget').on('value', snap => {
-    const d = snap.val(); if (!d) return;
-    _fbUpdating = true;
-    S.income   = d.income   || [];
-    S.expenses = d.expenses || [];
-    try { localStorage.setItem('budgetcalc', JSON.stringify(S)); } catch(_) {}
-    _safeRender('tab-budget', render);
-    _fbUpdating = false;
-  });
-  fbListeners.budget = budgetCb;
 
   const mahjongCb = roomRef('mahjong').on('value', snap => {
     const d = snap.val(); if (!d) return;
@@ -4226,7 +4747,7 @@ function attachRoomListeners() {
 
 function detachRoomListeners() {
   if (!fbDb || !activeRoom) return;
-  ['budget','mahjong','event','settle'].forEach(key => {
+  ['mahjong','event','settle'].forEach(key => {
     if (fbListeners[key] !== undefined) {
       try { roomRef(key).off('value', fbListeners[key]); } catch(_) {}
       delete fbListeners[key];
@@ -4238,10 +4759,14 @@ function joinRoom(code) {
   activeRoom = normalizeRoomCode(code);
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
+  // legacy `?e=` support: also strip old-style payloads if present
   ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  url.hash = '';
   history.replaceState(null, '', url.toString());
   $('roomCodeLabel').textContent = activeRoom;
-  $('roomBadge').classList.add('active');
+  $('createRoomBtn').classList.add('in-room');
+  dismissRoomHint(true);
+  rememberRoom(activeRoom);
   attachRoomListeners();
   cleanupOldRooms();
   showToast('🔴 ' + (currentLang === 'zh' ? '已加入房間 ' : 'Joined room ') + activeRoom, 'info');
@@ -4271,7 +4796,8 @@ async function attemptJoinRoom(rawCode) {
 function leaveRoom() {
   detachRoomListeners();
   activeRoom = null;
-  $('roomBadge').classList.remove('active');
+  $('createRoomBtn').classList.remove('in-room');
+  $('roomCodeLabel').textContent = '';
   const url = new URL(location.href);
   url.searchParams.delete('room');
   history.replaceState(null, '', url.toString());
@@ -4350,16 +4876,18 @@ async function finalizeCreateRoom() {
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
   ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  url.hash = '';
   history.replaceState(null, '', url.toString());
   $('roomCodeLabel').textContent = activeRoom;
-  $('roomBadge').classList.add('active');
+  $('createRoomBtn').classList.add('in-room');
+  if (typeof dismissRoomHint === 'function') dismissRoomHint(true);
+  if (typeof rememberRoom === 'function') rememberRoom(activeRoom);
   if (fbDb) {
     const now = Date.now();
     const meta = { createdAt: now, lastActivityAt: now };
     if (passwordHash) meta.passwordHash = passwordHash;
     const roomData = {
       meta:    meta,
-      budget:  { income: S.income, expenses: S.expenses },
       mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
       event:   { name: ES.name, people: ES.people, items: ES.items },
       settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
@@ -4413,6 +4941,46 @@ async function verifyJoinPassword(code, expectedHash) {
   }
   joinRoom(code);
   closeRoomModal();
+}
+
+// Kept as a callable API for the "Start Live collab" share flow: creates a
+// room without opening the code-preview modal, so the caller can weave it
+// into its own confirmation UI. `opts.suppressToast` skips the default toast.
+async function createAndJoinRoom(onReady, opts) {
+  opts = opts || {};
+  if (!fbDb) {
+    showToast(currentLang === 'zh' ? '房間服務暫時無法使用' : 'Room service unavailable', 'warn');
+    return;
+  }
+  const code = await genUniqueRoomCode();
+  if (!code) {
+    showToast(currentLang === 'zh' ? '無法建立房間，請重試' : 'Could not create room, try again', 'warn');
+    return;
+  }
+  activeRoom = code;
+  const url = new URL(location.href);
+  url.searchParams.set('room', activeRoom);
+  ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
+  url.hash = '';
+  history.replaceState(null, '', url.toString());
+  $('roomCodeLabel').textContent = activeRoom;
+  $('createRoomBtn').classList.add('in-room');
+  if (typeof dismissRoomHint === 'function') dismissRoomHint(true);
+  if (typeof rememberRoom === 'function') rememberRoom(activeRoom);
+  const now = Date.now();
+  fbDb.ref('rooms/' + activeRoom).set({
+    meta:    { createdAt: now, lastActivityAt: now },
+    mahjong: { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds },
+    event:   { name: ES.name, people: ES.people, items: ES.items },
+    settle:  { name: SX.name, participants: SX.participants, expenses: SX.expenses }
+  }).then(() => {
+    attachRoomListeners();
+    cleanupOldRooms();
+    if (typeof onReady === 'function') onReady(activeRoom);
+  });
+  if (!opts.suppressToast) {
+    showToast('🔴 ' + (currentLang === 'zh' ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
+  }
 }
 
 function openRoomModal() {
@@ -4473,32 +5041,406 @@ function copyRoomLink() {
     .catch(() => { clipboardFallback(url); showToast(currentLang === 'zh' ? '連結已複製！' : 'Link copied!'); });
 }
 
+// ─── Cloud sync (Google sign-in + Firestore per-user data) ────
+// Anonymous UX is unchanged: if fbAuth or fbStore is null (SDK didn't load,
+// or Auth/Firestore not enabled in the Firebase Console), every function here
+// no-ops and the app runs off localStorage only.
+const MJ_DOC_ID = 'current'; // MJ is singleton per user
+const CLOUD_SWEEP_KEY = 'sc-last-cloud-sweep';
+
+function fsUserRoot() {
+  if (!fbStore || !currentUser) return null;
+  return fbStore.collection('users').doc(currentUser.uid);
+}
+function fsTs() {
+  return firebase.firestore.FieldValue.serverTimestamp();
+}
+function cloudActive() {
+  return !!(fbStore && currentUser && !_cloudHydrating);
+}
+
+// Write the currently-active event project doc.
+function cloudWriteES() {
+  if (!cloudActive() || !currentESProject) return;
+  const p = getESProjects()[currentESProject];
+  if (!p) return;
+  const root = fsUserRoot(); if (!root) return;
+  root.collection('events').doc(currentESProject).set({
+    name:   p.name   || '',
+    people: p.people || 2,
+    items:  p.items  || [],
+    lastActivityAt: fsTs(),
+  }, { merge: true }).catch(function(err) { console.warn('cloudWriteES failed', err); });
+}
+// Write the mahjong singleton doc.
+function cloudWriteMJ() {
+  if (!cloudActive()) return;
+  const root = fsUserRoot(); if (!root) return;
+  root.collection('mahjongGames').doc(MJ_DOC_ID).set({
+    players: MJ.players || [],
+    base:    MJ.base    || 0,
+    perTai:  MJ.perTai  || 0,
+    rounds:  MJ.rounds  || [],
+    lastActivityAt: fsTs(),
+  }, { merge: true }).catch(function(err) { console.warn('cloudWriteMJ failed', err); });
+}
+// Write the currently-active settlement group doc.
+function cloudWriteSX() {
+  if (!cloudActive() || !currentSXGroup) return;
+  const g = getSXGroups()[currentSXGroup];
+  if (!g) return;
+  const root = fsUserRoot(); if (!root) return;
+  root.collection('groups').doc(currentSXGroup).set({
+    name:         g.name         || '',
+    participants: g.participants || [],
+    expenses:     g.expenses     || [],
+    lastActivityAt: fsTs(),
+  }, { merge: true }).catch(function(err) { console.warn('cloudWriteSX failed', err); });
+}
+
+// Debounced Firestore writers — same 400ms as the RTDB room writers, and the
+// compositionend flush below covers them too so IME composition never triggers
+// mid-word writes.
+const _fsWED = _fbDebounce(cloudWriteES, 400);
+const _fsWMD = _fbDebounce(cloudWriteMJ, 400);
+const _fsWSD = _fbDebounce(cloudWriteSX, 400);
+
+document.addEventListener('compositionend', function() {
+  if (currentUser) { _fsWED(); _fsWMD(); _fsWSD(); }
+});
+
+// ── On-sign-in migration ─────────────────────────────────────
+// Compares each local entry against its cloud counterpart. Newer wins by
+// lastActivityAt; ties or missing local timestamps go to the local copy so
+// a first-time signer-in doesn't lose data they just made.
+function _cloudMillis(cloudDoc) {
+  const ts = cloudDoc && cloudDoc.lastActivityAt;
+  if (!ts) return 0;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+  return 0;
+}
+async function _mergeCollection(colName, localGetter, localSetter, keyMapper) {
+  const root = fsUserRoot(); if (!root) return;
+  const localMap = localGetter() || {};
+  const cloudSnap = await root.collection(colName).get();
+  const cloudMap = {};
+  cloudSnap.forEach(function(d) { cloudMap[d.id] = d.data(); });
+  const ids = new Set(Object.keys(localMap).concat(Object.keys(cloudMap)));
+  const nextLocal = Object.assign({}, localMap);
+  const uploads = [];
+  ids.forEach(function(id) {
+    const l = localMap[id];
+    const c = cloudMap[id];
+    if (l && !c) {
+      uploads.push([id, keyMapper(l)]);
+    } else if (!l && c) {
+      nextLocal[id] = keyMapper(c, { _lastActivityAt: _cloudMillis(c) || Date.now() });
+    } else if (l && c) {
+      const lTs = l._lastActivityAt || 0;
+      const cTs = _cloudMillis(c);
+      if (cTs > lTs) {
+        nextLocal[id] = keyMapper(c, { _lastActivityAt: cTs });
+      } else {
+        uploads.push([id, keyMapper(l)]);
+      }
+    }
+  });
+  localSetter(nextLocal);
+  await Promise.all(uploads.map(function(entry) {
+    return root.collection(colName).doc(entry[0]).set(
+      Object.assign({}, entry[1], { lastActivityAt: fsTs() }),
+      { merge: true }
+    );
+  }));
+}
+// Shape mappers strip the local-only _lastActivityAt from writes and clamp
+// missing fields on reads so a partial cloud doc can't corrupt local state.
+const _esKeyMap = function(src, extra) {
+  return Object.assign({
+    name:   src.name   || '',
+    people: src.people || 2,
+    items:  Array.isArray(src.items) ? src.items : [],
+  }, extra || {});
+};
+const _sxKeyMap = function(src, extra) {
+  return Object.assign({
+    name:         src.name         || '',
+    participants: Array.isArray(src.participants) ? src.participants : [],
+    expenses:     Array.isArray(src.expenses)     ? src.expenses     : [],
+  }, extra || {});
+};
+
+async function runCloudMigration() {
+  if (!fbStore || !currentUser) return;
+  _cloudHydrating = true;
+  try {
+    await _mergeCollection('events', getESProjects, saveESProjects, _esKeyMap);
+    await _mergeCollection('groups', getSXGroups, saveSXGroups, _sxKeyMap);
+
+    // Mahjong singleton
+    const root = fsUserRoot();
+    if (root) {
+      const mjDoc = await root.collection('mahjongGames').doc(MJ_DOC_ID).get();
+      const localMJ = (function() {
+        try { return JSON.parse(localStorage.getItem('mahjong-calc') || '{}'); } catch(_) { return {}; }
+      })();
+      if (!mjDoc.exists) {
+        if (localMJ && (localMJ.players || localMJ.rounds)) {
+          await root.collection('mahjongGames').doc(MJ_DOC_ID).set({
+            players: localMJ.players || MJ.players,
+            base:    localMJ.base    || 0,
+            perTai:  localMJ.perTai  || 0,
+            rounds:  localMJ.rounds  || [],
+            lastActivityAt: fsTs(),
+          }, { merge: true });
+        }
+      } else {
+        const c = mjDoc.data();
+        const cTs = _cloudMillis(c);
+        const lTs = localMJ && localMJ._lastActivityAt || 0;
+        if (cTs > lTs) {
+          MJ.players = c.players || MJ.players;
+          MJ.base    = c.base    != null ? c.base    : MJ.base;
+          MJ.perTai  = c.perTai  != null ? c.perTai  : MJ.perTai;
+          MJ.rounds  = c.rounds  || [];
+          try { localStorage.setItem('mahjong-calc', JSON.stringify(Object.assign({}, MJ, { _lastActivityAt: cTs }))); } catch(_) {}
+        } else if (localMJ && (localMJ.players || localMJ.rounds)) {
+          await root.collection('mahjongGames').doc(MJ_DOC_ID).set({
+            players: localMJ.players || MJ.players,
+            base:    localMJ.base    || 0,
+            perTai:  localMJ.perTai  || 0,
+            rounds:  localMJ.rounds  || [],
+            lastActivityAt: fsTs(),
+          }, { merge: true });
+        }
+      }
+    }
+
+    // Re-render in-memory state after migration (in case cloud overwrote local)
+    _rehydrateFromLocal();
+  } catch(err) {
+    console.warn('Cloud migration failed:', err);
+  } finally {
+    _cloudHydrating = false;
+  }
+}
+
+// After migration, refresh the in-memory ES/SX/MJ mirrors from localStorage
+// and re-render everything. Runs with _cloudHydrating still true so the
+// re-renders don't loop writes back up.
+function _rehydrateFromLocal() {
+  // Event Splitter
+  const esProjects = getESProjects();
+  if (currentESProject && esProjects[currentESProject]) {
+    const p = esProjects[currentESProject];
+    ES.name = p.name || ''; ES.people = p.people || 2; ES.items = p.items || [];
+    _safeSet($('evEventName'), ES.name);
+    _safeSet($('evPeople'),    ES.people);
+  }
+  renderESProjectDropdown();
+  renderEvItems(); renderReceipt();
+
+  // Settlement
+  const sxGroups = getSXGroups();
+  if (currentSXGroup && sxGroups[currentSXGroup]) {
+    const g = sxGroups[currentSXGroup];
+    SX.name = g.name || ''; SX.participants = g.participants || []; SX.expenses = g.expenses || [];
+    _safeSet($('sxGroupName'), SX.name);
+  }
+  renderSXGroupDropdown();
+  sxRenderAll();
+
+  // Mahjong
+  [0,1,2,3].forEach(i => _safeSet($('mjP'+i), MJ.players[i]));
+  _safeSet($('mjBase'),   MJ.base);
+  _safeSet($('mjPerTai'), MJ.perTai);
+  mjUpdateDropdowns(); mjRenderAll();
+}
+
+// ── 30-day TTL sweep for user data ────────────────────────────
+// Reuses ROOM_TTL_MS defined earlier — same 30-day window across the app.
+// Throttled to once per day per client via localStorage, and additionally
+// runs immediately after sign-in so a fresh device gets a clean slate.
+async function cloudSweepOldUserData(force) {
+  if (!fbStore || !currentUser) return;
+  const key = CLOUD_SWEEP_KEY + ':' + currentUser.uid;
+  const lastRun = parseInt(localStorage.getItem(key) || '0', 10);
+  const oneDay = 24 * 60 * 60 * 1000;
+  if (!force && (Date.now() - lastRun) < oneDay) return;
+
+  const cutoffMs = Date.now() - ROOM_TTL_MS;
+  const cutoffTs = firebase.firestore.Timestamp.fromMillis(cutoffMs);
+  const root = fsUserRoot(); if (!root) return;
+  const collections = ['events', 'groups', 'mahjongGames'];
+  let deleted = 0;
+  for (const col of collections) {
+    try {
+      const snap = await root.collection(col).where('lastActivityAt', '<', cutoffTs).get();
+      const batch = fbStore.batch();
+      snap.forEach(function(d) { batch.delete(d.ref); deleted++; });
+      if (!snap.empty) await batch.commit();
+    } catch(err) { console.warn('sweep '+col+' failed', err); }
+  }
+  try { localStorage.setItem(key, String(Date.now())); } catch(_) {}
+  if (deleted > 0) {
+    showToast(t('auth_data_expired', { n: deleted }), 'info');
+  }
+}
+
+// ── Auth UI helpers ───────────────────────────────────────────
+function updateAuthUI() {
+  const signInBtn = $('authSignInBtn');
+  const chip      = $('authAvatarBtn');
+  if (!signInBtn || !chip) return;
+  if (currentUser) {
+    signInBtn.style.display = 'none';
+    chip.style.display = 'inline-flex';
+    const img = $('authAvatarImg');
+    if (img) {
+      if (currentUser.photoURL) {
+        img.src = currentUser.photoURL;
+        img.style.display = '';
+      } else {
+        img.style.display = 'none';
+      }
+    }
+    const nameEl = $('authNameLabel');
+    if (nameEl) nameEl.textContent = currentUser.displayName || currentUser.email || 'Account';
+    chip.title = t('auth_signed_in', { name: currentUser.displayName || currentUser.email || '' });
+  } else {
+    signInBtn.style.display = '';
+    chip.style.display = 'none';
+  }
+}
+
+function openAuthModal() {
+  const modal = $('authModal');
+  const content = $('authModalContent');
+  const title = $('authModalTitle');
+  if (!modal || !content) return;
+  title.textContent = t('auth_menu_title');
+  if (currentUser) {
+    const photo = currentUser.photoURL ? '<img src="' + esc(currentUser.photoURL) + '" alt="" />' : '<div style="width:48px;height:48px;border-radius:50%;background:var(--bg)"></div>';
+    content.innerHTML =
+      '<div class="auth-user-row">' + photo +
+        '<div class="auth-user-meta">' +
+          '<div class="auth-user-name">' + esc(currentUser.displayName || 'Account') + '</div>' +
+          '<div class="auth-user-email">' + esc(currentUser.email || '') + '</div>' +
+          '<span class="auth-cloud-tag">' + t('auth_cloud_synced') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="auth-info">' + t('auth_sign_in_hint') + '</div>' +
+      '<div class="room-actions">' +
+        '<button class="btn btn-ghost" id="doSignOutBtn">' + t('auth_sign_out') + '</button>' +
+        '<button class="btn btn-primary" id="closeAuthBtn">' + t('close') + '</button>' +
+      '</div>';
+  } else {
+    content.innerHTML =
+      '<div class="auth-info">' + t('auth_sign_in_hint') + '</div>' +
+      '<div class="room-actions">' +
+        '<button class="btn btn-ghost" id="closeAuthBtn">' + t('cancel') + '</button>' +
+        '<button class="btn btn-primary" id="doSignInBtn">' + t('auth_sign_in') + '</button>' +
+      '</div>';
+  }
+  modal.classList.add('open');
+  // Wire buttons after inserting HTML
+  const so = $('doSignOutBtn');
+  if (so) so.onclick = function() { signOutUser(); closeAuthModal(); };
+  const si = $('doSignInBtn');
+  if (si) si.onclick = function() { signInUser(); closeAuthModal(); };
+  const cl = $('closeAuthBtn');
+  if (cl) cl.onclick = closeAuthModal;
+}
+function closeAuthModal() {
+  const modal = $('authModal');
+  if (modal) modal.classList.remove('open');
+}
+
+function signInUser() {
+  if (!fbAuth || !googleAuthProvider) {
+    showToast(t('auth_sign_in_failed'), 'warn');
+    return;
+  }
+  showToast(t('auth_signing_in'), 'info');
+  fbAuth.signInWithPopup(googleAuthProvider).catch(function(err) {
+    // Popup blocked or user cancelled — cancellation is not an error worth toasting
+    if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) return;
+    console.warn('Sign-in failed:', err);
+    showToast(t('auth_sign_in_failed'), 'warn');
+  });
+}
+function signOutUser() {
+  if (!fbAuth) return;
+  fbAuth.signOut().then(function() { showToast(t('auth_signed_out'), 'info'); });
+}
+
+if (fbAuth) {
+  fbAuth.onAuthStateChanged(function(user) {
+    currentUser = user || null;
+    updateAuthUI();
+    if (user) {
+      runCloudMigration().then(function() {
+        cloudSweepOldUserData(true);
+      });
+    }
+  });
+}
+
+// Header button wiring (safe when signed out too — the buttons just no-op)
+const _authSignInBtn = $('authSignInBtn');
+if (_authSignInBtn) _authSignInBtn.onclick = signInUser;
+const _authAvatarBtn = $('authAvatarBtn');
+if (_authAvatarBtn) _authAvatarBtn.onclick = openAuthModal;
+const _authModalEl = $('authModal');
+if (_authModalEl) _authModalEl.addEventListener('click', function(e) { if (e.target === _authModalEl) closeAuthModal(); });
+
 // Wrap persist functions to push changes to Firebase (debounced + IME-safe)
-const _origPersist   = persist;
 const _origPersistES = persistES;
 const _origMjPersist = mjPersist;
 const _origPersistSX = persistSX;
 // Debounced Firebase writers — 400ms groups rapid keystrokes into one write;
 // compositionend handler above flushes immediately after IME confirms a character.
-const _fbWBD = _fbDebounce(fbWriteBudget,  400);
 const _fbWED = _fbDebounce(fbWriteEvent,   400);
 const _fbWMD = _fbDebounce(fbWriteMahjong, 400);
 const _fbWSD = _fbDebounce(fbWriteSettle,  400);
-persist    = function() { _origPersist();   _fbWBD(); };
-persistES  = function() { _origPersistES(); _fbWED(); };
-mjPersist  = function() { _origMjPersist(); _fbWMD(); };
-persistSX  = function() { _origPersistSX(); _fbWSD(); };
+persistES  = function() { _origPersistES(); _fbWED(); if (currentUser) _fsWED(); };
+mjPersist  = function() { _origMjPersist(); _fbWMD(); if (currentUser) _fsWMD(); };
+persistSX  = function() { _origPersistSX(); _fbWSD(); if (currentUser) _fsWSD(); };
 
 // Button wiring
 $('createRoomBtn').onclick = openRoomModal;
-$('roomBadge').onclick     = openRoomModal;
 const _roomModalEl = $('roomModal');
 if (_roomModalEl) _roomModalEl.addEventListener('click', e => { if (e.target === _roomModalEl) closeRoomModal(); });
 
-// Auto-join room from URL on load
+// Inline "Live collab" links inside every share-hint block route here.
+// If the Share modal is open, close it first so the Room modal doesn't stack
+// on top; then flash the header CTA so the user's eyes land on where they are.
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('[data-live-collab]');
+  if (!link) return;
+  e.preventDefault();
+  if ($('shareOverlay').classList.contains('open')) closeShare();
+  // Persist the first-time hint dismissal so the header popover doesn't
+  // reappear on next load — the user has clearly discovered Live collab now.
+  try { localStorage.setItem('sc_room_hint_seen', '1'); } catch(_) {}
+  const cta = $('createRoomBtn');
+  if (cta) {
+    cta.classList.remove('flash');
+    // Force a reflow so the animation restarts if clicked twice in a row.
+    void cta.offsetWidth;
+    cta.classList.add('flash');
+    setTimeout(function() { cta.classList.remove('flash'); }, 2600);
+  }
+  openRoomModal();
+});
+
+// Auto-join room from URL on load. Skipped in read-only mode: a live-editable
+// room + a read-only viewer is contradictory, and the RO lock would just make
+// the room UI feel broken. Recipient can Copy-to-edit first, then rejoin.
 (function() {
   const roomCode = new URLSearchParams(location.search).get('room');
-  if (roomCode) {
+  if (roomCode && !SC_READ_ONLY) {
     // Retry until fbDb is ready (Firebase SDK may still be initializing on slow connections)
     function tryJoin(attempts) {
       if (fbDb) { attemptJoinRoom(roomCode); }
@@ -4507,6 +5449,143 @@ if (_roomModalEl) _roomModalEl.addEventListener('click', e => { if (e.target ===
     setTimeout(() => tryJoin(10), 200);
   }
 })();
+
+// ─── Read-only view (share links with &ro=1) ──────────────────
+// A recipient of a share link with `ro=1` sees the payload rendered
+// normally, but every input/textarea/select is disabled and every
+// add/edit/delete/share/room button is hidden via CSS. A "Copy to edit"
+// banner sits below the header; clicking it clones the payload into a
+// new local project/group (or overwrites Mahjong's singleton doc) and
+// unlocks the UI.
+let SC_READ_ONLY = false;
+let _roObserver = null;
+
+function _lockAllControls() {
+  document.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]), textarea, select').forEach(el => {
+    if (el.closest('.ro-banner') || el.id === 'shareUrl') return; // banner controls stay live
+    if (!el.hasAttribute('data-ro-original')) {
+      el.setAttribute('data-ro-original', el.disabled ? '1' : '0');
+    }
+    el.disabled = true;
+  });
+}
+function _unlockAllControls() {
+  document.querySelectorAll('[data-ro-original]').forEach(el => {
+    el.disabled = el.getAttribute('data-ro-original') === '1';
+    el.removeAttribute('data-ro-original');
+  });
+}
+function applyReadOnly(on) {
+  SC_READ_ONLY = !!on;
+  document.body.classList.toggle('readonly-mode', SC_READ_ONLY);
+  if (SC_READ_ONLY) {
+    _lockAllControls();
+    if (!_roObserver) {
+      // Re-lock any control that gets inserted by a subsequent render.
+      _roObserver = new MutationObserver(muts => {
+        for (const m of muts) {
+          if (m.addedNodes.length) { _lockAllControls(); break; }
+        }
+      });
+      _roObserver.observe(document.body, { childList: true, subtree: true });
+    }
+  } else {
+    _unlockAllControls();
+    if (_roObserver) { _roObserver.disconnect(); _roObserver = null; }
+  }
+}
+
+// Read-only view is activated only when both are true: (a) ?ro=1 or #ro=1
+// is present, AND (b) a share payload actually decoded. A stale ro=1 on a
+// URL with no payload is ignored — user just sees their normal local data.
+if (readShareParam('ro') === '1' && _payloadHandled) {
+  applyReadOnly(true);
+}
+
+// ── Copy to Edit ──────────────────────────────────────────────
+// Clones whatever's in memory into a NEW local project/group/game so the
+// recipient can edit their own copy. Doesn't touch the sender's data.
+function _uniqueName(base, existsFn) {
+  const suffix = currentLang === 'zh' ? ' (複本)' : ' (Copy)';
+  let name = (base || '') + suffix;
+  let n = 2;
+  while (existsFn(name)) name = (base || '') + suffix + ' ' + n++;
+  return name;
+}
+function copyToEdit() {
+  if (!SC_READ_ONLY) return;
+  const activeTab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab || DEFAULT_TAB;
+
+  if (activeTab === 'settle') {
+    const groups = getSXGroups();
+    const name = _uniqueName(SX.name || (currentLang === 'zh' ? '共享群組' : 'Shared group'),
+                             n => Object.prototype.hasOwnProperty.call(groups, n));
+    groups[name] = { name, participants: SX.participants, expenses: SX.expenses, _lastActivityAt: Date.now() };
+    saveSXGroups(groups);
+    try { localStorage.setItem('sx-active-group', name); } catch(_) {}
+    currentSXGroup = name;
+    SX.name = name;
+    _safeSet($('sxGroupName'), name);
+  } else if (activeTab === 'mahjong') {
+    // Mahjong is a singleton — no naming/renaming. Persist the shared state
+    // as-is over the local one (Frank's spec explicitly frames this feature
+    // around projects/groups; MJ just gets its localStorage overwritten).
+    try {
+      localStorage.setItem('mahjong-calc', JSON.stringify(Object.assign({}, MJ, { _lastActivityAt: Date.now() })));
+    } catch(_) {}
+  } else {
+    // Event Splitter
+    const projects = getESProjects();
+    const name = _uniqueName(ES.name || (currentLang === 'zh' ? '共享活動' : 'Shared event'),
+                             n => Object.prototype.hasOwnProperty.call(projects, n));
+    projects[name] = { name, people: ES.people, items: ES.items, _lastActivityAt: Date.now() };
+    saveESProjects(projects);
+    try { localStorage.setItem('ev-active-project', name); } catch(_) {}
+    currentESProject = name;
+    ES.name = name;
+    _safeSet($('evEventName'), name);
+    renderESProjectDropdown();
+  }
+
+  // Unlock the UI + rewrite URL to the tab's canonical path (drops the
+  // payload and ro=1, so a refresh keeps the copy without re-triggering RO).
+  applyReadOnly(false);
+  try { history.replaceState(null, '', pathForTab(activeTab)); } catch(_) {}
+
+  // Re-render so the newly-named group/project shows up in dropdowns.
+  if (activeTab === 'settle') { renderSXGroupDropdown(); sxRenderAll(); }
+  else if (activeTab === 'event') { renderEvItems(); renderReceipt(); }
+
+  showToast(t('ro_copied'), 'info');
+}
+const _roCopyBtn = $('roCopyBtn');
+if (_roCopyBtn) _roCopyBtn.onclick = copyToEdit;
+
+// ── Live-collab first-time hint ───────────────────────────────
+// Show a small popover pointing at the Room button until the user acknowledges
+// (click anywhere on it, or opens/joins a room). Suppressed in read-only mode
+// and when the user is already in a room.
+const ROOM_HINT_KEY = 'sc_room_hint_seen';
+function dismissRoomHint(persist) {
+  const p = $('roomHintPopover');
+  if (p) p.classList.remove('open');
+  if (persist) {
+    try { localStorage.setItem(ROOM_HINT_KEY, '1'); } catch(_) {}
+  }
+}
+function maybeShowRoomHint() {
+  if (SC_READ_ONLY) return;
+  if (activeRoom) return;
+  let seen = '';
+  try { seen = localStorage.getItem(ROOM_HINT_KEY) || ''; } catch(_) {}
+  if (seen) return;
+  const p = $('roomHintPopover');
+  if (!p) return;
+  p.classList.add('open');
+  p.onclick = () => dismissRoomHint(true);
+}
+// Show shortly after boot so it doesn't fight the initial paint.
+setTimeout(maybeShowRoomHint, 500);
 </script>
 </body>
 </html>

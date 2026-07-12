@@ -1,0 +1,68 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      ".read": false,
+      ".write": false,
+
+      "$code": {
+        ".read":  "$code.length >= 4 && $code.length <= 20",
+        ".write": "$code.length >= 4 && $code.length <= 20 && (!newData.exists() || newData.child('meta/createdAt').exists())",
+
+        "meta": {
+          "createdAt":      { ".validate": "newData.isNumber() && newData.val() > 0" },
+          "lastActivityAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+          "$other":         { ".validate": false }
+        },
+
+        "mahjong": {
+          "players": {
+            "$idx":   { ".validate": "newData.isString() && newData.val().length <= 100" }
+          },
+          "base":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000" },
+          "perTai":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000" },
+          "rounds": {
+            "$idx": {
+              "tai":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000" },
+              "$other": { ".validate": true }
+            }
+          },
+          "$other": { ".validate": true }
+        },
+
+        "event": {
+          "name":   { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "people": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 9999" },
+          "items": {
+            "$idx": {
+              "name":   { ".validate": "newData.isString() && newData.val().length <= 500" },
+              "amount": { ".validate": "newData.isNumber() && newData.val() >= -1000000000 && newData.val() <= 1000000000" },
+              "$other": { ".validate": true }
+            }
+          },
+          "$other": { ".validate": true }
+        },
+
+        "settle": {
+          "name":         { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "participants": {
+            "$idx":       { ".validate": "newData.isString() && newData.val().length <= 100" }
+          },
+          "expenses": {
+            "$idx": {
+              "desc":    { ".validate": "newData.isString() && newData.val().length <= 500" },
+              "amount":  { ".validate": "newData.isNumber() && newData.val() >= -1000000000 && newData.val() <= 1000000000" },
+              "paidBy":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
+              "$other":  { ".validate": true }
+            }
+          },
+          "$other": { ".validate": true }
+        },
+
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
