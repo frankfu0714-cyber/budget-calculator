@@ -8,12 +8,13 @@
       ".write": false,
 
       "$code": {
-        ".read":  "$code.length >= 4 && $code.length <= 20",
-        ".write": "$code.length >= 4 && $code.length <= 20 && (!newData.exists() || newData.child('meta/createdAt').exists())",
+        ".read":  "$code.length >= 4 && $code.length <= 30",
+        ".write": "$code.length >= 4 && $code.length <= 30 && (!newData.exists() || newData.child('meta/createdAt').exists())",
 
         "meta": {
           "createdAt":      { ".validate": "newData.isNumber() && newData.val() > 0" },
           "lastActivityAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
+          "passwordHash":   { ".validate": "newData.isString() && newData.val().length == 64 && newData.val().matches(/^[a-f0-9]+$/)" },
           "$other":         { ".validate": false }
         },
 
