@@ -4821,9 +4821,13 @@ function showCreatedRoomScreen(code) {
       (zh ? '將此代碼分享給你的夥伴：' : 'Share this code with your group:') +
     '</p>' +
     '<div class="room-code-display big" id="createdCodeDisplay" onclick="copyCreatedCode()" title="' + (zh ? '點擊複製' : 'Click to copy') + '">' + code + '</div>' +
-    '<button class="btn btn-primary" id="copyCodeBtn" style="width:100%;justify-content:center;margin:6px 0 18px" onclick="copyCreatedCode()">' +
+    '<button class="btn btn-primary" id="copyCodeBtn" style="width:100%;justify-content:center;margin:6px 0 10px" onclick="copyCreatedCode()">' +
       (zh ? '📋 複製代碼' : '📋 Copy Code') +
     '</button>' +
+    '<div style="background:var(--bg);border-radius:8px;padding:9px 12px;font-size:.78rem;color:var(--muted);margin-bottom:16px;line-height:1.4">' +
+      '<span style="font-weight:600;color:var(--text)">' + (zh ? '✓ 目前的資料會一併帶入房間' : '✓ Your current data comes with you') + '</span><br>' +
+      (zh ? '你在此頁面已輸入的分帳、麻將、活動資料都會成為房間的初始狀態，你的夥伴加入後可以立即看到。' : 'Everything you\'ve already typed in this session (participants, expenses, mahjong rounds, event items) becomes the room\'s starting state, so anyone who joins sees it right away.') +
+    '</div>' +
     '<label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">' + (zh ? '設定密碼（選填）' : 'Set password (optional)') + '</label>' +
     '<input type="password" id="newRoomPwInput" class="form-input" placeholder="' + (zh ? '選填 — 留空建立公開房間' : 'Optional — leave blank for a public room') + '" style="width:100%;margin-bottom:6px" />' +
     '<div class="room-pw-hint">' + (zh ? '最少 4 個字元。以雜湊儲存於資料庫。' : 'Minimum 4 characters. Stored hashed, never in plaintext.') + '</div>' +
