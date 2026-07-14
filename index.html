@@ -1394,6 +1394,10 @@
     .room-modal-box h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
 
     /* ── Sheet picker (shared across all three tools) ─────── */
+    /* Cards holding the sheet-header need visible overflow so the Switch
+       popover can extend past the card's bottom without getting clipped. */
+    .card:has(.sheet-header) { overflow: visible; }
+    .card.sheet-header-card { overflow: visible; }
     .sheet-header {
       display: flex;
       align-items: center;
@@ -1720,7 +1724,7 @@
     <div class="ev-left">
 
       <!-- Sheet header (event) -->
-      <div class="card">
+      <div class="card sheet-header-card">
         <div class="card-body" style="padding-top:14px;padding-bottom:14px">
           <div class="sheet-header">
             <div class="sheet-name-wrap">
@@ -1905,7 +1909,7 @@
     <div class="mj-left">
 
       <!-- Sheet header (mahjong) -->
-      <div class="card">
+      <div class="card sheet-header-card">
         <div class="card-body" style="padding-top:14px;padding-bottom:14px">
           <div class="sheet-header">
             <div class="sheet-name-wrap">
@@ -2137,7 +2141,7 @@
     <div class="sx-left">
 
       <!-- Sheet header (settle) -->
-      <div class="card">
+      <div class="card sheet-header-card">
         <div class="card-body" style="padding-top:14px;padding-bottom:14px">
           <div class="sheet-header">
             <div class="sheet-name-wrap">
