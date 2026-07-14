@@ -2385,6 +2385,13 @@
 // ─── State ────────────────────────────────────────────────────
 let S = { theme: 'light' };
 
+// Live-collab room state — hoisted here so init paths that fire before the
+// Firebase Room block (e.g. switchToTab → updateRoomHeaderLabel during the
+// SPA router's boot) don't hit a temporal-dead-zone ReferenceError. Real
+// values are populated later inside the Room block.
+let activeRoom = null;
+let activeRoomName = '';
+
 // ─── Utils ────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -5117,13 +5124,20 @@ sxRenderAll();
 //  - Base path (`/` or `/budget-calculator/`) → land on default tab AND
 //    rewrite the URL to the default tab's canonical path so back/forward
 //    behavior is predictable.
-if (!_payloadHandled) {
-  const tabFromUrl = tabFromPath();
-  if (tabFromUrl) {
-    switchToTab(tabFromUrl, { pushHistory: false });
-  } else {
-    switchToTab(DEFAULT_TAB, { replaceHistory: true, keepHash: true });
+// Wrapped in try/catch so a single regression during boot (e.g. TDZ) can't
+// abort the rest of the script — Google Sign In, live-collab wiring, and
+// other features come AFTER this line and must not be starved.
+try {
+  if (!_payloadHandled) {
+    const tabFromUrl = tabFromPath();
+    if (tabFromUrl) {
+      switchToTab(tabFromUrl, { pushHistory: false });
+    } else {
+      switchToTab(DEFAULT_TAB, { replaceHistory: true, keepHash: true });
+    }
   }
+} catch(err) {
+  console.warn('Initial tab routing failed:', err);
 }
 
 // ─── Firebase Realtime Sync ───────────────────────────────────
@@ -5157,8 +5171,10 @@ try {
   if (typeof firebase.firestore === 'function') fbStore = firebase.firestore();
 } catch(e) { console.warn('Firestore init failed:', e); fbStore = null; }
 
-let activeRoom = null;
-let activeRoomName = '';   // display name from meta.name — falls back to `activeRoom` in the header
+// activeRoom + activeRoomName are hoisted at the top of the script (see the
+// "State" section) so early switchToTab → updateRoomHeaderLabel calls don't
+// TDZ before reaching this block. They stay `null` / `''` until this block
+// or Firebase Room join populates them.
 let fbListeners = {};
 let _fbUpdating = false;
 let _pendingCreateCode = null;
@@ -5182,11 +5198,14 @@ function _currentSheetName() {
 }
 
 function updateRoomHeaderLabel() {
+  // Defense-in-depth against a future TDZ regression: `typeof` is safe even
+  // if these bindings are somehow reached before their `let` declaration.
+  if (typeof activeRoom === 'undefined') return;
   const el = $('roomCodeLabel');
   if (!el) return;
   if (!activeRoom) { el.textContent = ''; el.title = ''; return; }
-  const roomName = (activeRoomName && activeRoomName.trim()) ? activeRoomName.trim() : '';
-  const sheetName = _currentSheetName();
+  const roomName = (typeof activeRoomName === 'string' && activeRoomName.trim()) ? activeRoomName.trim() : '';
+  const sheetName = (typeof _currentSheetName === 'function') ? _currentSheetName() : '';
   // Prefer the explicit room name; fall back to the active tab's sheet name;
   // fall back to just the code.
   const primary = roomName || sheetName;
