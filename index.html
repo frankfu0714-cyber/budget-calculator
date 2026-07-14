@@ -1513,6 +1513,19 @@
     .sheet-switch-menu .sheet-empty {
       padding: 10px 12px; color: var(--muted); font-size: .82rem; text-align: center;
     }
+    /* Live-collab room marker in the switcher list — pulsing green dot next
+       to sheets that have a roomCode binding. Uses the same pulse-dot
+       animation as the header chip. */
+    .sheet-row-room-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: #10b981;
+      border-radius: 50%;
+      margin-right: 7px;
+      vertical-align: 1px;
+      animation: pulse-dot 1.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
     .sheet-header .sheet-btn-compact {
       flex-shrink: 0;
       padding: 8px 12px;
@@ -2686,9 +2699,11 @@ function switchToTab(tab, opts) {
     const url = pathForTab(tab) + location.search + (opts.keepHash ? location.hash : '');
     try { history[opts.replaceHistory ? 'replaceState' : 'pushState'](null, '', url); } catch(_) {}
   }
-  // Room header chip includes the active tab's sheet name — refresh when the
-  // active tab flips.
-  if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
+  // Each tab's active sheet may be bound to a different room — reconcile
+  // the RTDB subscription to whatever the new active tab points at. This
+  // also refreshes the header chip.
+  if (typeof _syncRoomToCurrentSheet === 'function') _syncRoomToCurrentSheet();
+  else if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
 }
 
 // ─── Tab Switching ────────────────────────────────────────────
@@ -3232,6 +3247,7 @@ function switchESProject(name) {
   $('evPeople').value = ES.people;
   renderEvItems(); renderReceipt();
   try { localStorage.setItem('ev-active-project', name); } catch(_) {}
+  if (typeof _syncRoomToCurrentSheet === 'function') _syncRoomToCurrentSheet();
 }
 // Legacy render fn name still called from several places; forwards to the new
 // shared sheet-switcher renderer once it's defined below.
@@ -3240,7 +3256,14 @@ function renderESProjectDropdown() { renderSheetSwitcher('event'); }
 function persistES() {
   if (!currentESProject) return;
   const projects = getESProjects();
-  projects[currentESProject] = { name: ES.name, people: ES.people, items: ES.items, _lastActivityAt: Date.now() };
+  const existing = projects[currentESProject] || {};
+  const next = { name: ES.name, people: ES.people, items: ES.items, _lastActivityAt: Date.now() };
+  // Preserve the room binding across state writes — otherwise every keystroke
+  // would wipe roomCode / roomPasswordHash / roomJoinedAt.
+  if (existing.roomCode)         next.roomCode         = existing.roomCode;
+  if (existing.roomPasswordHash) next.roomPasswordHash = existing.roomPasswordHash;
+  if (existing.roomJoinedAt)     next.roomJoinedAt     = existing.roomJoinedAt;
+  projects[currentESProject] = next;
   saveESProjects(projects);
 }
 
@@ -3633,6 +3656,7 @@ function switchMJProject(name) {
   }
   mjUpdateDropdowns(); mjRenderAll();
   try { localStorage.setItem('mahjong-active-project', name); } catch(_) {}
+  if (typeof _syncRoomToCurrentSheet === 'function') _syncRoomToCurrentSheet();
 }
 // Legacy render fn name still called from several places; forwards to shared renderer.
 function renderMJSessionDropdown() { renderSheetSwitcher('mahjong'); }
@@ -3653,6 +3677,10 @@ function mjPersist() {
   if (typeof existing.name === 'string' && existing.name.trim()) {
     next.name = existing.name;
   }
+  // Same preservation for the room binding.
+  if (existing.roomCode)         next.roomCode         = existing.roomCode;
+  if (existing.roomPasswordHash) next.roomPasswordHash = existing.roomPasswordHash;
+  if (existing.roomJoinedAt)     next.roomJoinedAt     = existing.roomJoinedAt;
   projects[currentMJProject] = next;
   saveMJProjects(projects);
 }
@@ -3744,6 +3772,143 @@ function _projectExpirySuffix(lastActivityAt, now) {
   return currentLang === 'zh'
     ? `  ⚠️ ${remaining} 天內刪除`
     : `  ⚠️ expires in ${remaining}d`;
+}
+
+// ─── Per-sheet room binding ───────────────────────────────────
+// Each sheet can carry an optional room reference:
+//   roomCode:         string   — the RTDB rooms/{code} this sheet syncs to
+//   roomPasswordHash: string   — SHA-256 hex of the password (empty for public)
+//   roomJoinedAt:     number   — when the binding was made (ms)
+// When the user switches sheets, the app auto-detaches the current room
+// listeners and attaches the new sheet's room (if any). Only one room is
+// subscribed at a time — no extra Firebase load.
+
+// Read the room binding off the currently-active sheet of a given tab.
+// Returns { code, hash } or null if the sheet has no binding.
+function _sheetRoomOf(tab) {
+  const cfg = (typeof SHEET_CONFIG === 'object') ? SHEET_CONFIG[tab] : null;
+  if (!cfg) return null;
+  const sheets = cfg.getSheets() || {};
+  const s = sheets[cfg.getCurrent()] || {};
+  return (typeof s.roomCode === 'string' && s.roomCode) ? {
+    code: s.roomCode,
+    hash: (typeof s.roomPasswordHash === 'string') ? s.roomPasswordHash : null,
+  } : null;
+}
+
+// Attach the room binding to the currently-active sheet on the current tab.
+// Called immediately after minting or joining a room. Also nudges the cloud
+// mirror so signed-in users' Firestore doc picks up the new binding.
+function _bindRoomToCurrentSheet(code, passwordHash) {
+  const tab = _activeTabName();
+  const cfg = SHEET_CONFIG[tab];
+  if (!cfg) return;
+  const sheets = cfg.getSheets();
+  const curKey = cfg.getCurrent();
+  if (!curKey || !sheets[curKey]) return;
+  sheets[curKey].roomCode = code;
+  sheets[curKey].roomPasswordHash = passwordHash || '';
+  sheets[curKey].roomJoinedAt = Date.now();
+  sheets[curKey]._lastActivityAt = Date.now();
+  cfg.saveSheets(sheets);
+  if (currentUser) {
+    if      (tab === 'event'   && typeof _fsWED === 'function') _fsWED();
+    else if (tab === 'settle'  && typeof _fsWSD === 'function') _fsWSD();
+    else if (tab === 'mahjong' && typeof _fsWMD === 'function') _fsWMD();
+  }
+}
+
+// Remove the room binding from the currently-active sheet. Called on
+// leaveRoom / "Convert to solo". Doesn't touch the sheet's data.
+function _unbindRoomFromCurrentSheet() {
+  const tab = _activeTabName();
+  const cfg = SHEET_CONFIG[tab];
+  if (!cfg) return;
+  const sheets = cfg.getSheets();
+  const curKey = cfg.getCurrent();
+  if (!curKey || !sheets[curKey]) return;
+  delete sheets[curKey].roomCode;
+  delete sheets[curKey].roomPasswordHash;
+  delete sheets[curKey].roomJoinedAt;
+  sheets[curKey]._lastActivityAt = Date.now();
+  cfg.saveSheets(sheets);
+  if (currentUser) {
+    if      (tab === 'event'   && typeof _fsWED === 'function') _fsWED();
+    else if (tab === 'settle'  && typeof _fsWSD === 'function') _fsWSD();
+    else if (tab === 'mahjong' && typeof _fsWMD === 'function') _fsWMD();
+  }
+}
+
+// Reconcile activeRoom to whatever the current tab's current sheet says.
+// - If the sheet's roomCode == activeRoom, no-op.
+// - If it differs, detach listeners for the old room (if any) and attach the
+//   new one. Setting `activeRoom = null` puts the app in local-only mode.
+// Called by sheet-switch / tab-switch handlers so binding follows the sheet.
+function _syncRoomToCurrentSheet() {
+  if (typeof activeRoom === 'undefined') return;
+  const binding = _sheetRoomOf(_activeTabName());
+  const nextCode = binding ? binding.code : null;
+  if (activeRoom === nextCode) return;
+
+  // Detach the old subscription (safe no-op if there wasn't one).
+  if (activeRoom && typeof detachRoomListeners === 'function') detachRoomListeners();
+
+  activeRoom = nextCode;
+  activeRoomName = ''; // will be repopulated by meta/name listener
+
+  const url = new URL(location.href);
+  if (nextCode) {
+    url.searchParams.set('room', nextCode);
+    $('createRoomBtn').classList.add('in-room');
+    if (typeof dismissRoomHint === 'function') dismissRoomHint(true);
+    if (typeof rememberRoom === 'function') rememberRoom(nextCode);
+    if (typeof attachRoomListeners === 'function') attachRoomListeners();
+    if (typeof cleanupOldRooms === 'function') cleanupOldRooms();
+  } else {
+    url.searchParams.delete('room');
+    $('createRoomBtn').classList.remove('in-room');
+  }
+  try { history.replaceState(null, '', url.toString()); } catch(_) {}
+  updateRoomHeaderLabel();
+  // Re-render the current tab's sheet menu so its 🔴 dot for bound sheets
+  // stays accurate.
+  const tab = _activeTabName();
+  if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher(tab);
+}
+
+// Look up (or create) a local sheet on the current tab that's bound to the
+// given room code. Used when joining someone else's room by code — instead
+// of clobbering the user's current sheet, we spin off a new sheet and switch
+// to it. If a sheet with the same code already exists we just switch to it
+// (so a refresh with ?room=CODE doesn't duplicate sheets).
+function _ensureSheetBoundToRoom(code, passwordHash, roomName) {
+  const zh = currentLang === 'zh';
+  const tab = _activeTabName();
+  const cfg = SHEET_CONFIG[tab];
+  if (!cfg) return;
+  const sheets = cfg.getSheets();
+  const existingKey = Object.keys(sheets).find(k => sheets[k] && sheets[k].roomCode === code);
+  if (existingKey) {
+    cfg.setCurrent(existingKey);
+    try { localStorage.setItem(cfg.activeLSKey, existingKey); } catch(_) {}
+    cfg.switchTo(existingKey);
+    if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher(tab);
+    return;
+  }
+  const base = (roomName && roomName.trim()) || (zh ? '未命名房間' : 'Untitled room');
+  const key = _uniqueRoomName(base, n => Object.prototype.hasOwnProperty.call(sheets, n));
+  sheets[key] = Object.assign({}, cfg.defaultSheet(), {
+    name: (roomName && roomName.trim()) || '',
+    roomCode: code,
+    roomPasswordHash: passwordHash || '',
+    roomJoinedAt: Date.now(),
+    _lastActivityAt: Date.now(),
+  });
+  cfg.saveSheets(sheets);
+  cfg.setCurrent(key);
+  try { localStorage.setItem(cfg.activeLSKey, key); } catch(_) {}
+  cfg.switchTo(key);
+  if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher(tab);
 }
 
 // ─── Sheet picker (shared across all three tools) ─────────────
@@ -3867,8 +4032,13 @@ function renderSheetSwitcher(tab) {
     const suffix = _projectExpirySuffix(s._lastActivityAt, now);
     const meta = _sheetRelativeTime(s._lastActivityAt);
     const cls = (key === currentKey) ? ' current' : '';
+    // Small pulsing red dot marks sheets that are bound to a live-collab
+    // room so the user can spot shared sheets at a glance.
+    const dot = (typeof s.roomCode === 'string' && s.roomCode)
+      ? '<span class="sheet-row-room-dot" title="' + esc(t('sheet_bound_to_room', { code: s.roomCode })) + '"></span>'
+      : '';
     return '<button type="button" class="sheet-row' + cls + '" data-sheet-key="' + esc(key) + '">' +
-      '<span class="sheet-row-name">' + esc(label) + esc(suffix) + '</span>' +
+      '<span class="sheet-row-name">' + dot + esc(label) + esc(suffix) + '</span>' +
       (meta ? '<span class="sheet-row-meta">' + esc(meta) + '</span>' : '') +
     '</button>';
   }).join('');
@@ -4013,6 +4183,7 @@ function switchSXGroup(name) {
   if (nameInp && document.activeElement !== nameInp) nameInp.value = SX.name;
   sxRenderAll();
   try { localStorage.setItem('sx-active-group', name); } catch(_) {}
+  if (typeof _syncRoomToCurrentSheet === 'function') _syncRoomToCurrentSheet();
 }
 // Legacy render fn name still called from several places; forwards to shared renderer.
 function renderSXGroupDropdown() { renderSheetSwitcher('settle'); }
@@ -4649,7 +4820,12 @@ function sxRenderAll() {
 function persistSX() {
   if (!currentSXGroup) return;
   const groups = getSXGroups();
-  groups[currentSXGroup] = { name: SX.name, participants: SX.participants, expenses: SX.expenses, _lastActivityAt: Date.now() };
+  const existing = groups[currentSXGroup] || {};
+  const next = { name: SX.name, participants: SX.participants, expenses: SX.expenses, _lastActivityAt: Date.now() };
+  if (existing.roomCode)         next.roomCode         = existing.roomCode;
+  if (existing.roomPasswordHash) next.roomPasswordHash = existing.roomPasswordHash;
+  if (existing.roomJoinedAt)     next.roomJoinedAt     = existing.roomJoinedAt;
+  groups[currentSXGroup] = next;
   saveSXGroups(groups);
 }
 
@@ -4766,6 +4942,7 @@ const I18N = {
     // Event Splitter
     event_details: 'Event Details', project: 'Project', new_btn: '+ New', delete: 'Delete', rename: 'Rename',
     sheet_switch: 'Switch', sheet_untitled: 'Untitled sheet', sheet_none: 'No sheets yet',
+    sheet_bound_to_room: 'Live-collab room: {code}',
     event_name: 'Event Name', num_people: 'Number of People',
     expense_items: 'Expense Items', calculator: '🧮 Calculator',
     amount_type: 'Amount Type', total: 'Total', per_person: 'Per Person',
@@ -4934,6 +5111,7 @@ const I18N = {
     ph_amount: '金額', ph_foreign_amt: '外幣金額',
     event_details: '活動詳情', project: '專案', new_btn: '+ 新增', delete: '刪除', rename: '重新命名',
     sheet_switch: '切換', sheet_untitled: '未命名分帳表', sheet_none: '尚無分帳表',
+    sheet_bound_to_room: '即時共享房間：{code}',
     event_name: '活動名稱', num_people: '人數',
     expense_items: '費用項目', calculator: '🧮 計算機',
     amount_type: '金額類型', total: '總額', per_person: '每人',
@@ -5594,7 +5772,31 @@ async function attemptJoinRoom(rawCode) {
     showToast(zh ? '請輸入有效的房間代碼' : 'Enter a valid room code', 'error');
     return;
   }
-  if (!fbDb) { joinRoom(code); closeRoomModal(); return; }
+
+  // If any local sheet on the current tab already carries this room binding,
+  // just switch to it — no re-prompt, no duplicate sheet on refresh.
+  const tab = _activeTabName();
+  const cfg = SHEET_CONFIG && SHEET_CONFIG[tab];
+  if (cfg) {
+    const sheets = cfg.getSheets();
+    const existingKey = Object.keys(sheets).find(k => sheets[k] && sheets[k].roomCode === code);
+    if (existingKey) {
+      cfg.setCurrent(existingKey);
+      try { localStorage.setItem(cfg.activeLSKey, existingKey); } catch(_) {}
+      cfg.switchTo(existingKey);
+      if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher(tab);
+      closeRoomModal();
+      return;
+    }
+  }
+
+  if (!fbDb) {
+    // Offline / Firebase-unavailable fallback: spin off the sheet anyway so
+    // the user has somewhere to work; sync will kick in when Firebase reloads.
+    _ensureSheetBoundToRoom(code, '', '');
+    closeRoomModal();
+    return;
+  }
   let meta = null;
   try {
     const snap = await fbDb.ref('rooms/' + code + '/meta').once('value');
@@ -5604,11 +5806,15 @@ async function attemptJoinRoom(rawCode) {
     showJoinPasswordPrompt(code, meta.passwordHash);
     return;
   }
-  joinRoom(code);
+  _ensureSheetBoundToRoom(code, '', meta ? (meta.name || '') : '');
   closeRoomModal();
 }
 
 function leaveRoom() {
+  // Peel the binding off the current sheet FIRST — otherwise _syncRoom would
+  // immediately try to re-attach the same room the moment anything triggers it.
+  const tab = _activeTabName();
+  _unbindRoomFromCurrentSheet();
   detachRoomListeners();
   activeRoom = null;
   activeRoomName = '';
@@ -5617,7 +5823,8 @@ function leaveRoom() {
   const url = new URL(location.href);
   url.searchParams.delete('room');
   history.replaceState(null, '', url.toString());
-  showToast(currentLang === 'zh' ? '已離開房間' : 'Left room', 'info');
+  if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher(tab);
+  showToast(currentLang === 'zh' ? '已離開房間（此分帳表已轉為單機）' : 'Left room — this sheet is solo now', 'info');
 }
 
 // Save the user's rename input to RTDB. Called on blur/change from the active
@@ -5857,6 +6064,11 @@ async function finalizeCreateRoom() {
     }
     fbDb.ref('rooms/' + activeRoom).set(roomData).then(() => { attachRoomListeners(); cleanupOldRooms(); });
   }
+  // Persist the room binding onto the sheet that just created it. Switching
+  // to another sheet will auto-detach; switching back auto-rejoins with the
+  // stored password hash.
+  _bindRoomToCurrentSheet(activeRoom, passwordHash);
+  if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher(activeTab);
   _pendingCreateCode = null;
   showToast('🔴 ' + (zh ? '房間已建立：' : 'Room created: ') + activeRoom, 'info');
   closeRoomModal();
@@ -5902,7 +6114,15 @@ async function verifyJoinPassword(code, expectedHash) {
     if (inp) { inp.value = ''; inp.focus(); }
     return;
   }
-  joinRoom(code);
+  // Grab the room's meta.name so the new local sheet gets a sensible name.
+  let roomName = '';
+  try {
+    const snap = await fbDb.ref('rooms/' + code + '/meta/name').once('value');
+    roomName = snap.val() || '';
+  } catch(_) {}
+  // Password matched — spin off (or reuse) a sheet bound to this room and
+  // stash the verified hash on the sheet so future switches skip the prompt.
+  _ensureSheetBoundToRoom(code, hash, roomName);
   closeRoomModal();
 }
 
@@ -6130,19 +6350,29 @@ async function _mergeCollection(colName, localGetter, localSetter, keyMapper) {
 }
 // Shape mappers strip the local-only _lastActivityAt from writes and clamp
 // missing fields on reads so a partial cloud doc can't corrupt local state.
+// Room-binding fields ride along on every sheet's cloud doc so binding
+// follows the user across devices. Passwords are already hashed client-side
+// before storage.
+function _roomBindingFields(src) {
+  const out = {};
+  if (typeof src.roomCode === 'string' && src.roomCode)                 out.roomCode = src.roomCode;
+  if (typeof src.roomPasswordHash === 'string' && src.roomPasswordHash) out.roomPasswordHash = src.roomPasswordHash;
+  if (typeof src.roomJoinedAt === 'number')                             out.roomJoinedAt = src.roomJoinedAt;
+  return out;
+}
 const _esKeyMap = function(src, extra) {
   return Object.assign({
     name:   src.name   || '',
     people: src.people || 2,
     items:  Array.isArray(src.items) ? src.items : [],
-  }, extra || {});
+  }, _roomBindingFields(src), extra || {});
 };
 const _sxKeyMap = function(src, extra) {
   return Object.assign({
     name:         src.name         || '',
     participants: Array.isArray(src.participants) ? src.participants : [],
     expenses:     Array.isArray(src.expenses)     ? src.expenses     : [],
-  }, extra || {});
+  }, _roomBindingFields(src), extra || {});
 };
 const _mjKeyMap = function(src, extra) {
   return Object.assign({
@@ -6151,7 +6381,7 @@ const _mjKeyMap = function(src, extra) {
     base:    src.base    != null ? src.base    : 0,
     perTai:  src.perTai  != null ? src.perTai  : 0,
     rounds:  Array.isArray(src.rounds) ? src.rounds : [],
-  }, extra || {});
+  }, _roomBindingFields(src), extra || {});
 };
 
 // One-time cleanup: the pre-multi-project Mahjong code stored a singleton doc at
