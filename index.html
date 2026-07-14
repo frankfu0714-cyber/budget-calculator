@@ -1794,6 +1794,7 @@
             <label class="field-label" data-i18n="mj_session">Session</label>
             <div style="display:flex;gap:6px;align-items:center">
               <select class="field-input" id="mjSessionSel" style="flex:1;margin:0"></select>
+              <button class="btn btn-ghost btn-sm" id="mjRenameSessionBtn" title="Rename session" style="white-space:nowrap;flex-shrink:0"><span>✏️ </span><span data-i18n="rename">Rename</span></button>
               <button class="btn btn-ghost btn-sm" id="mjNewSessionBtn" style="white-space:nowrap;flex-shrink:0" data-i18n="new_btn">+ New</button>
               <button class="btn btn-ghost btn-sm" id="mjDeleteSessionBtn" title="Delete session" style="white-space:nowrap;flex-shrink:0"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
             </div>
@@ -2534,6 +2535,9 @@ let ES = { name: '', people: 2, items: [] };
 $('evEventName').addEventListener('input', () => {
   ES.name = $('evEventName').value;
   renderReceipt(); persistES();
+  // Live-update the project dropdown label so it tracks the name field.
+  // The dropdown isn't the focused element, so this is IME-safe.
+  renderESProjectDropdown();
 });
 $('evPeople').addEventListener('input', () => {
   ES.people = Math.max(1, parseInt($('evPeople').value) || 1);
@@ -3054,14 +3058,15 @@ function saveESProjects(p) {
 function renderESProjectDropdown() {
   const sel = $('esProjectSel');
   const projects = getESProjects();
-  const names = Object.keys(projects);
+  const keys = Object.keys(projects);
   const now = Date.now();
-  sel.innerHTML = names.length === 0
+  sel.innerHTML = keys.length === 0
     ? '<option value="">—</option>'
-    : names.map(n => {
-        const ts = projects[n] && projects[n]._lastActivityAt;
-        const suffix = _projectExpirySuffix(ts, now);
-        return `<option value="${esc(n)}"${n === currentESProject ? ' selected' : ''}>${esc(n)}${suffix}</option>`;
+    : keys.map(key => {
+        const p = projects[key] || {};
+        const label = (typeof p.name === 'string' && p.name.trim()) ? p.name.trim() : key;
+        const suffix = _projectExpirySuffix(p._lastActivityAt, now);
+        return `<option value="${esc(key)}"${key === currentESProject ? ' selected' : ''}>${esc(label)}${suffix}</option>`;
       }).join('');
 }
 
@@ -3498,14 +3503,15 @@ function renderMJSessionDropdown() {
   const sel = $('mjSessionSel');
   if (!sel) return;
   const projects = getMJProjects();
-  const names = Object.keys(projects);
+  const keys = Object.keys(projects);
   const now = Date.now();
-  sel.innerHTML = names.length === 0
+  sel.innerHTML = keys.length === 0
     ? '<option value="">—</option>'
-    : names.map(n => {
-        const ts = projects[n] && projects[n]._lastActivityAt;
-        const suffix = _projectExpirySuffix(ts, now);
-        return `<option value="${esc(n)}"${n === currentMJProject ? ' selected' : ''}>${esc(n)}${suffix}</option>`;
+    : keys.map(key => {
+        const p = projects[key] || {};
+        const label = (typeof p.name === 'string' && p.name.trim()) ? p.name.trim() : key;
+        const suffix = _projectExpirySuffix(p._lastActivityAt, now);
+        return `<option value="${esc(key)}"${key === currentMJProject ? ' selected' : ''}>${esc(label)}${suffix}</option>`;
       }).join('');
 }
 
@@ -3529,13 +3535,20 @@ function switchMJProject(name) {
 function mjPersist() {
   if (!currentMJProject) return;
   const projects = getMJProjects();
-  projects[currentMJProject] = {
+  const existing = projects[currentMJProject] || {};
+  const next = {
     players: MJ.players,
     base:    MJ.base,
     perTai:  MJ.perTai,
     rounds:  MJ.rounds,
     _lastActivityAt: Date.now(),
   };
+  // Preserve the user-editable display name across state writes so it
+  // doesn't get dropped when the rest of the session is re-persisted.
+  if (typeof existing.name === 'string' && existing.name.trim()) {
+    next.name = existing.name;
+  }
+  projects[currentMJProject] = next;
   saveMJProjects(projects);
 }
 
@@ -3659,6 +3672,26 @@ if ($('mjDeleteSessionBtn')) {
     showToast(t('toast_project_deleted'), 'info');
   };
 }
+if ($('mjRenameSessionBtn')) {
+  $('mjRenameSessionBtn').onclick = () => {
+    if (!currentMJProject) return;
+    const zh = currentLang === 'zh';
+    const projects = getMJProjects();
+    const existing = projects[currentMJProject] || {};
+    const current = (typeof existing.name === 'string' && existing.name.trim()) ? existing.name : currentMJProject;
+    const next = prompt(zh ? '新名稱：' : 'New name:', current);
+    if (next == null) return; // user cancelled
+    const trimmed = next.trim().slice(0, 100);
+    // Empty input clears the display name — dropdown falls back to the key.
+    existing.name = trimmed;
+    existing._lastActivityAt = Date.now();
+    projects[currentMJProject] = existing;
+    saveMJProjects(projects);
+    renderMJSessionDropdown();
+    // Trigger the cloud writer so signed-in users' Firestore doc updates too.
+    if (currentUser && typeof _fsWMD === 'function') _fsWMD();
+  };
+}
 
 // Helper used by every project dropdown — appends " (expires in Nd)" when a
 // project's last activity is close to the 30-day TTL cutoff. Returns '' when
@@ -3695,14 +3728,15 @@ function saveSXGroups(p) {
 function renderSXGroupDropdown() {
   const sel = $('sxGroupSel');
   const groups = getSXGroups();
-  const names = Object.keys(groups);
+  const keys = Object.keys(groups);
   const now = Date.now();
-  sel.innerHTML = names.length === 0
+  sel.innerHTML = keys.length === 0
     ? '<option value="">—</option>'
-    : names.map(n => {
-        const ts = groups[n] && groups[n]._lastActivityAt;
-        const suffix = _projectExpirySuffix(ts, now);
-        return `<option value="${esc(n)}"${n === currentSXGroup ? ' selected' : ''}>${esc(n)}${suffix}</option>`;
+    : keys.map(key => {
+        const g = groups[key] || {};
+        const label = (typeof g.name === 'string' && g.name.trim()) ? g.name.trim() : key;
+        const suffix = _projectExpirySuffix(g._lastActivityAt, now);
+        return `<option value="${esc(key)}"${key === currentSXGroup ? ' selected' : ''}>${esc(label)}${suffix}</option>`;
       }).join('');
 }
 
@@ -3762,6 +3796,8 @@ $('sxDeleteGroupBtn').onclick = () => {
 $('sxGroupName').addEventListener('input', () => {
   SX.name = $('sxGroupName').value;
   persistSX();
+  // Live-update the group dropdown label so it reflects renames immediately.
+  renderSXGroupDropdown();
 });
 
 // ── Participants ──────────────────────────────────────────────
@@ -4511,7 +4547,7 @@ const I18N = {
     // Placeholders
     ph_amount: 'Amount', ph_foreign_amt: 'Foreign amt',
     // Event Splitter
-    event_details: 'Event Details', project: 'Project', new_btn: '+ New', delete: 'Delete',
+    event_details: 'Event Details', project: 'Project', new_btn: '+ New', delete: 'Delete', rename: 'Rename',
     event_name: 'Event Name', num_people: 'Number of People',
     expense_items: 'Expense Items', calculator: '🧮 Calculator',
     amount_type: 'Amount Type', total: 'Total', per_person: 'Per Person',
@@ -4678,7 +4714,7 @@ const I18N = {
     auth_signed_out: '已登出',
     auth_synced: '☁ 已同步',
     ph_amount: '金額', ph_foreign_amt: '外幣金額',
-    event_details: '活動詳情', project: '專案', new_btn: '+ 新增', delete: '刪除',
+    event_details: '活動詳情', project: '專案', new_btn: '+ 新增', delete: '刪除', rename: '重新命名',
     event_name: '活動名稱', num_people: '人數',
     expense_items: '費用項目', calculator: '🧮 計算機',
     amount_type: '金額類型', total: '總額', per_person: '每人',
@@ -4954,9 +4990,24 @@ try {
 } catch(e) { console.warn('Firestore init failed:', e); fbStore = null; }
 
 let activeRoom = null;
+let activeRoomName = '';   // display name from meta.name — falls back to `activeRoom` in the header
 let fbListeners = {};
 let _fbUpdating = false;
 let _pendingCreateCode = null;
+
+// Renders the header room-badge label from activeRoom + activeRoomName.
+// Shown when in-room via `#createRoomBtn.in-room` — reads name if set, else the code.
+function updateRoomHeaderLabel() {
+  const el = $('roomCodeLabel');
+  if (!el) return;
+  if (activeRoom) {
+    el.textContent = (activeRoomName && activeRoomName.trim()) ? activeRoomName.trim() : activeRoom;
+    el.title = activeRoom; // code-on-hover so users can still find the shareable code
+  } else {
+    el.textContent = '';
+    el.title = '';
+  }
+}
 let currentUser = null;
 // Guards a suspend of user-Firestore writes while migration is hydrating local
 // state — otherwise the freshly-written local state would round-trip back up.
@@ -5152,6 +5203,20 @@ function attachRoomListeners() {
   if (!activeRoom || !fbDb) return;
   detachRoomListeners();
 
+  // Listen to the room's name field. Fires on initial subscribe with whatever
+  // is currently there, and again whenever any client renames the room.
+  const metaNameCb = roomRef('meta/name').on('value', snap => {
+    activeRoomName = (typeof snap.val() === 'string') ? snap.val() : '';
+    updateRoomHeaderLabel();
+    // If the room-management modal is open, keep its rename input in sync
+    // too — but only if it's not currently focused (don't fight the typer).
+    const roomInp = $('activeRoomNameInput');
+    if (roomInp && document.activeElement !== roomInp) {
+      roomInp.value = activeRoomName;
+    }
+  });
+  fbListeners.metaName = metaNameCb;
+
   const mahjongCb = roomRef('mahjong').on('value', snap => {
     const d = snap.val(); if (!d) return;
     _fbUpdating = true;
@@ -5196,6 +5261,11 @@ function attachRoomListeners() {
 
 function detachRoomListeners() {
   if (!fbDb || !activeRoom) return;
+  const metaRef = roomRef('meta/name');
+  if (fbListeners.metaName !== undefined) {
+    try { metaRef.off('value', fbListeners.metaName); } catch(_) {}
+    delete fbListeners.metaName;
+  }
   ['mahjong','event','settle'].forEach(key => {
     if (fbListeners[key] !== undefined) {
       try { roomRef(key).off('value', fbListeners[key]); } catch(_) {}
@@ -5206,13 +5276,16 @@ function detachRoomListeners() {
 
 function joinRoom(code) {
   activeRoom = normalizeRoomCode(code);
+  // Reset the name; the meta/name listener attached below will overwrite it
+  // with the room's actual name on its initial fire.
+  activeRoomName = '';
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
   // legacy `?e=` support: also strip old-style payloads if present
   ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
   url.hash = '';
   history.replaceState(null, '', url.toString());
-  $('roomCodeLabel').textContent = activeRoom;
+  updateRoomHeaderLabel();
   $('createRoomBtn').classList.add('in-room');
   dismissRoomHint(true);
   rememberRoom(activeRoom);
@@ -5245,12 +5318,31 @@ async function attemptJoinRoom(rawCode) {
 function leaveRoom() {
   detachRoomListeners();
   activeRoom = null;
+  activeRoomName = '';
   $('createRoomBtn').classList.remove('in-room');
-  $('roomCodeLabel').textContent = '';
+  updateRoomHeaderLabel();
   const url = new URL(location.href);
   url.searchParams.delete('room');
   history.replaceState(null, '', url.toString());
   showToast(currentLang === 'zh' ? '已離開房間' : 'Left room', 'info');
+}
+
+// Save the user's rename input to RTDB. Called on blur/change from the active
+// room modal. Trims + length-caps like the create flow. Empty string clears
+// the name (falls back to code in the header).
+function renameActiveRoom() {
+  if (!activeRoom || !fbDb) return;
+  const inp = $('activeRoomNameInput');
+  if (!inp) return;
+  const next = String(inp.value || '').trim().slice(0, 100);
+  if (next === activeRoomName) return; // unchanged, don't burn a write
+  fbDb.ref('rooms/' + activeRoom + '/meta/name').set(next).catch(function(err) {
+    console.warn('renameActiveRoom failed', err);
+  });
+  // Optimistic local update — the meta/name listener will also fire and
+  // reconcile if the write is rejected.
+  activeRoomName = next;
+  updateRoomHeaderLabel();
 }
 
 async function startCreateFlow() {
@@ -5270,9 +5362,12 @@ function showCreatedRoomScreen(code) {
       (zh ? '將此代碼分享給你的夥伴：' : 'Share this code with your group:') +
     '</p>' +
     '<div class="room-code-display big" id="createdCodeDisplay" onclick="copyCreatedCode()" title="' + (zh ? '點擊複製' : 'Click to copy') + '">' + code + '</div>' +
-    '<button class="btn btn-primary" id="copyCodeBtn" style="width:100%;justify-content:center;margin:6px 0 10px" onclick="copyCreatedCode()">' +
+    '<button class="btn btn-primary" id="copyCodeBtn" style="width:100%;justify-content:center;margin:6px 0 14px" onclick="copyCreatedCode()">' +
       (zh ? '📋 複製代碼' : '📋 Copy Code') +
     '</button>' +
+    '<label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">' + (zh ? '房間名稱（選填）' : 'Room name (optional)') + '</label>' +
+    '<input type="text" id="newRoomNameInput" class="form-input" maxlength="100" placeholder="' + (zh ? '例：週末火鍋、四月同學會' : 'e.g. Saturday hotpot, April reunion') + '" style="width:100%;margin-bottom:6px" />' +
+    '<div class="room-pw-hint" style="margin-bottom:14px">' + (zh ? '你和你的夥伴之後也可以隨時改。' : 'You and anyone in the room can rename it later.') + '</div>' +
     '<label for="includeDataChk" style="display:flex;gap:9px;align-items:flex-start;background:var(--bg);border-radius:8px;padding:11px 12px;margin-bottom:14px;cursor:pointer;line-height:1.4">' +
       '<input type="checkbox" id="includeDataChk" checked style="margin-top:2px;flex-shrink:0" onchange="_updateIncludeDataHint()" />' +
       '<div style="flex:1;min-width:0">' +
@@ -5417,6 +5512,11 @@ async function finalizeCreateRoom() {
     showToast(zh ? '密碼至少 4 個字元' : 'Password must be at least 4 characters', 'error');
     return;
   }
+  // Optional room name — trimmed, length-capped, empty means "no name" (header
+  // falls back to the code).
+  const nameInp = $('newRoomNameInput');
+  const roomName = nameInp ? nameInp.value.trim().slice(0, 100) : '';
+
   // Default true — if the checkbox isn't in the DOM for some reason, we fall
   // back to the include-current behavior so we never accidentally wipe a user's
   // data on a rendering hiccup.
@@ -5436,12 +5536,13 @@ async function finalizeCreateRoom() {
   }
 
   activeRoom = code;
+  activeRoomName = roomName;
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
   ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
   url.hash = '';
   history.replaceState(null, '', url.toString());
-  $('roomCodeLabel').textContent = activeRoom;
+  updateRoomHeaderLabel();
   $('createRoomBtn').classList.add('in-room');
   if (typeof dismissRoomHint === 'function') dismissRoomHint(true);
   if (typeof rememberRoom === 'function') rememberRoom(activeRoom);
@@ -5449,6 +5550,7 @@ async function finalizeCreateRoom() {
     const now = Date.now();
     const meta = { createdAt: now, lastActivityAt: now };
     if (passwordHash) meta.passwordHash = passwordHash;
+    if (roomName) meta.name = roomName;
     // Seed only the currently-active tab. Other tabs' subpaths stay null so a
     // joiner's local data on those tabs isn't wiped by the initial room state.
     // Any later edit on those tabs writes through the normal room-write helpers.
@@ -5526,12 +5628,13 @@ async function createAndJoinRoom(onReady, opts) {
     return;
   }
   activeRoom = code;
+  activeRoomName = '';
   const url = new URL(location.href);
   url.searchParams.set('room', activeRoom);
   ['b','e','mj','sx'].forEach(p => url.searchParams.delete(p));
   url.hash = '';
   history.replaceState(null, '', url.toString());
-  $('roomCodeLabel').textContent = activeRoom;
+  updateRoomHeaderLabel();
   $('createRoomBtn').classList.add('in-room');
   if (typeof dismissRoomHint === 'function') dismissRoomHint(true);
   if (typeof rememberRoom === 'function') rememberRoom(activeRoom);
@@ -5575,13 +5678,17 @@ function openRoomModal() {
     }, 50);
   } else {
     const shareUrl = location.origin + location.pathname + '?room=' + activeRoom;
-    $('roomModalTitle').textContent = (zh ? '🔴 房間：' : '🔴 Room: ') + activeRoom;
+    const nameForTitle = (activeRoomName && activeRoomName.trim()) ? activeRoomName.trim() : activeRoom;
+    $('roomModalTitle').textContent = (zh ? '🔴 房間：' : '🔴 Room: ') + nameForTitle;
+    const escName = String(activeRoomName || '').replace(/[<&"]/g, c => ({'<':'&lt;','&':'&amp;','"':'&quot;'}[c]));
     $('roomModalContent').innerHTML =
       '<p style="color:var(--muted);font-size:.88rem;margin-bottom:6px">' +
         (zh ? '分享此連結讓其他人即時加入：' : 'Share this link for others to join live:') +
       '</p>' +
       '<div class="room-code-display" onclick="copyRoomLink()" title="' + (zh ? '點擊複製連結' : 'Click to copy link') + '">' + activeRoom + '</div>' +
-      '<div style="font-size:.78rem;color:var(--muted);text-align:center;margin-bottom:12px">' + (zh ? '點擊代碼複製完整連結' : 'Click code to copy the full link') + '</div>' +
+      '<div style="font-size:.78rem;color:var(--muted);text-align:center;margin-bottom:14px">' + (zh ? '點擊代碼複製完整連結' : 'Click code to copy the full link') + '</div>' +
+      '<label style="display:block;font-size:.82rem;font-weight:600;margin-bottom:6px">' + (zh ? '房間名稱' : 'Room name') + '</label>' +
+      '<input type="text" id="activeRoomNameInput" class="form-input" maxlength="100" value="' + escName + '" placeholder="' + (zh ? '選填 — 讓夥伴一眼認出這個房間' : 'Optional — helps everyone recognize this room') + '" style="width:100%;margin-bottom:14px" onchange="renameActiveRoom()" onblur="renameActiveRoom()" />' +
       '<div class="room-actions">' +
         '<button class="btn btn-primary" onclick="copyRoomLink()">' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
@@ -5590,6 +5697,12 @@ function openRoomModal() {
         '<button class="btn btn-ghost" onclick="leaveRoom();closeRoomModal()">' + (zh ? '離開房間' : 'Leave Room') + '</button>' +
       '</div>' +
       '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="closeRoomModal()">' + (zh ? '關閉' : 'Close') + '</button>';
+    setTimeout(() => {
+      const nameInp = $('activeRoomNameInput');
+      if (nameInp) nameInp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { renameActiveRoom(); nameInp.blur(); }
+      });
+    }, 50);
   }
   $('roomModal').classList.add('open');
 }
@@ -5740,6 +5853,7 @@ const _sxKeyMap = function(src, extra) {
 };
 const _mjKeyMap = function(src, extra) {
   return Object.assign({
+    name:    typeof src.name === 'string' ? src.name : '',
     players: Array.isArray(src.players) ? src.players : [],
     base:    src.base    != null ? src.base    : 0,
     perTai:  src.perTai  != null ? src.perTai  : 0,
