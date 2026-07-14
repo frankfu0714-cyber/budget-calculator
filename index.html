@@ -112,12 +112,26 @@
     }
     .logo-icon svg { width: 18px; height: 18px; color: white; }
     .header-right { display: flex; gap: 8px; align-items: center; }
-    @media (max-width: 480px) {
-      header { padding: 10px 12px; }
-      .logo-text { display: none; }
+    /* Mobile header: let the whole thing wrap to a second row on narrow
+       viewports so nothing overflows to the right and no horizontal scroll
+       appears. Header controls justify to the right on line 2. */
+    @media (max-width: 640px) {
+      header {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
+      .header-right {
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: flex-end;
+        width: 100%;
+      }
       .month-chip { display: none; }
-      .header-right { gap: 5px; }
       .lang-btn { padding: 4px 8px; font-size: .72rem; }
+    }
+    @media (max-width: 480px) {
+      .logo-text { display: none; }
       #shareBtn span { display: none; }
     }
 
@@ -1197,7 +1211,11 @@
     }
     #createRoomBtn.room-cta.in-room .room-cta-dot,
     #createRoomBtn.room-cta.in-room .room-cta-code { display: inline-flex; }
-    #createRoomBtn.room-cta.in-room .room-cta-sep { display: inline; }
+    /* When in a room, drop the redundant "Live collab" label and the "·"
+       separator — the pulsing green dot + code chip already say "you're in
+       a live room named XYZ". Keeps the chip narrow on mobile. */
+    #createRoomBtn.room-cta.in-room .room-cta-label,
+    #createRoomBtn.room-cta.in-room .room-cta-sep { display: none; }
     #createRoomBtn.room-cta .room-cta-sep { display: none; opacity: .6; margin: 0 2px; }
     @keyframes pulse-dot {
       0%,100% { opacity: 1; transform: scale(1); }
@@ -1508,6 +1526,32 @@
     }
     .sheet-header .sheet-btn-compact:hover { background: var(--surface); }
     .sheet-header .sheet-btn-compact.danger:hover { color: var(--expense); border-color: var(--expense); }
+    /* Mobile sheet-header: the name field takes the full row, and Switch /
+       + New / 🗑 Delete flow as an equal-width button row underneath. Beats
+       the horizontal overflow that "切換 ▾" was hitting on iPhone widths. */
+    @media (max-width: 640px) {
+      .sheet-header .sheet-name-wrap {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+      .sheet-header .sheet-switch,
+      .sheet-header .sheet-btn-compact {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .sheet-header .sheet-switch summary {
+        justify-content: center;
+        width: 100%;
+      }
+      .sheet-header .sheet-btn-compact {
+        text-align: center;
+        white-space: nowrap;
+      }
+      /* Anchor the popover to the button row when it's stacked below the
+         name — otherwise it'd still position off the whole sheet-header
+         and could land in weird places. */
+      .sheet-switch-menu { right: auto; left: 0; min-width: 200px; }
+    }
     .room-code-display {
       font-size: 1.5rem;
       font-weight: 800;
@@ -1666,7 +1710,7 @@
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
         </svg>
-        <span data-i18n="room_cta_label">Live collab</span>
+        <span class="room-cta-label" data-i18n="room_cta_label">Live collab</span>
         <span class="room-cta-sep">·</span>
         <span class="room-cta-code" id="roomCodeLabel"></span>
       </button>
@@ -5204,13 +5248,14 @@ function updateRoomHeaderLabel() {
   const el = $('roomCodeLabel');
   if (!el) return;
   if (!activeRoom) { el.textContent = ''; el.title = ''; return; }
+  // The chip shows the CODE only — the room name lives on the sheet card,
+  // don't duplicate it in the header (was overflowing on iPhone widths).
+  el.textContent = activeRoom;
+  // Title carries the full name so hover / long-press can still surface it.
   const roomName = (typeof activeRoomName === 'string' && activeRoomName.trim()) ? activeRoomName.trim() : '';
   const sheetName = (typeof _currentSheetName === 'function') ? _currentSheetName() : '';
-  // Prefer the explicit room name; fall back to the active tab's sheet name;
-  // fall back to just the code.
   const primary = roomName || sheetName;
-  el.textContent = primary ? (primary + ' · ' + activeRoom) : activeRoom;
-  el.title = activeRoom; // code-on-hover so users can still copy the shareable code
+  el.title = primary ? (primary + ' · ' + activeRoom) : activeRoom;
 }
 let currentUser = null;
 // Guards a suspend of user-Firestore writes while migration is hydrating local
