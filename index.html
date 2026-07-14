@@ -1270,15 +1270,20 @@
     body.readonly-mode #evAddBtn,
     body.readonly-mode #evCancelItem,
     body.readonly-mode #evSubmitItem,
-    body.readonly-mode #esNewProjectBtn,
-    body.readonly-mode #esDeleteProjectBtn,
+    body.readonly-mode #esNewSheetBtn,
+    body.readonly-mode #esDeleteSheetBtn,
+    body.readonly-mode #esSheetSwitch,
+    body.readonly-mode #sxSheetSwitch,
+    body.readonly-mode #mjSheetSwitch,
+    body.readonly-mode #mjNewSheetBtn,
+    body.readonly-mode #mjDeleteSheetBtn,
     body.readonly-mode #sxShareBtn,
     body.readonly-mode #sxAddExpBtn,
     body.readonly-mode #sxAddPersonBtn,
     body.readonly-mode #sxSubmitPerson,
     body.readonly-mode #sxCancelPerson,
-    body.readonly-mode #sxNewGroupBtn,
-    body.readonly-mode #sxDeleteGroupBtn,
+    body.readonly-mode #sxNewSheetBtn,
+    body.readonly-mode #sxDeleteSheetBtn,
     body.readonly-mode #mjAddRoundBtn,
     body.readonly-mode #mjResetBtn,
     body.readonly-mode #mjShareBtn,
@@ -1387,6 +1392,118 @@
       max-width: 94vw;
     }
     .room-modal-box h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+
+    /* ── Sheet picker (shared across all three tools) ─────── */
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .sheet-header .sheet-name-wrap {
+      flex: 1 1 200px;
+      min-width: 0;
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      transition: border-color .15s;
+    }
+    .sheet-header .sheet-name-wrap:focus-within {
+      border-color: var(--accent);
+      background: var(--surface);
+    }
+    .sheet-header .sheet-name-pencil {
+      font-size: .82rem; opacity: .55; flex-shrink: 0;
+      pointer-events: none;
+    }
+    .sheet-header .sheet-name-input {
+      flex: 1; min-width: 0;
+      background: transparent; border: none; outline: none;
+      color: var(--text);
+      font-size: 1.05rem; font-weight: 700;
+      font-family: inherit;
+      padding: 2px 0;
+    }
+    .sheet-header .sheet-name-input::placeholder { color: var(--muted); font-weight: 500; }
+    .sheet-switch {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .sheet-switch summary {
+      list-style: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: .85rem; font-weight: 600;
+      color: var(--text);
+      user-select: none;
+      transition: background .15s;
+    }
+    .sheet-switch summary::-webkit-details-marker { display: none; }
+    .sheet-switch summary:hover { background: var(--surface); }
+    .sheet-switch[open] summary { border-color: var(--accent); }
+    .sheet-switch-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      min-width: 260px;
+      max-width: min(360px, 92vw);
+      max-height: 340px;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.14);
+      padding: 4px;
+      z-index: 40;
+    }
+    .sheet-switch-menu .sheet-row {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 10px;
+      background: transparent; border: none; border-radius: 6px;
+      color: var(--text);
+      font-family: inherit; font-size: .88rem;
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .sheet-switch-menu .sheet-row:hover { background: var(--surface2); }
+    .sheet-switch-menu .sheet-row.current {
+      background: rgba(99,102,241,.10);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .sheet-switch-menu .sheet-row-name {
+      display: block;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sheet-switch-menu .sheet-row-meta {
+      display: block;
+      font-size: .7rem; color: var(--muted); font-weight: 500;
+      margin-top: 2px;
+    }
+    .sheet-switch-menu .sheet-empty {
+      padding: 10px 12px; color: var(--muted); font-size: .82rem; text-align: center;
+    }
+    .sheet-header .sheet-btn-compact {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: .85rem; font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .sheet-header .sheet-btn-compact:hover { background: var(--surface); }
+    .sheet-header .sheet-btn-compact.danger:hover { color: var(--expense); border-color: var(--expense); }
     .room-code-display {
       font-size: 1.5rem;
       font-weight: 800;
@@ -1602,6 +1719,24 @@
     <!-- Left column: config + items -->
     <div class="ev-left">
 
+      <!-- Sheet header (event) -->
+      <div class="card">
+        <div class="card-body" style="padding-top:14px;padding-bottom:14px">
+          <div class="sheet-header">
+            <div class="sheet-name-wrap">
+              <span class="sheet-name-pencil" aria-hidden="true">✏️</span>
+              <input id="esSheetName" class="sheet-name-input" type="text" data-i18n-ph="sheet_untitled" placeholder="Untitled sheet" autocomplete="off" />
+            </div>
+            <details class="sheet-switch" id="esSheetSwitch">
+              <summary title="Switch sheet"><span data-i18n="sheet_switch">Switch</span> ▾</summary>
+              <div class="sheet-switch-menu" id="esSheetSwitchMenu"></div>
+            </details>
+            <button class="sheet-btn-compact" id="esNewSheetBtn" title="New sheet" data-i18n="new_btn">+ New</button>
+            <button class="sheet-btn-compact danger" id="esDeleteSheetBtn" title="Delete sheet"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
+          </div>
+        </div>
+      </div>
+
       <!-- Event details -->
       <div class="card">
         <div class="card-head">
@@ -1611,18 +1746,6 @@
           </div>
         </div>
         <div class="card-body">
-          <div class="field-group">
-            <label class="field-label" data-i18n="project">Project</label>
-            <div style="display:flex;gap:6px;align-items:center">
-              <select class="field-input" id="esProjectSel" style="flex:1;margin:0"></select>
-              <button class="btn btn-ghost btn-sm" id="esNewProjectBtn" style="white-space:nowrap;flex-shrink:0" data-i18n="new_btn">+ New</button>
-              <button class="btn btn-ghost btn-sm" id="esDeleteProjectBtn" title="Delete project" style="white-space:nowrap;flex-shrink:0"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
-            </div>
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="evEventName" data-i18n="event_name">Event Name</label>
-            <input class="field-input" id="evEventName" type="text" placeholder="e.g. Gathering April 2026" data-i18n-ph="ph_event_name" autocomplete="off" />
-          </div>
           <div class="field-group">
             <label class="field-label" for="evPeople" data-i18n="num_people">Number of People</label>
             <input class="field-input" id="evPeople" type="number" min="1" value="2" placeholder="e.g. 10" />
@@ -1781,23 +1904,20 @@
     <!-- Left: settings + round entry + history -->
     <div class="mj-left">
 
-      <!-- Session selector -->
+      <!-- Sheet header (mahjong) -->
       <div class="card">
-        <div class="card-head">
-          <div class="card-title">
-            <span class="dot" style="background:var(--accent2)"></span>
-            <span data-i18n="mj_session">Session</span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="field-group" style="margin-bottom:0">
-            <label class="field-label" data-i18n="mj_session">Session</label>
-            <div style="display:flex;gap:6px;align-items:center">
-              <select class="field-input" id="mjSessionSel" style="flex:1;margin:0"></select>
-              <button class="btn btn-ghost btn-sm" id="mjRenameSessionBtn" title="Rename session" style="white-space:nowrap;flex-shrink:0"><span>✏️ </span><span data-i18n="rename">Rename</span></button>
-              <button class="btn btn-ghost btn-sm" id="mjNewSessionBtn" style="white-space:nowrap;flex-shrink:0" data-i18n="new_btn">+ New</button>
-              <button class="btn btn-ghost btn-sm" id="mjDeleteSessionBtn" title="Delete session" style="white-space:nowrap;flex-shrink:0"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
+        <div class="card-body" style="padding-top:14px;padding-bottom:14px">
+          <div class="sheet-header">
+            <div class="sheet-name-wrap">
+              <span class="sheet-name-pencil" aria-hidden="true">✏️</span>
+              <input id="mjSheetName" class="sheet-name-input" type="text" data-i18n-ph="sheet_untitled" placeholder="Untitled sheet" autocomplete="off" />
             </div>
+            <details class="sheet-switch" id="mjSheetSwitch">
+              <summary title="Switch sheet"><span data-i18n="sheet_switch">Switch</span> ▾</summary>
+              <div class="sheet-switch-menu" id="mjSheetSwitchMenu"></div>
+            </details>
+            <button class="sheet-btn-compact" id="mjNewSheetBtn" title="New sheet" data-i18n="new_btn">+ New</button>
+            <button class="sheet-btn-compact danger" id="mjDeleteSheetBtn" title="Delete sheet"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
           </div>
         </div>
       </div>
@@ -2016,26 +2136,20 @@
     <!-- Left column -->
     <div class="sx-left">
 
-      <!-- Group selector -->
+      <!-- Sheet header (settle) -->
       <div class="card">
-        <div class="card-head">
-          <div class="card-title">
-            <span class="dot" style="background:var(--income)"></span>
-            <span data-i18n="sx_group">Group</span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="field-group">
-            <label class="field-label" data-i18n="sx_group_select">Group</label>
-            <div style="display:flex;gap:6px;align-items:center">
-              <select class="field-input" id="sxGroupSel" style="flex:1;margin:0"></select>
-              <button class="btn btn-ghost btn-sm" id="sxNewGroupBtn" style="white-space:nowrap;flex-shrink:0" data-i18n="new_btn">+ New</button>
-              <button class="btn btn-ghost btn-sm" id="sxDeleteGroupBtn" title="Delete group" style="white-space:nowrap;flex-shrink:0"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
+        <div class="card-body" style="padding-top:14px;padding-bottom:14px">
+          <div class="sheet-header">
+            <div class="sheet-name-wrap">
+              <span class="sheet-name-pencil" aria-hidden="true">✏️</span>
+              <input id="sxSheetName" class="sheet-name-input" type="text" data-i18n-ph="sheet_untitled" placeholder="Untitled sheet" autocomplete="off" />
             </div>
-          </div>
-          <div class="field-group" style="margin-bottom:0">
-            <label class="field-label" for="sxGroupName" data-i18n="sx_group_name">Group Name</label>
-            <input class="field-input" id="sxGroupName" type="text" placeholder="e.g. Saturday BBQ" data-i18n-ph="sx_ph_group_name" autocomplete="off" />
+            <details class="sheet-switch" id="sxSheetSwitch">
+              <summary title="Switch sheet"><span data-i18n="sheet_switch">Switch</span> ▾</summary>
+              <div class="sheet-switch-menu" id="sxSheetSwitchMenu"></div>
+            </details>
+            <button class="sheet-btn-compact" id="sxNewSheetBtn" title="New sheet" data-i18n="new_btn">+ New</button>
+            <button class="sheet-btn-compact danger" id="sxDeleteSheetBtn" title="Delete sheet"><span>🗑 </span><span data-i18n="delete">Delete</span></button>
           </div>
         </div>
       </div>
@@ -2517,6 +2631,9 @@ function switchToTab(tab, opts) {
     const url = pathForTab(tab) + location.search + (opts.keepHash ? location.hash : '');
     try { history[opts.replaceHistory ? 'replaceState' : 'pushState'](null, '', url); } catch(_) {}
   }
+  // Room header chip includes the active tab's sheet name — refresh when the
+  // active tab flips.
+  if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
 }
 
 // ─── Tab Switching ────────────────────────────────────────────
@@ -2532,13 +2649,8 @@ window.addEventListener('popstate', function() {
 let ES = { name: '', people: 2, items: [] };
 
 // ─── Event Splitter Bindings ──────────────────────────────────
-$('evEventName').addEventListener('input', () => {
-  ES.name = $('evEventName').value;
-  renderReceipt(); persistES();
-  // Live-update the project dropdown label so it tracks the name field.
-  // The dropdown isn't the focused element, so this is IME-safe.
-  renderESProjectDropdown();
-});
+// (esSheetName input handler is wired by _sheetSwitcherWire('event'); see the
+// shared sheet-picker code near the bottom of this script.)
 $('evPeople').addEventListener('input', () => {
   ES.people = Math.max(1, parseInt($('evPeople').value) || 1);
   renderEvItems(); renderReceipt(); persistES();
@@ -2977,7 +3089,7 @@ document.addEventListener('click', e => {
 $('evClearBtn').onclick = () => {
   if (ES.items.length === 0 && !ES.name) return;
   ES = { name: '', people: 2, items: [] };
-  $('evEventName').value = '';
+  $('esSheetName').value = '';
   $('evPeople').value = '2';
   resetAddForm();
   renderEvItems(); renderReceipt(); persistES();
@@ -3055,72 +3167,20 @@ function saveESProjects(p) {
   try { localStorage.setItem('ev-projects', JSON.stringify(p)); } catch(_) {}
 }
 
-function renderESProjectDropdown() {
-  const sel = $('esProjectSel');
-  const projects = getESProjects();
-  const keys = Object.keys(projects);
-  const now = Date.now();
-  sel.innerHTML = keys.length === 0
-    ? '<option value="">—</option>'
-    : keys.map(key => {
-        const p = projects[key] || {};
-        const label = (typeof p.name === 'string' && p.name.trim()) ? p.name.trim() : key;
-        const suffix = _projectExpirySuffix(p._lastActivityAt, now);
-        return `<option value="${esc(key)}"${key === currentESProject ? ' selected' : ''}>${esc(label)}${suffix}</option>`;
-      }).join('');
-}
-
 function switchESProject(name) {
   if (!name) return;
   const p = (getESProjects()[name]) || { name: '', people: 2, items: [] };
   currentESProject = name;
   ES.name = p.name || ''; ES.people = p.people || 2; ES.items = p.items || [];
-  $('evEventName').value = ES.name;
+  const nameInp = $('esSheetName');
+  if (nameInp && document.activeElement !== nameInp) nameInp.value = ES.name;
   $('evPeople').value = ES.people;
   renderEvItems(); renderReceipt();
   try { localStorage.setItem('ev-active-project', name); } catch(_) {}
 }
-
-$('esProjectSel').addEventListener('change', () => switchESProject($('esProjectSel').value));
-
-$('esNewProjectBtn').onclick = () => {
-  const name = prompt(currentLang === 'zh' ? '專案名稱：' : 'Project name:');
-  if (!name || !name.trim()) return;
-  const n = name.trim();
-  const projects = getESProjects();
-  if (projects[n]) { showToast(t('toast_project_exists'), 'warn'); return; }
-  projects[n] = { name: '', people: 2, items: [] };
-  saveESProjects(projects);
-  currentESProject = n;
-  try { localStorage.setItem('ev-active-project', n); } catch(_) {}
-  renderESProjectDropdown();
-  switchESProject(n);
-  showToast(t('toast_project_created', { name: n }));
-};
-
-$('esDeleteProjectBtn').onclick = () => {
-  if (!currentESProject) return;
-  if (!confirm(currentLang === 'zh' ? `確定刪除專案「${currentESProject}」？` : `Delete project "${currentESProject}"?`)) return;
-  const projects = getESProjects();
-  delete projects[currentESProject];
-  saveESProjects(projects);
-  const names = Object.keys(projects);
-  currentESProject = names.length > 0 ? names[0] : null;
-  if (currentESProject) {
-    try { localStorage.setItem('ev-active-project', currentESProject); } catch(_) {}
-    renderESProjectDropdown();
-    switchESProject(currentESProject);
-  } else {
-    // No projects left — create a fresh Default
-    projects['Default'] = { name: '', people: 2, items: [] };
-    saveESProjects(projects);
-    currentESProject = 'Default';
-    try { localStorage.setItem('ev-active-project', currentESProject); } catch(_) {}
-    renderESProjectDropdown();
-    switchESProject(currentESProject);
-  }
-  showToast(t('toast_project_deleted'), 'info');
-};
+// Legacy render fn name still called from several places; forwards to the new
+// shared sheet-switcher renderer once it's defined below.
+function renderESProjectDropdown() { renderSheetSwitcher('event'); }
 
 function persistES() {
   if (!currentESProject) return;
@@ -3499,22 +3559,6 @@ function _mjMigrateLegacy() {
   return done;
 }
 
-function renderMJSessionDropdown() {
-  const sel = $('mjSessionSel');
-  if (!sel) return;
-  const projects = getMJProjects();
-  const keys = Object.keys(projects);
-  const now = Date.now();
-  sel.innerHTML = keys.length === 0
-    ? '<option value="">—</option>'
-    : keys.map(key => {
-        const p = projects[key] || {};
-        const label = (typeof p.name === 'string' && p.name.trim()) ? p.name.trim() : key;
-        const suffix = _projectExpirySuffix(p._lastActivityAt, now);
-        return `<option value="${esc(key)}"${key === currentMJProject ? ' selected' : ''}>${esc(label)}${suffix}</option>`;
-      }).join('');
-}
-
 function switchMJProject(name) {
   if (!name) return;
   const projects = getMJProjects();
@@ -3528,9 +3572,15 @@ function switchMJProject(name) {
   [0,1,2,3].forEach(i => { const el = $('mjP'+i); if (el) el.value = MJ.players[i]; });
   const base = $('mjBase'); if (base) base.value = MJ.base;
   const pt = $('mjPerTai'); if (pt) pt.value = MJ.perTai;
+  const nameInp = $('mjSheetName');
+  if (nameInp && document.activeElement !== nameInp) {
+    nameInp.value = (typeof p.name === 'string' && p.name.trim()) ? p.name : '';
+  }
   mjUpdateDropdowns(); mjRenderAll();
   try { localStorage.setItem('mahjong-active-project', name); } catch(_) {}
 }
+// Legacy render fn name still called from several places; forwards to shared renderer.
+function renderMJSessionDropdown() { renderSheetSwitcher('mahjong'); }
 
 function mjPersist() {
   if (!currentMJProject) return;
@@ -3625,73 +3675,7 @@ function mjLoad() {
   renderMJSessionDropdown();
 }
 
-// Session dropdown / new / delete wiring — parallels ES / SX.
-if ($('mjSessionSel')) {
-  $('mjSessionSel').addEventListener('change', () => switchMJProject($('mjSessionSel').value));
-}
-if ($('mjNewSessionBtn')) {
-  $('mjNewSessionBtn').onclick = () => {
-    const zh = currentLang === 'zh';
-    const name = prompt(zh ? '新場次名稱：' : 'Session name:');
-    if (!name || !name.trim()) return;
-    const n = name.trim();
-    const projects = getMJProjects();
-    if (projects[n]) { showToast(t('toast_project_exists'), 'warn'); return; }
-    projects[n] = Object.assign({}, _mjDefaults(), { _lastActivityAt: Date.now() });
-    saveMJProjects(projects);
-    currentMJProject = n;
-    try { localStorage.setItem('mahjong-active-project', n); } catch(_) {}
-    renderMJSessionDropdown();
-    switchMJProject(n);
-    showToast(t('toast_project_created', { name: n }));
-  };
-}
-if ($('mjDeleteSessionBtn')) {
-  $('mjDeleteSessionBtn').onclick = () => {
-    if (!currentMJProject) return;
-    const zh = currentLang === 'zh';
-    if (!confirm(zh ? `確定刪除場次「${currentMJProject}」？` : `Delete session "${currentMJProject}"?`)) return;
-    const projects = getMJProjects();
-    delete projects[currentMJProject];
-    saveMJProjects(projects);
-    const names = Object.keys(projects);
-    currentMJProject = names.length > 0 ? names[0] : null;
-    if (currentMJProject) {
-      try { localStorage.setItem('mahjong-active-project', currentMJProject); } catch(_) {}
-      renderMJSessionDropdown();
-      switchMJProject(currentMJProject);
-    } else {
-      const defaultName = zh ? '預設' : 'Default';
-      projects[defaultName] = Object.assign({}, _mjDefaults(), { _lastActivityAt: Date.now() });
-      saveMJProjects(projects);
-      currentMJProject = defaultName;
-      try { localStorage.setItem('mahjong-active-project', defaultName); } catch(_) {}
-      renderMJSessionDropdown();
-      switchMJProject(defaultName);
-    }
-    showToast(t('toast_project_deleted'), 'info');
-  };
-}
-if ($('mjRenameSessionBtn')) {
-  $('mjRenameSessionBtn').onclick = () => {
-    if (!currentMJProject) return;
-    const zh = currentLang === 'zh';
-    const projects = getMJProjects();
-    const existing = projects[currentMJProject] || {};
-    const current = (typeof existing.name === 'string' && existing.name.trim()) ? existing.name : currentMJProject;
-    const next = prompt(zh ? '新名稱：' : 'New name:', current);
-    if (next == null) return; // user cancelled
-    const trimmed = next.trim().slice(0, 100);
-    // Empty input clears the display name — dropdown falls back to the key.
-    existing.name = trimmed;
-    existing._lastActivityAt = Date.now();
-    projects[currentMJProject] = existing;
-    saveMJProjects(projects);
-    renderMJSessionDropdown();
-    // Trigger the cloud writer so signed-in users' Firestore doc updates too.
-    if (currentUser && typeof _fsWMD === 'function') _fsWMD();
-  };
-}
+// (MJ sheet-picker wiring is handled by the shared _sheetSwitcherWire('mahjong') below.)
 
 // Helper used by every project dropdown — appends " (expires in Nd)" when a
 // project's last activity is close to the 30-day TTL cutoff. Returns '' when
@@ -3706,6 +3690,243 @@ function _projectExpirySuffix(lastActivityAt, now) {
     ? `  ⚠️ ${remaining} 天內刪除`
     : `  ⚠️ expires in ${remaining}d`;
 }
+
+// ─── Sheet picker (shared across all three tools) ─────────────
+// Per-tab config wired up to the same shared render + interaction handlers so
+// Event Splitter, Mahjong, and Expense Settlement all get the same
+// "editable name + Switch popover + New + Delete" UX at the top of the tab.
+const SHEET_CONFIG = {
+  event: {
+    menuId:      'esSheetSwitchMenu',
+    switchId:    'esSheetSwitch',
+    nameInputId: 'esSheetName',
+    newBtnId:    'esNewSheetBtn',
+    delBtnId:    'esDeleteSheetBtn',
+    activeLSKey: 'ev-active-project',
+    getSheets:   getESProjects,
+    saveSheets:  saveESProjects,
+    getCurrent:  () => currentESProject,
+    setCurrent:  (n) => { currentESProject = n; },
+    switchTo:    (n) => switchESProject(n),
+    defaultSheet: () => ({ name: '', people: 2, items: [] }),
+    applyName:   (name) => {
+      ES.name = name;
+      renderReceipt();
+      persistES();
+    },
+  },
+  settle: {
+    menuId:      'sxSheetSwitchMenu',
+    switchId:    'sxSheetSwitch',
+    nameInputId: 'sxSheetName',
+    newBtnId:    'sxNewSheetBtn',
+    delBtnId:    'sxDeleteSheetBtn',
+    activeLSKey: 'sx-active-group',
+    getSheets:   getSXGroups,
+    saveSheets:  saveSXGroups,
+    getCurrent:  () => currentSXGroup,
+    setCurrent:  (n) => { currentSXGroup = n; },
+    switchTo:    (n) => switchSXGroup(n),
+    defaultSheet: () => ({ name: '', participants: [], expenses: [] }),
+    applyName:   (name) => {
+      SX.name = name;
+      persistSX();
+    },
+  },
+  mahjong: {
+    menuId:      'mjSheetSwitchMenu',
+    switchId:    'mjSheetSwitch',
+    nameInputId: 'mjSheetName',
+    newBtnId:    'mjNewSheetBtn',
+    delBtnId:    'mjDeleteSheetBtn',
+    activeLSKey: 'mahjong-active-project',
+    getSheets:   getMJProjects,
+    saveSheets:  saveMJProjects,
+    getCurrent:  () => currentMJProject,
+    setCurrent:  (n) => { currentMJProject = n; },
+    switchTo:    (n) => switchMJProject(n),
+    defaultSheet: () => Object.assign({}, _mjDefaults()),
+    applyName:   (name) => {
+      // MJ has no top-level state field for the name — it lives on the project
+      // record. Update directly + trigger cloud writer.
+      const cur = currentMJProject; if (!cur) return;
+      const projects = getMJProjects();
+      const p = projects[cur] || {};
+      p.name = name;
+      p._lastActivityAt = Date.now();
+      projects[cur] = p;
+      saveMJProjects(projects);
+      if (currentUser && typeof _fsWMD === 'function') _fsWMD();
+    },
+  },
+};
+
+// Coarse relative-time formatter for the switcher menu. Keeps a few buckets
+// (just now / m / h / d) and matches the language toggle.
+function _sheetRelativeTime(ts) {
+  if (!ts) return '';
+  const zh = currentLang === 'zh';
+  const delta = Math.floor((Date.now() - ts) / 1000);
+  if (delta < 60)        return zh ? '剛剛更新'     : 'updated just now';
+  const m = Math.floor(delta / 60);
+  if (m < 60)            return zh ? `${m} 分鐘前更新` : `updated ${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24)            return zh ? `${h} 小時前更新` : `updated ${h}h ago`;
+  const d = Math.floor(h / 24);
+  return zh ? `${d} 天前更新` : `updated ${d}d ago`;
+}
+
+// Populate the visible sheet name input + rebuild the Switch popover menu
+// for a given tab. Safe to call any time.
+function renderSheetSwitcher(tab) {
+  const cfg = SHEET_CONFIG[tab];
+  if (!cfg) return;
+  const sheets = cfg.getSheets() || {};
+  const currentKey = cfg.getCurrent();
+  const keys = Object.keys(sheets);
+  const now = Date.now();
+
+  // Sync the visible name input to the current sheet (unless it's being typed in)
+  const nameInput = $(cfg.nameInputId);
+  if (nameInput && document.activeElement !== nameInput) {
+    const cur = sheets[currentKey] || {};
+    nameInput.value = (typeof cur.name === 'string' && cur.name.trim()) ? cur.name : '';
+  }
+
+  // Rebuild the switcher menu
+  const menu = $(cfg.menuId);
+  if (!menu) return;
+  if (keys.length === 0) {
+    menu.innerHTML = '<div class="sheet-empty">' + t('sheet_none') + '</div>';
+    return;
+  }
+  // Sort by recency so the freshly-touched ones surface first.
+  keys.sort((a, b) => {
+    const at = (sheets[a] && sheets[a]._lastActivityAt) || 0;
+    const bt = (sheets[b] && sheets[b]._lastActivityAt) || 0;
+    return bt - at;
+  });
+  menu.innerHTML = keys.map(key => {
+    const s = sheets[key] || {};
+    const label = (typeof s.name === 'string' && s.name.trim()) ? s.name.trim() : key;
+    const suffix = _projectExpirySuffix(s._lastActivityAt, now);
+    const meta = _sheetRelativeTime(s._lastActivityAt);
+    const cls = (key === currentKey) ? ' current' : '';
+    return '<button type="button" class="sheet-row' + cls + '" data-sheet-key="' + esc(key) + '">' +
+      '<span class="sheet-row-name">' + esc(label) + esc(suffix) + '</span>' +
+      (meta ? '<span class="sheet-row-meta">' + esc(meta) + '</span>' : '') +
+    '</button>';
+  }).join('');
+}
+
+// Wire the sheet-header's DOM handlers for a given tab. Safe to call once
+// during boot; idempotent because we use `onclick =` assignments (not addEventListener stacks).
+function _sheetSwitcherWire(tab) {
+  const cfg = SHEET_CONFIG[tab];
+  if (!cfg) return;
+  const switchEl  = $(cfg.switchId);
+  const menu      = $(cfg.menuId);
+  const nameInput = $(cfg.nameInputId);
+  const newBtn    = $(cfg.newBtnId);
+  const delBtn    = $(cfg.delBtnId);
+
+  // Switch popover → click on a row switches sheets and closes the popover.
+  if (menu) {
+    menu.addEventListener('click', (e) => {
+      const row = e.target.closest('.sheet-row');
+      if (!row) return;
+      const key = row.getAttribute('data-sheet-key');
+      if (!key) return;
+      if (key !== cfg.getCurrent()) {
+        cfg.switchTo(key);
+        renderSheetSwitcher(tab);
+        if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
+      }
+      if (switchEl) switchEl.open = false;
+    });
+  }
+
+  // Refresh the menu each time the popover opens (times / new sheets / etc.)
+  if (switchEl) {
+    switchEl.addEventListener('toggle', () => {
+      if (switchEl.open) renderSheetSwitcher(tab);
+    });
+  }
+
+  // Name input → live update on the current sheet, live re-render the menu
+  // label, and refresh the room header if we're in one.
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      if (!cfg.getCurrent()) return;
+      cfg.applyName(nameInput.value);
+      renderSheetSwitcher(tab);
+      if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
+    });
+  }
+
+  // + New — mint a fresh empty sheet and immediately focus the name input
+  // so the user renames it while they're already looking at it.
+  if (newBtn) {
+    newBtn.onclick = () => {
+      const zh = currentLang === 'zh';
+      const sheets = cfg.getSheets();
+      const base = zh ? '未命名分帳表' : 'Untitled sheet';
+      let key = base, i = 2;
+      while (sheets[key]) { key = base + ' ' + i++; }
+      sheets[key] = Object.assign({}, cfg.defaultSheet(), { _lastActivityAt: Date.now() });
+      cfg.saveSheets(sheets);
+      cfg.setCurrent(key);
+      try { localStorage.setItem(cfg.activeLSKey, key); } catch(_) {}
+      cfg.switchTo(key);
+      renderSheetSwitcher(tab);
+      if (nameInput) { nameInput.focus(); nameInput.select(); }
+      showToast(t('toast_project_created', { name: key }));
+    };
+  }
+
+  // 🗑 Delete — confirm, remove, either switch to the next sheet or mint
+  // a fresh default so the tab is never left in a keyless state.
+  if (delBtn) {
+    delBtn.onclick = () => {
+      const zh = currentLang === 'zh';
+      const cur = cfg.getCurrent(); if (!cur) return;
+      const sheets = cfg.getSheets();
+      const s = sheets[cur] || {};
+      const label = (typeof s.name === 'string' && s.name.trim()) || cur;
+      if (!confirm(zh ? `確定刪除「${label}」？` : `Delete "${label}"?`)) return;
+      delete sheets[cur];
+      cfg.saveSheets(sheets);
+      const keys = Object.keys(sheets);
+      if (keys.length > 0) {
+        cfg.setCurrent(keys[0]);
+        try { localStorage.setItem(cfg.activeLSKey, keys[0]); } catch(_) {}
+        cfg.switchTo(keys[0]);
+      } else {
+        const defaultName = zh ? '預設' : 'Default';
+        sheets[defaultName] = Object.assign({}, cfg.defaultSheet(), { _lastActivityAt: Date.now() });
+        cfg.saveSheets(sheets);
+        cfg.setCurrent(defaultName);
+        try { localStorage.setItem(cfg.activeLSKey, defaultName); } catch(_) {}
+        cfg.switchTo(defaultName);
+      }
+      renderSheetSwitcher(tab);
+      showToast(t('toast_project_deleted'), 'info');
+    };
+  }
+}
+
+// Close any open Switch popover when the user clicks outside it.
+document.addEventListener('click', (e) => {
+  ['event','settle','mahjong'].forEach(tab => {
+    const el = $(SHEET_CONFIG[tab].switchId);
+    if (el && el.open && !el.contains(e.target)) el.open = false;
+  });
+});
+
+// Wire the three tabs' sheet-headers.
+_sheetSwitcherWire('event');
+_sheetSwitcherWire('settle');
+_sheetSwitcherWire('mahjong');
 
 $('mjShareBtn').onclick = () => {
   const url = mjShareUrl();
@@ -3725,21 +3946,6 @@ function saveSXGroups(p) {
   try { localStorage.setItem('sx-groups', JSON.stringify(p)); } catch(_) {}
 }
 
-function renderSXGroupDropdown() {
-  const sel = $('sxGroupSel');
-  const groups = getSXGroups();
-  const keys = Object.keys(groups);
-  const now = Date.now();
-  sel.innerHTML = keys.length === 0
-    ? '<option value="">—</option>'
-    : keys.map(key => {
-        const g = groups[key] || {};
-        const label = (typeof g.name === 'string' && g.name.trim()) ? g.name.trim() : key;
-        const suffix = _projectExpirySuffix(g._lastActivityAt, now);
-        return `<option value="${esc(key)}"${key === currentSXGroup ? ' selected' : ''}>${esc(label)}${suffix}</option>`;
-      }).join('');
-}
-
 function switchSXGroup(name) {
   if (!name) return;
   const groups = getSXGroups();
@@ -3748,57 +3954,13 @@ function switchSXGroup(name) {
   SX.name = g.name || '';
   SX.participants = g.participants || [];
   SX.expenses = g.expenses || [];
-  $('sxGroupName').value = SX.name;
+  const nameInp = $('sxSheetName');
+  if (nameInp && document.activeElement !== nameInp) nameInp.value = SX.name;
   sxRenderAll();
   try { localStorage.setItem('sx-active-group', name); } catch(_) {}
 }
-
-$('sxGroupSel').addEventListener('change', () => switchSXGroup($('sxGroupSel').value));
-
-$('sxNewGroupBtn').onclick = () => {
-  const name = prompt(currentLang === 'zh' ? '群組名稱：' : 'Group name:');
-  if (!name || !name.trim()) return;
-  const n = name.trim();
-  const groups = getSXGroups();
-  if (groups[n]) { showToast(t('sx_group_exists'), 'warn'); return; }
-  groups[n] = { name: '', participants: [], expenses: [] };
-  saveSXGroups(groups);
-  currentSXGroup = n;
-  try { localStorage.setItem('sx-active-group', n); } catch(_) {}
-  renderSXGroupDropdown();
-  switchSXGroup(n);
-  showToast(t('sx_group_created', { name: n }));
-};
-
-$('sxDeleteGroupBtn').onclick = () => {
-  if (!currentSXGroup) return;
-  if (!confirm(currentLang === 'zh' ? `確定刪除群組「${currentSXGroup}」？` : `Delete group "${currentSXGroup}"?`)) return;
-  const groups = getSXGroups();
-  delete groups[currentSXGroup];
-  saveSXGroups(groups);
-  const names = Object.keys(groups);
-  if (names.length > 0) {
-    currentSXGroup = names[0];
-    try { localStorage.setItem('sx-active-group', currentSXGroup); } catch(_) {}
-    renderSXGroupDropdown();
-    switchSXGroup(currentSXGroup);
-  } else {
-    groups['Default'] = { name: '', participants: [], expenses: [] };
-    saveSXGroups(groups);
-    currentSXGroup = 'Default';
-    try { localStorage.setItem('sx-active-group', currentSXGroup); } catch(_) {}
-    renderSXGroupDropdown();
-    switchSXGroup(currentSXGroup);
-  }
-  showToast(t('toast_project_deleted'), 'info');
-};
-
-$('sxGroupName').addEventListener('input', () => {
-  SX.name = $('sxGroupName').value;
-  persistSX();
-  // Live-update the group dropdown label so it reflects renames immediately.
-  renderSXGroupDropdown();
-});
+// Legacy render fn name still called from several places; forwards to shared renderer.
+function renderSXGroupDropdown() { renderSheetSwitcher('settle'); }
 
 // ── Participants ──────────────────────────────────────────────
 $('sxAddPersonBtn').onclick = () => {
@@ -4444,7 +4606,7 @@ function sxLoad() {
       SX.name         = d.name         || '';
       SX.participants = d.participants || [];
       SX.expenses     = d.expenses     || [];
-      $('sxGroupName').value = SX.name;
+      $('sxSheetName').value = SX.name;
       const isRO = readShareParam('ro') === '1';
       switchToTab('settle', { replaceHistory: true, keepHash: isRO });
       _payloadHandled = true;
@@ -4472,7 +4634,7 @@ function sxLoad() {
   SX.name = g.name || '';
   SX.participants = g.participants || [];
   SX.expenses = g.expenses || [];
-  $('sxGroupName').value = SX.name;
+  $('sxSheetName').value = SX.name;
 }
 
 $('sxShareBtn').onclick = () => {
@@ -4548,6 +4710,7 @@ const I18N = {
     ph_amount: 'Amount', ph_foreign_amt: 'Foreign amt',
     // Event Splitter
     event_details: 'Event Details', project: 'Project', new_btn: '+ New', delete: 'Delete', rename: 'Rename',
+    sheet_switch: 'Switch', sheet_untitled: 'Untitled sheet', sheet_none: 'No sheets yet',
     event_name: 'Event Name', num_people: 'Number of People',
     expense_items: 'Expense Items', calculator: '🧮 Calculator',
     amount_type: 'Amount Type', total: 'Total', per_person: 'Per Person',
@@ -4715,6 +4878,7 @@ const I18N = {
     auth_synced: '☁ 已同步',
     ph_amount: '金額', ph_foreign_amt: '外幣金額',
     event_details: '活動詳情', project: '專案', new_btn: '+ 新增', delete: '刪除', rename: '重新命名',
+    sheet_switch: '切換', sheet_untitled: '未命名分帳表', sheet_none: '尚無分帳表',
     event_name: '活動名稱', num_people: '人數',
     expense_items: '費用項目', calculator: '🧮 計算機',
     amount_type: '金額類型', total: '總額', per_person: '每人',
@@ -4932,7 +5096,7 @@ document.querySelectorAll('.lang-btn').forEach(b => {
 updateStaticText();
 // Sync event splitter inputs with loaded state
 renderESProjectDropdown();
-$('evEventName').value = ES.name;
+$('esSheetName').value = ES.name;
 $('evPeople').value    = ES.people;
 renderEvItems();
 renderReceipt();
@@ -4997,16 +5161,33 @@ let _pendingCreateCode = null;
 
 // Renders the header room-badge label from activeRoom + activeRoomName.
 // Shown when in-room via `#createRoomBtn.in-room` — reads name if set, else the code.
+// Header chip label: shows "{sheet name} · {code}" when in a room. If the room
+// has its own `meta.name` (from the Create Room flow) that wins over the tab's
+// sheet name — the room name is the most explicit label. Falls back to just
+// the code when no name is set anywhere.
+function _currentSheetName() {
+  try {
+    const el = document.querySelector('.tab-btn.active');
+    const tab = (el && el.dataset && el.dataset.tab) || (typeof DEFAULT_TAB === 'string' ? DEFAULT_TAB : 'event');
+    const cfg = SHEET_CONFIG && SHEET_CONFIG[tab];
+    if (!cfg) return '';
+    const sheets = cfg.getSheets() || {};
+    const cur = sheets[cfg.getCurrent()] || {};
+    return (typeof cur.name === 'string' && cur.name.trim()) ? cur.name.trim() : '';
+  } catch(_) { return ''; }
+}
+
 function updateRoomHeaderLabel() {
   const el = $('roomCodeLabel');
   if (!el) return;
-  if (activeRoom) {
-    el.textContent = (activeRoomName && activeRoomName.trim()) ? activeRoomName.trim() : activeRoom;
-    el.title = activeRoom; // code-on-hover so users can still find the shareable code
-  } else {
-    el.textContent = '';
-    el.title = '';
-  }
+  if (!activeRoom) { el.textContent = ''; el.title = ''; return; }
+  const roomName = (activeRoomName && activeRoomName.trim()) ? activeRoomName.trim() : '';
+  const sheetName = _currentSheetName();
+  // Prefer the explicit room name; fall back to the active tab's sheet name;
+  // fall back to just the code.
+  const primary = roomName || sheetName;
+  el.textContent = primary ? (primary + ' · ' + activeRoom) : activeRoom;
+  el.title = activeRoom; // code-on-hover so users can still copy the shareable code
 }
 let currentUser = null;
 // Guards a suspend of user-Firestore writes while migration is hydrating local
@@ -5115,7 +5296,13 @@ function forgetRoom(code) {
 
 function fbWriteMahjong() {
   if (!activeRoom || !fbDb || _fbUpdating) return;
-  roomRef('mahjong').set({ players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds });
+  // Include the current MJ sheet's display name so co-editors see the same
+  // "Poker night" / "麻將週五" label in their Session picker + room header.
+  const projects = getMJProjects();
+  const cur = projects[currentMJProject] || {};
+  const payload = { players: MJ.players, base: MJ.base, perTai: MJ.perTai, rounds: MJ.rounds };
+  if (typeof cur.name === 'string' && cur.name.trim()) payload.name = cur.name;
+  roomRef('mahjong').set(payload);
   _fbTouchDebounced();
 }
 function fbWriteEvent() {
@@ -5227,8 +5414,22 @@ function attachRoomListeners() {
     [0,1,2,3].forEach(i => _safeSet($('mjP'+i), MJ.players[i]));
     _safeSet($('mjBase'),   MJ.base);
     _safeSet($('mjPerTai'), MJ.perTai);
+    // Propagate the shared MJ sheet name into the current project so the
+    // Session picker + room chip stay in sync for everyone in the room.
+    if (typeof d.name === 'string' && currentMJProject) {
+      const projects = getMJProjects();
+      const p = projects[currentMJProject] || {};
+      if (p.name !== d.name) {
+        p.name = d.name;
+        projects[currentMJProject] = p;
+        saveMJProjects(projects);
+        _safeSet($('mjSheetName'), d.name);
+      }
+    }
     _safeRender('tab-mahjong', () => { mjUpdateDropdowns(); mjRenderAll(); });
     mjPersist(); // persist into the active session's project entry
+    if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher('mahjong');
+    if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
     _fbUpdating = false;
   });
   fbListeners.mahjong = mahjongCb;
@@ -5239,9 +5440,22 @@ function attachRoomListeners() {
     ES.name   = d.name   || '';
     ES.people = d.people || 2;
     ES.items  = d.items  || [];
-    _safeSet($('evEventName'), ES.name);
+    _safeSet($('esSheetName'), ES.name);
     _safeSet($('evPeople'),    ES.people);
+    // Mirror the shared sheet name into the local project so the picker + chip
+    // stay in sync for everyone in the room.
+    if (currentESProject) {
+      const projects = getESProjects();
+      const p = projects[currentESProject] || {};
+      if (p.name !== ES.name) {
+        p.name = ES.name; p._lastActivityAt = Date.now();
+        projects[currentESProject] = p;
+        saveESProjects(projects);
+      }
+    }
     _safeRender('tab-event', () => { renderEvItems(); renderReceipt(); });
+    if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher('event');
+    if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
     _fbUpdating = false;
   });
   fbListeners.event = eventCb;
@@ -5252,8 +5466,19 @@ function attachRoomListeners() {
     SX.name         = d.name         || '';
     SX.participants = d.participants || [];
     SX.expenses     = d.expenses     || [];
-    _safeSet($('sxGroupName'), SX.name);
+    _safeSet($('sxSheetName'), SX.name);
+    if (currentSXGroup) {
+      const groups = getSXGroups();
+      const g = groups[currentSXGroup] || {};
+      if (g.name !== SX.name) {
+        g.name = SX.name; g._lastActivityAt = Date.now();
+        groups[currentSXGroup] = g;
+        saveSXGroups(groups);
+      }
+    }
     _safeRender('tab-settle', sxRenderAll);
+    if (typeof renderSheetSwitcher === 'function') renderSheetSwitcher('settle');
+    if (typeof updateRoomHeaderLabel === 'function') updateRoomHeaderLabel();
     _fbUpdating = false;
   });
   fbListeners.settle = settleCb;
@@ -5483,7 +5708,7 @@ function _startEmptyProjectOnTab(tab) {
     try { localStorage.setItem('ev-active-project', name); } catch(_) {}
     currentESProject = name;
     ES.name = ''; ES.people = 2; ES.items = [];
-    if ($('evEventName')) $('evEventName').value = '';
+    if ($('esSheetName')) $('esSheetName').value = '';
     if ($('evPeople')) $('evPeople').value = 2;
     renderESProjectDropdown();
     renderEvItems(); renderReceipt();
@@ -5496,7 +5721,7 @@ function _startEmptyProjectOnTab(tab) {
     try { localStorage.setItem('sx-active-group', name); } catch(_) {}
     currentSXGroup = name;
     SX.name = name; SX.participants = []; SX.expenses = [];
-    if ($('sxGroupName')) $('sxGroupName').value = name;
+    if ($('sxSheetName')) $('sxSheetName').value = name;
     renderSXGroupDropdown();
     sxRenderAll();
   }
@@ -5913,7 +6138,7 @@ function _rehydrateFromLocal() {
   if (currentESProject && esProjects[currentESProject]) {
     const p = esProjects[currentESProject];
     ES.name = p.name || ''; ES.people = p.people || 2; ES.items = p.items || [];
-    _safeSet($('evEventName'), ES.name);
+    _safeSet($('esSheetName'), ES.name);
     _safeSet($('evPeople'),    ES.people);
   }
   renderESProjectDropdown();
@@ -5924,7 +6149,7 @@ function _rehydrateFromLocal() {
   if (currentSXGroup && sxGroups[currentSXGroup]) {
     const g = sxGroups[currentSXGroup];
     SX.name = g.name || ''; SX.participants = g.participants || []; SX.expenses = g.expenses || [];
-    _safeSet($('sxGroupName'), SX.name);
+    _safeSet($('sxSheetName'), SX.name);
   }
   renderSXGroupDropdown();
   sxRenderAll();
@@ -6593,7 +6818,7 @@ function copyToEdit() {
     try { localStorage.setItem('sx-active-group', name); } catch(_) {}
     currentSXGroup = name;
     SX.name = name;
-    _safeSet($('sxGroupName'), name);
+    _safeSet($('sxSheetName'), name);
   } else if (activeTab === 'mahjong') {
     // Mahjong now has multi-session support too — spin off a copy under a
     // unique name so the read-only shared game becomes an editable local one.
@@ -6618,7 +6843,7 @@ function copyToEdit() {
     try { localStorage.setItem('ev-active-project', name); } catch(_) {}
     currentESProject = name;
     ES.name = name;
-    _safeSet($('evEventName'), name);
+    _safeSet($('esSheetName'), name);
     renderESProjectDropdown();
   }
 
