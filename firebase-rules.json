@@ -15,6 +15,7 @@
           "createdAt":      { ".validate": "newData.isNumber() && newData.val() > 0" },
           "lastActivityAt": { ".validate": "newData.isNumber() && newData.val() > 0" },
           "passwordHash":   { ".validate": "newData.isString() && newData.val().length == 64 && newData.val().matches(/^[a-f0-9]+$/)" },
+          "name":           { ".validate": "newData.isString() && newData.val().length <= 100" },
           "$other":         { ".validate": false }
         },
 
