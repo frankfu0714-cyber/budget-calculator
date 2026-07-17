@@ -6126,6 +6126,94 @@ async function verifyJoinPassword(code, expectedHash) {
   closeRoomModal();
 }
 
+// Users often paste a full share URL instead of just the code. Pull the code
+// out of any URL-shaped input, then normalize. Accepts:
+//   "SUNSET-42"
+//   "https://…/?room=SUNSET-42"
+//   "?room=SUNSET-42#foo"
+//   "foo=bar&room=SUNSET-42"
+function _extractRoomCodeFromInput(raw) {
+  const str = String(raw || '').trim();
+  if (!str) return '';
+  try {
+    const url = new URL(str);
+    const code = url.searchParams.get('room');
+    if (code) return normalizeRoomCode(code);
+  } catch(_) {}
+  const m = str.match(/[?&]room=([A-Za-z0-9-]+)/);
+  if (m) return normalizeRoomCode(m[1]);
+  return normalizeRoomCode(str);
+}
+
+// Morph the active-room modal into a code-entry form so the user can hop
+// straight to a different room without the Leave → Live collab dance.
+function showJoinAnotherRoom() {
+  const zh = currentLang === 'zh';
+  $('roomModalTitle').textContent = zh ? '🔗 加入其他房間' : '🔗 Join another room';
+  $('roomModalContent').innerHTML =
+    '<p style="color:var(--muted);font-size:.88rem;margin-bottom:10px">' +
+      (zh ? '貼上代碼或分享連結，或用連結中的完整 URL 都可以：' : 'Paste a room code or the share link:') +
+    '</p>' +
+    '<input id="joinAnotherCodeInput" class="form-input" type="text" placeholder="' + (zh ? '例：SUNSET-42' : 'e.g. SUNSET-42') + '" style="width:100%;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px" maxlength="200" />' +
+    '<div id="joinAnotherError" class="room-pw-error"></div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button class="btn btn-primary" style="flex:1;justify-content:center" onclick="doJoinAnotherRoom()">' + (zh ? '加入' : 'Join') + '</button>' +
+      '<button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="openRoomModal()">' + (zh ? '取消' : 'Cancel') + '</button>' +
+    '</div>';
+  setTimeout(() => {
+    const inp = $('joinAnotherCodeInput');
+    if (inp) {
+      inp.focus();
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') doJoinAnotherRoom(); });
+    }
+  }, 50);
+}
+
+// Validate + hop. Doesn't leave the current room until we've confirmed the
+// new one exists (and password matches if it has one). Error surfaces inline.
+async function doJoinAnotherRoom() {
+  const zh = currentLang === 'zh';
+  const inp = $('joinAnotherCodeInput');
+  const err = $('joinAnotherError');
+  const raw = inp ? inp.value : '';
+  const setErr = (msg) => { if (err) err.textContent = msg; };
+  if (!raw || !raw.trim()) { setErr(zh ? '請輸入房間代碼' : 'Enter a room code'); return; }
+  const code = _extractRoomCodeFromInput(raw);
+  if (!code || code.length < 4) {
+    setErr(zh ? '代碼格式錯誤' : 'That doesn\'t look like a valid room code');
+    return;
+  }
+  if (activeRoom && code === activeRoom) {
+    setErr(zh ? '你已經在這個房間了' : "You're already in this room");
+    return;
+  }
+  if (!fbDb) {
+    setErr(zh ? '目前無法連線到房間服務' : 'Room service unavailable');
+    return;
+  }
+  // Check the room exists BEFORE we hand off — protects the user from
+  // accidentally leaving their current room for a code that doesn't exist.
+  let meta = null;
+  try {
+    const snap = await fbDb.ref('rooms/' + code + '/meta').once('value');
+    meta = snap.val();
+  } catch(_) {}
+  if (!meta || !meta.createdAt) {
+    setErr(zh ? '找不到此房間。請確認代碼是否正確。' : "Room not found. Check the code and try again.");
+    return;
+  }
+  if (meta.passwordHash) {
+    // Password-protected — swap to the existing password prompt. If they
+    // cancel or fail, they stay in the current room.
+    showJoinPasswordPrompt(code, meta.passwordHash);
+    return;
+  }
+  // Safe to hop. _ensureSheetBoundToRoom spins off (or reuses) a bound sheet
+  // and switches — _syncRoomToCurrentSheet handles the detach/attach.
+  _ensureSheetBoundToRoom(code, '', meta.name || '');
+  closeRoomModal();
+}
+
 // Kept as a callable API for the "Start Live collab" share flow: creates a
 // room without opening the code-preview modal, so the caller can weave it
 // into its own confirmation UI. `opts.suppressToast` skips the default toast.
@@ -6209,6 +6297,7 @@ function openRoomModal() {
         '</button>' +
         '<button class="btn btn-ghost" onclick="leaveRoom();closeRoomModal()">' + (zh ? '離開房間' : 'Leave Room') + '</button>' +
       '</div>' +
+      '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="showJoinAnotherRoom()">' + (zh ? '🔗 加入其他房間' : '🔗 Join another room') + '</button>' +
       '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="closeRoomModal()">' + (zh ? '關閉' : 'Close') + '</button>';
     setTimeout(() => {
       const nameInp = $('activeRoomNameInput');
